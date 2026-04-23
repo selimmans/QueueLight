@@ -26,13 +26,13 @@ Commit: `init: project scaffold and docs`
 ## PHASE 2 — Core models
 Commit: `feat: core models and migrations`
 
-- [ ] businesses app: Business model
-- [ ] businesses app: StaffPhone model
-- [ ] queue app: QueueEntry model
-- [ ] queue app: QueueEventLog model
-- [ ] Run migrations and verify
-- [ ] Register models in Django admin
-- [ ] Update TASKS.md and ARCHITECTURE.md
+- [x] businesses app: Business model
+- [x] businesses app: StaffPhone model
+- [x] queue app: QueueEntry model
+- [x] queue app: QueueEventLog model
+- [x] Run migrations and verify
+- [x] Register models in Django admin
+- [x] Update TASKS.md and ARCHITECTURE.md
 
 ---
 
