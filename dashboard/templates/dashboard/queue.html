@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Queue — {{ business.name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      min-height: 100dvh;
+    }
+
+    .header {
+      background: {{ business.logo_colour }};
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .header a { color: rgba(255,255,255,.8); font-size: 0.85rem; text-decoration: none; }
+
+    .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
+
+    .called-banner {
+      background: #ecfdf5;
+      border: 2px solid #6ee7b7;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .called-banner .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #059669;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .called-banner .name { font-size: 1.2rem; font-weight: 700; color: #111; }
+    .called-banner .meta { font-size: 0.85rem; color: #6b7280; margin-top: 0.2rem; }
+
+    .call-btn {
+      display: block;
+      width: 100%;
+      background: {{ business.logo_colour }};
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 1.25rem;
+      text-align: center;
+    }
+
+    .call-btn:active { opacity: 0.85; }
+
+    .queue-list {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      overflow: hidden;
+    }
+
+    .queue-list h2 {
+      padding: 0.875rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .entry {
+      display: flex;
+      align-items: center;
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid #f3f4f6;
+      gap: 1rem;
+    }
+
+    .entry:last-child { border-bottom: none; }
+
+    .badge {
+      background: #f3f4f6;
+      color: #374151;
+      font-weight: 700;
+      font-size: 0.85rem;
+      min-width: 2.5rem;
+      text-align: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+
+    .entry-name { font-weight: 600; color: #111; }
+    .entry-meta { font-size: 0.8rem; color: #9ca3af; }
+    .empty { padding: 2.5rem 1rem; text-align: center; color: #9ca3af; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{ business.name }}</h1>
+    <a href="{% url 'dashboard:logout' slug=business.slug %}">Log out</a>
+  </div>
+
+  <div class="container">
+    {% if called_last %}
+    <div class="called-banner" id="called-banner">
+      <div class="label">Last called</div>
+      <div class="name">{{ called_last.name }}</div>
+      <div class="meta">
+        {% if called_last.batch_number %}Batch #{{ called_last.batch_number }}{% else %}Position #{{ called_last.position }}{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}">
+      {% csrf_token %}
+      <button class="call-btn" type="submit">Call Next</button>
+    </form>
+
+    <div class="queue-list" id="queue-list">
+      <h2><span class="dot"></span>Waiting&nbsp;—&nbsp;<span id="count">{{ waiting|length }}</span></h2>
+      {% if waiting %}
+        {% for entry in waiting %}
+        <div class="entry">
+          <div class="badge">{% if entry.batch_number %}B{{ entry.batch_number }}{% else %}#{{ entry.position }}{% endif %}</div>
+          <div>
+            <div class="entry-name">{{ entry.name }}</div>
+            <div class="entry-meta">{{ entry.joined_at|timesince }} ago</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty">Queue is empty</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    const statusUrl = "/api/queue/{{ business.slug }}/status/";
+
+    function renderEntry(e) {
+      const badge = e.batch_number ? "B" + e.batch_number : "#" + e.position;
+      return `<div class="entry">
+        <div class="badge">${badge}</div>
+        <div>
+          <div class="entry-name">${e.name}</div>
+          <div class="entry-meta">In queue</div>
+        </div>
+      </div>`;
+    }
+
+    function poll() {
+      fetch(statusUrl)
+        .then(r => r.json())
+        .then(data => {
+          const list = document.getElementById("queue-list");
+          let inner = `<h2><span class="dot"></span>Waiting&nbsp;—&nbsp;<span id="count">${data.waiting.length}</span></h2>`;
+          inner += data.waiting.length
+            ? data.waiting.map(renderEntry).join("")
+            : `<p class="empty">Queue is empty</p>`;
+          list.innerHTML = inner;
+
+          if (data.called_last) {
+            const meta = data.called_last.batch_number
+              ? "Batch #" + data.called_last.batch_number
+              : "Position #" + data.called_last.position;
+            const html = `<div class="label">Last called</div>
+              <div class="name">${data.called_last.name}</div>
+              <div class="meta">${meta}</div>`;
+            let banner = document.getElementById("called-banner");
+            if (!banner) {
+              banner = document.createElement("div");
+              banner.className = "called-banner";
+              banner.id = "called-banner";
+              document.querySelector(".container").prepend(banner);
+            }
+            banner.innerHTML = html;
+          }
+        })
+        .catch(() => {});
+    }
+
+    setInterval(poll, 5000);
+  </script>
+</body>
+</html>

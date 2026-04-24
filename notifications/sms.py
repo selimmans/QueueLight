@@ -1,16 +1,20 @@
-# Populated in Phase 4
-# Stub present so imports don't fail during Phase 2/3 development.
+import logging
+
+from django.conf import settings
+from twilio.rest import Client
+
+logger = logging.getLogger(__name__)
 
 
 class TwilioSMSBackend:
-    """Thin synchronous wrapper around the Twilio REST API.
-
-    Implemented in Phase 4. This stub ensures the import chain
-    works during development of earlier phases.
-    """
-
     def send(self, to: str, body: str, from_: str) -> bool:
-        raise NotImplementedError("TwilioSMSBackend not yet implemented — Phase 4")
+        try:
+            client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+            client.messages.create(to=to, from_=from_, body=body)
+            return True
+        except Exception:
+            logger.exception("Twilio SMS send failed to %s", to)
+            return False
 
 
 class SMSTestBackend:

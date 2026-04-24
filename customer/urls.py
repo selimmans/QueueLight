@@ -1,9 +1,10 @@
 from django.urls import path
 
+from customer import views
+
 app_name = "customer"
 
 urlpatterns = [
-    # Populated in Phase 5
-    # path("<slug:slug>/", views.JoinView.as_view(), name="join"),
-    # path("<slug:slug>/confirmation/", views.ConfirmView.as_view(), name="confirmation"),
+    path("<slug:slug>/", views.JoinView.as_view(), name="join"),
+    path("<slug:slug>/confirmation/<int:entry_id>/", views.ConfirmView.as_view(), name="confirmation"),
 ]
