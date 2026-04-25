@@ -131,10 +131,10 @@
       <div class="number-value">{{ entry.position }}</div>
     {% endif %}
 
-    {% if wait_minutes is not None %}
+    {% if wait_min is not None %}
       <div class="wait">
         <div class="wait-label">Estimated wait</div>
-        <div class="wait-value">~{{ wait_minutes }} min</div>
+        <div class="wait-value">~{{ wait_min }}–{{ wait_max }} min</div>
       </div>
     {% endif %}
 

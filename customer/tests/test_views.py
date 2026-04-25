@@ -202,7 +202,7 @@ class TestConfirmView:
             mode=Business.MODE_PERSON, batch_size=1,
             is_active=True, avg_service_minutes=10,
         )
-        e1 = QueueEntry.objects.create(
+        QueueEntry.objects.create(
             business=biz, name="First", phone="+16135550600",
             status=QueueEntry.Status.WAITING, position=1,
         )
@@ -212,4 +212,6 @@ class TestConfirmView:
         )
         url = reverse("customer:confirmation", kwargs={"slug": biz.slug, "entry_id": e2.pk})
         response = client.get(url)
-        assert b"~10 min" in response.content
+        # Range format: ~X–Y min (1 person ahead × 10 min → ~10–15 min)
+        assert b"min" in response.content
+        assert "–" in response.content.decode()

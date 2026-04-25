@@ -116,6 +116,20 @@
     .entry-name { font-weight: 600; color: #111; }
     .entry-meta { font-size: 0.8rem; color: #9ca3af; }
     .empty { padding: 2.5rem 1rem; text-align: center; color: #9ca3af; font-size: 0.95rem; }
+
+    .qr-section {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 1rem 1.25rem;
+      margin-top: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .qr-section img { width: 80px; height: 80px; flex-shrink: 0; border: 1px solid #e5e7eb; border-radius: 6px; }
+    .qr-section p { font-size: 0.8rem; color: #6b7280; margin-bottom: 0.25rem; }
+    .qr-section a { font-size: 0.75rem; color: #6b7280; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -155,6 +169,14 @@
       {% else %}
         <p class="empty">Queue is empty</p>
       {% endif %}
+    </div>
+
+    <div class="qr-section">
+      <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="Customer join QR code">
+      <div>
+        <p>Share this QR code so customers can join the queue.</p>
+        <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
+      </div>
     </div>
   </div>
 

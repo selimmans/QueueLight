@@ -9,6 +9,7 @@ urlpatterns = [
     path("<slug:slug>/logout/", views.StaffLogoutView.as_view(), name="logout"),
     path("<slug:slug>/", views.DashboardView.as_view(), name="dashboard"),
     path("<slug:slug>/next/", views.CallNextView.as_view(), name="call_next"),
+    path("<slug:slug>/qr.png", views.QRCodeView.as_view(), name="qr_code"),
 ]
 
 api_urlpatterns = [

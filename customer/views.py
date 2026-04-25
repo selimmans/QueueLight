@@ -90,17 +90,23 @@ class ConfirmView(View):
         business = get_object_or_404(Business, slug=slug)
         entry = get_object_or_404(QueueEntry, pk=entry_id, business=business)
 
-        wait_minutes = None
+        wait_min = wait_max = None
         if business.avg_service_minutes:
             ahead = QueueEntry.objects.filter(
                 business=business,
                 status=QueueEntry.Status.WAITING,
                 position__lt=entry.position,
             ).count()
-            wait_minutes = ahead * business.avg_service_minutes
+            if ahead > 0:
+                mid = ahead * business.avg_service_minutes
+                # ±25 % range, rounded to nearest 5 min
+                wait_min = max(1, round(mid * 0.75 / 5) * 5)
+                raw_max = round(mid * 1.25 / 5) * 5
+                wait_max = max(raw_max, wait_min + 5)
 
         return render(request, self.template_name, {
             "business": business,
             "entry": entry,
-            "wait_minutes": wait_minutes,
+            "wait_min": wait_min,
+            "wait_max": wait_max,
         })

@@ -174,3 +174,38 @@ class TestQueueStatusAPI:
         data = client.get(f"/api/queue/{active_business.slug}/status/").json()
         assert data["mode"] == active_business.mode
         assert data["batch_size"] == active_business.batch_size
+
+
+# ── QRCodeView ─────────────────────────────────────────────────────────────────
+
+class TestQRCodeView:
+    def test_no_session_redirects_to_login(self, client, active_business):
+        url = reverse("dashboard:qr_code", kwargs={"slug": active_business.slug})
+        resp = client.get(url)
+        assert resp.status_code == 302
+        assert "login" in resp["Location"]
+
+    def test_returns_png_image(self, client, active_business, staff_phone):
+        _login(client, active_business, staff_phone)
+        url = reverse("dashboard:qr_code", kwargs={"slug": active_business.slug})
+        resp = client.get(url)
+        assert resp.status_code == 200
+        assert resp["Content-Type"] == "image/png"
+
+    def test_returns_non_empty_body(self, client, active_business, staff_phone):
+        _login(client, active_business, staff_phone)
+        url = reverse("dashboard:qr_code", kwargs={"slug": active_business.slug})
+        resp = client.get(url)
+        assert len(resp.content) > 0
+
+    def test_cached_response_identical(self, client, active_business, staff_phone):
+        """Second request should return the same bytes (from cache)."""
+        _login(client, active_business, staff_phone)
+        url = reverse("dashboard:qr_code", kwargs={"slug": active_business.slug})
+        r1 = client.get(url)
+        r2 = client.get(url)
+        assert r1.content == r2.content
+
+    def test_unknown_slug_returns_404(self, client, db):
+        resp = client.get("/staff/no-such-business/qr.png")
+        assert resp.status_code == 404

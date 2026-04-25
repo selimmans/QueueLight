@@ -1,5 +1,10 @@
-from django.http import JsonResponse
+import io
+
+import qrcode
+from django.core.cache import cache
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views import View
 
 from businesses.models import Business, StaffPhone
@@ -97,6 +102,35 @@ class CallNextView(View):
             pass  # empty queue — redirect back without crashing
 
         return redirect("dashboard:dashboard", slug=slug)
+
+
+def _build_qr_png(url: str) -> bytes:
+    img = qrcode.make(url)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class QRCodeView(View):
+    """Return a QR code PNG for the customer join page.
+
+    Generated once and cached permanently — the URL never changes for a slug.
+    """
+
+    def get(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect("dashboard:login", slug=slug)
+
+        cache_key = f"qr_png:{slug}"
+        png = cache.get(cache_key)
+        if png is None:
+            join_path = reverse("customer:join", kwargs={"slug": slug})
+            join_url = request.build_absolute_uri(join_path)
+            png = _build_qr_png(join_url)
+            cache.set(cache_key, png, timeout=None)
+
+        return HttpResponse(png, content_type="image/png")
 
 
 class QueueStatusAPIView(View):
