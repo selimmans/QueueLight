@@ -3,125 +3,186 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staff Login — {{ business.name }}</title>
+  <title>Staff Login — Queue Light</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f4f5;
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       padding: 1.5rem 1rem;
     }
 
-    .header {
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .accent-bar {
-      height: 6px;
-      border-radius: 3px;
-      background: {{ business.logo_colour }};
-      margin-bottom: 1.25rem;
-    }
-
-    .business-name {
-      font-size: 1.4rem;
-      font-weight: 700;
+    .logo {
+      font-family: "DM Serif Display", serif;
+      font-size: 1.6rem;
       color: #111;
+      margin-bottom: 0.2rem;
+      text-align: center;
     }
 
-    .subtitle {
-      margin-top: 0.4rem;
-      font-size: 0.9rem;
-      color: #666;
+    .sub {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #a1a1aa;
+      margin-bottom: 1.75rem;
+      text-align: center;
     }
 
     .card {
       width: 100%;
-      max-width: 400px;
+      max-width: 360px;
       background: #fff;
-      border-radius: 12px;
+      border: 1px solid #e4e4e7;
+      border-radius: 6px;
       padding: 1.75rem 1.5rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
     }
 
     label {
       display: block;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 0.35rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #71717a;
+      margin-bottom: 0.4rem;
     }
 
-    input[type="tel"] {
+    select, input[type="tel"] {
       width: 100%;
-      padding: 0.75rem 1rem;
-      border: 1.5px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 1rem;
-      color: #111;
-      background: #fafafa;
+      padding: 0.7rem 0.85rem;
+      border: 1.5px solid #e4e4e7;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      color: #18181b;
+      background: #fff;
       -webkit-appearance: none;
-      margin-bottom: 1.25rem;
+      appearance: none;
+      margin-bottom: 1rem;
     }
 
-    input:focus {
-      outline: none;
-      border-color: {{ business.logo_colour }};
-      background: #fff;
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2371717a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.85rem center;
+      padding-right: 2.25rem;
     }
+
+    select:focus, input:focus { outline: none; border-color: #111; }
+
+    .phone-wrap {
+      display: flex;
+      align-items: stretch;
+      border: 1.5px solid #e4e4e7;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      transition: border-color .15s;
+    }
+
+    .phone-wrap:focus-within { border-color: #111; }
+
+    .phone-prefix {
+      padding: 0.7rem 0.75rem 0.7rem 0.85rem;
+      font-size: 0.95rem;
+      color: #71717a;
+      background: #f4f4f5;
+      border-right: 1.5px solid #e4e4e7;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .phone-wrap input {
+      border: none;
+      border-radius: 0;
+      margin-bottom: 0;
+      background: transparent;
+      flex: 1;
+      padding: 0.7rem 0.85rem;
+      font-size: 0.95rem;
+      color: #18181b;
+    }
+
+    .phone-wrap input:focus { outline: none; }
+
+    .sign-in-btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.25rem;
+    }
+
+    .sign-in-btn:active { opacity: 0.85; }
 
     .error {
       background: #fef2f2;
       border: 1px solid #fecaca;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      padding: 0.65rem 0.75rem;
       color: #dc2626;
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       margin-bottom: 1rem;
     }
-
-    button[type="submit"] {
-      width: 100%;
-      padding: 0.875rem;
-      background: {{ business.logo_colour }};
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    button[type="submit"]:active { opacity: 0.85; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="accent-bar"></div>
-    <div class="business-name">{{ business.name }}</div>
-    <div class="subtitle">Staff access</div>
-  </div>
+  <div class="logo">Queue Light</div>
+  <div class="sub">Staff access</div>
 
   <div class="card">
-    {% if error %}
-      <div class="error">{{ error }}</div>
-    {% endif %}
-
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <form method="post">
       {% csrf_token %}
-      <label for="id_phone">Your registered phone number</label>
-      <input type="tel" id="id_phone" name="phone" autocomplete="tel"
-             placeholder="+1 613 555 0100" required>
-      <button type="submit">Sign In</button>
+
+      <label for="biz_select">Business</label>
+      <select id="biz_select" name="slug" required>
+        <option value="">— select —</option>
+        {% for biz, code in businesses_with_codes %}
+        <option value="{{ biz.slug }}" data-code="{{ code }}"
+          {% if biz.slug == selected_slug %}selected{% endif %}>
+          {{ biz.name }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="id_phone">Your phone number</label>
+      <div class="phone-wrap">
+        <span class="phone-prefix" id="phone_prefix">+1</span>
+        <input type="tel" id="id_phone" name="phone"
+               autocomplete="tel" placeholder="416 555 0100" required>
+      </div>
+
+      <button class="sign-in-btn" type="submit">Sign in</button>
     </form>
   </div>
+
+  <script>
+    const sel = document.getElementById("biz_select");
+    const pfx = document.getElementById("phone_prefix");
+
+    function updatePrefix() {
+      const opt = sel.options[sel.selectedIndex];
+      pfx.textContent = opt.dataset.code ? "+" + opt.dataset.code : "+1";
+    }
+
+    sel.addEventListener("change", updatePrefix);
+    updatePrefix();
+  </script>
 </body>
 </html>

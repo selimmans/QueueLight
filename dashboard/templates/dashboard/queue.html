@@ -4,100 +4,183 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Queue — {{ business.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --brand: {{ business.logo_colour }};
+      --bg: #f5f5f5;
+      --border: #e5e7eb;
+      --text: #111;
+      --muted: #6b7280;
+      --r: 4px;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
       min-height: 100dvh;
     }
 
+    /* Header */
     .header {
-      background: {{ business.logo_colour }};
+      background: #111;
       padding: 1rem 1.25rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .header h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
-    .header a { color: rgba(255,255,255,.8); font-size: 0.85rem; text-decoration: none; }
-
-    .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
-
-    .called-banner {
-      background: #ecfdf5;
-      border: 2px solid #6ee7b7;
-      border-radius: 10px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.25rem;
+    .header-name {
+      font-family: "DM Serif Display", serif;
+      font-size: 1.35rem;
+      color: #fff;
+      line-height: 1.1;
     }
 
-    .called-banner .label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: #059669;
+    .header-links { display: flex; gap: 1.25rem; align-items: center; }
+    .header-links a {
+      color: rgba(255,255,255,.55);
+      font-size: 0.8rem;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .header-links a:hover { color: rgba(255,255,255,.85); }
+
+    /* Stats bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      background: #1a1a1a;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    .stat-cell {
+      padding: 0.75rem 1rem;
+      text-align: center;
+      border-right: 1px solid #2a2a2a;
+    }
+
+    .stat-cell:last-child { border-right: none; }
+
+    .stat-cell-val {
+      font-size: 1.4rem;
       font-weight: 700;
-      margin-bottom: 0.25rem;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 0.2rem;
+      font-variant-numeric: tabular-nums;
     }
 
-    .called-banner .name { font-size: 1.2rem; font-weight: 700; color: #111; }
-    .called-banner .meta { font-size: 0.85rem; color: #6b7280; margin-top: 0.2rem; }
+    .stat-cell-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.4);
+    }
 
+    /* Container */
+    .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
+
+    /* Call Next */
     .call-btn {
       display: block;
       width: 100%;
-      background: {{ business.logo_colour }};
+      background: #111;
       color: #fff;
       border: none;
-      border-radius: 10px;
-      padding: 1rem;
+      border-radius: var(--r);
+      padding: 1.1rem;
       font-size: 1.1rem;
       font-weight: 700;
       cursor: pointer;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
       text-align: center;
+      letter-spacing: .01em;
     }
 
     .call-btn:active { opacity: 0.85; }
 
-    .queue-list {
+    /* Batch intercept */
+    .batch-intercept {
+      display: none;
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.07);
-      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.1rem;
+      margin-bottom: 1rem;
     }
 
-    .queue-list h2 {
-      padding: 0.875rem 1rem;
-      font-size: 0.8rem;
+    .batch-intercept.active { display: block; }
+
+    .batch-intercept p {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+    }
+
+    .count-buttons { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+    .count-btn {
+      flex: 1;
+      min-width: 2.5rem;
+      padding: 0.55rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r);
+      background: #fff;
+      font-size: 1rem;
       font-weight: 700;
-      color: #6b7280;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .count-btn:hover { background: var(--bg); }
+    .count-btn.zero { border-color: #fca5a5; color: #dc2626; }
+
+    /* Section label */
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: .12em;
       text-transform: uppercase;
-      letter-spacing: .05em;
-      border-bottom: 1px solid #f3f4f6;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .dot {
-      width: 8px; height: 8px;
+      width: 7px; height: 7px;
       border-radius: 50%;
       background: #10b981;
       animation: pulse 2s infinite;
+      flex-shrink: 0;
     }
 
+    .dot-called { background: #d97706; animation: none; }
+
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    /* Queue card */
+    .queue-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
 
     .entry {
       display: flex;
       align-items: center;
-      padding: 0.875rem 1rem;
+      padding: 0.8rem 1rem;
       border-bottom: 1px solid #f3f4f6;
-      gap: 1rem;
+      gap: 0.85rem;
     }
 
     .entry:last-child { border-bottom: none; }
@@ -106,64 +189,167 @@
       background: #f3f4f6;
       color: #374151;
       font-weight: 700;
-      font-size: 0.85rem;
-      min-width: 2.5rem;
+      font-size: 0.8rem;
+      min-width: 2.75rem;
       text-align: center;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
+      padding: 0.25rem 0.4rem;
+      border-radius: var(--r);
+      flex-shrink: 0;
     }
 
-    .entry-name { font-weight: 600; color: #111; }
-    .entry-meta { font-size: 0.8rem; color: #9ca3af; }
-    .empty { padding: 2.5rem 1rem; text-align: center; color: #9ca3af; font-size: 0.95rem; }
+    .badge-called {
+      background: #fef3c7;
+      color: #92400e;
+    }
 
+    .entry-body { flex: 1; min-width: 0; cursor: default; }
+    .entry-body.expandable { cursor: pointer; }
+    .entry-name { font-weight: 600; color: var(--text); font-size: 0.95rem; }
+    .entry-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .intake-details { display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f3f4f6; }
+    .intake-details.open { display: block; }
+    .intake-item { font-size: 0.78rem; color: #6b7280; margin-bottom: 0.2rem; }
+    .intake-item strong { color: #374151; font-weight: 600; }
+
+    .entry-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+
+    .action-btn {
+      padding: 0.3rem 0.6rem;
+      border-radius: var(--r);
+      border: 1.5px solid;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    .btn-skip   { border-color: #d1d5db; color: #6b7280; }
+    .btn-done   { border-color: #6ee7b7; color: #059669; }
+    .btn-noshow { border-color: #fca5a5; color: #dc2626; }
+    .action-btn:hover { opacity: 0.75; }
+
+    .empty {
+      padding: 2.25rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* QR section */
     .qr-section {
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.07);
-      padding: 1rem 1.25rem;
-      margin-top: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1rem;
       display: flex;
       align-items: center;
       gap: 1rem;
+      margin-top: 0.25rem;
     }
-    .qr-section img { width: 80px; height: 80px; flex-shrink: 0; border: 1px solid #e5e7eb; border-radius: 6px; }
-    .qr-section p { font-size: 0.8rem; color: #6b7280; margin-bottom: 0.25rem; }
-    .qr-section a { font-size: 0.75rem; color: #6b7280; word-break: break-all; }
+
+    .qr-section img {
+      width: 72px; height: 72px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+
+    .qr-section p { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
+    .qr-section a { font-size: 0.72rem; color: var(--muted); word-break: break-all; }
   </style>
 </head>
 <body>
+
   <div class="header">
-    <h1>{{ business.name }}</h1>
-    <a href="{% url 'dashboard:logout' slug=business.slug %}">Log out</a>
+    <div class="header-name">{{ business.name }}</div>
+    <div class="header-links">
+      <a href="{% url 'dashboard:settings' slug=business.slug %}">Settings</a>
+      <a href="{% url 'dashboard:logout' slug=business.slug %}">Log out</a>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-cell">
+      <div class="stat-cell-val" id="statWaiting">{{ waiting|length }}</div>
+      <div class="stat-cell-label">Waiting</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-val" id="statCurrent">
+        {% if called_last %}
+          {% if called_last.batch_number %}B{{ called_last.batch_number }}{% else %}#{{ called_last.position }}{% endif %}
+        {% else %}—{% endif %}
+      </div>
+      <div class="stat-cell-label">{% if business.mode == "batch" %}Current Batch{% else %}Last Called{% endif %}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-val">{% if business.avg_service_minutes %}{{ business.avg_service_minutes }}m{% else %}—{% endif %}</div>
+      <div class="stat-cell-label">Avg Service</div>
+    </div>
   </div>
 
   <div class="container">
-    {% if called_last %}
-    <div class="called-banner" id="called-banner">
-      <div class="label">Last called</div>
-      <div class="name">{{ called_last.name }}</div>
-      <div class="meta">
-        {% if called_last.batch_number %}Batch #{{ called_last.batch_number }}{% else %}Position #{{ called_last.position }}{% endif %}
+
+    {% if business.mode == "batch" %}
+      <div class="batch-intercept" id="batchIntercept">
+        <p>How many showed up from the last batch?</p>
+        <div class="count-buttons" id="countButtons"></div>
+      </div>
+
+      <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}" id="callNextForm">
+        {% csrf_token %}
+        <button class="call-btn" type="button" id="callNextBtn" onclick="handleCallNext()">Call Next Batch</button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}">
+        {% csrf_token %}
+        <button class="call-btn" type="submit">Call Next</button>
+      </form>
+    {% endif %}
+
+    {% if business.mode == "person" %}
+    <div id="called-section" {% if not called_entries %}style="display:none"{% endif %}>
+      <div class="section-label"><span class="dot dot-called"></span>Just Called — <span id="called-count">{{ called_entries|length }}</span></div>
+      <div class="queue-card" id="called-list">
+        {% for entry in called_entries %}
+        <div class="entry">
+          <div class="badge badge-called">#{{ entry.position }}</div>
+          <div class="entry-body">
+            <div class="entry-name">{{ entry.name }}</div>
+            <div class="entry-meta">Called {{ entry.called_at|timesince }} ago</div>
+          </div>
+          <div class="entry-actions">
+            <form method="post" action="{% url 'dashboard:complete_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+              {% csrf_token %}<button class="action-btn btn-done" type="submit">Done</button>
+            </form>
+            <form method="post" action="{% url 'dashboard:noshow_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+              {% csrf_token %}<button class="action-btn btn-noshow" type="submit">No-show</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
     {% endif %}
 
-    <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}">
-      {% csrf_token %}
-      <button class="call-btn" type="submit">Call Next</button>
-    </form>
-
-    <div class="queue-list" id="queue-list">
-      <h2><span class="dot"></span>Waiting&nbsp;—&nbsp;<span id="count">{{ waiting|length }}</span></h2>
+    <div class="section-label" style="margin-top:0.25rem"><span class="dot"></span>Waiting — <span id="count">{{ waiting|length }}</span></div>
+    <div class="queue-card" id="queue-list">
       {% if waiting %}
         {% for entry in waiting %}
         <div class="entry">
           <div class="badge">{% if entry.batch_number %}B{{ entry.batch_number }}{% else %}#{{ entry.position }}{% endif %}</div>
-          <div>
+          <div class="entry-body{% if entry.intake_answers %} expandable{% endif %}"
+               {% if entry.intake_answers %}onclick="toggleExpand({{ entry.pk }})"{% endif %}>
             <div class="entry-name">{{ entry.name }}</div>
-            <div class="entry-meta">{{ entry.joined_at|timesince }} ago</div>
+            <div class="entry-meta">{{ entry.joined_at|timesince }} ago{% if entry.intake_answers %} · tap to expand{% endif %}</div>
           </div>
+          {% if business.mode == "person" %}
+          <div class="entry-actions">
+            <form method="post" action="{% url 'dashboard:skip_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+              {% csrf_token %}<button class="action-btn btn-skip" type="submit">Skip</button>
+            </form>
+          </div>
+          {% endif %}
         </div>
         {% endfor %}
       {% else %}
@@ -172,58 +358,170 @@
     </div>
 
     <div class="qr-section">
-      <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="Customer join QR code">
+      <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
       <div>
-        <p>Share this QR code so customers can join the queue.</p>
+        <p>Share this QR to let customers join</p>
         <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
       </div>
     </div>
+
   </div>
 
   <script>
     const statusUrl = "/api/queue/{{ business.slug }}/status/";
+    const MODE = "{{ business.mode }}";
+    const SLUG = "{{ business.slug }}";
+    const CSRF = document.querySelector("[name=csrfmiddlewaretoken]").value;
 
-    function renderEntry(e) {
+    let calledEntries = [];
+    const expandedIds = new Set();
+
+    function toggleExpand(id) {
+      if (expandedIds.has(id)) expandedIds.delete(id);
+      else expandedIds.add(id);
+      const det = document.getElementById("intake-" + id);
+      if (det) det.classList.toggle("open", expandedIds.has(id));
+    }
+
+    function renderIntake(answers, id) {
+      const entries = Object.entries(answers || {}).filter(([,v]) => v);
+      if (!entries.length) return "";
+      const rows = entries.map(([q,a]) =>
+        `<div class="intake-item"><strong>${q}:</strong> ${a}</div>`
+      ).join("");
+      const open = expandedIds.has(id) ? " open" : "";
+      return `<div class="intake-details${open}" id="intake-${id}">${rows}</div>`;
+    }
+
+    function renderEntry(e, mode) {
       const badge = e.batch_number ? "B" + e.batch_number : "#" + e.position;
+      const hasAnswers = e.intake_answers && Object.keys(e.intake_answers).filter(k => e.intake_answers[k]).length > 0;
+      const intakeHtml = hasAnswers ? renderIntake(e.intake_answers, e.id) : "";
+      const expandAttr = hasAnswers ? ` onclick="toggleExpand(${e.id})"` : "";
+      const expandClass = hasAnswers ? " expandable" : "";
+      const metaExtra = hasAnswers ? " · tap to expand" : "";
+      let actions = "";
+      if (mode === "person") {
+        actions = `<div class="entry-actions">
+          <form method="post" action="/staff/${SLUG}/skip/${e.id}/" style="display:inline">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <button class="action-btn btn-skip" type="submit">Skip</button>
+          </form>
+        </div>`;
+      }
       return `<div class="entry">
         <div class="badge">${badge}</div>
-        <div>
+        <div class="entry-body${expandClass}"${expandAttr}>
           <div class="entry-name">${e.name}</div>
-          <div class="entry-meta">In queue</div>
+          <div class="entry-meta">In queue${metaExtra}</div>
+          ${intakeHtml}
+        </div>
+        ${actions}
+      </div>`;
+    }
+
+    function renderCalledEntry(e) {
+      return `<div class="entry">
+        <div class="badge badge-called">#${e.position}</div>
+        <div class="entry-body">
+          <div class="entry-name">${e.name}</div>
+          <div class="entry-meta">Called</div>
+        </div>
+        <div class="entry-actions">
+          <form method="post" action="/staff/${SLUG}/complete/${e.id}/" style="display:inline">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <button class="action-btn btn-done" type="submit">Done</button>
+          </form>
+          <form method="post" action="/staff/${SLUG}/noshow/${e.id}/" style="display:inline">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <button class="action-btn btn-noshow" type="submit">No-show</button>
+          </form>
         </div>
       </div>`;
+    }
+
+    function buildCountButtons(batchSize, calledCount) {
+      const container = document.getElementById("countButtons");
+      if (!container) return;
+      container.innerHTML = "";
+      const max = Math.max(batchSize, calledCount);
+      for (let i = 0; i <= max; i++) {
+        const btn = document.createElement("button");
+        btn.className = "count-btn" + (i === 0 ? " zero" : "");
+        btn.textContent = i;
+        btn.type = "button";
+        btn.onclick = () => submitBatchComplete(i);
+        container.appendChild(btn);
+      }
+    }
+
+    function submitBatchComplete(count) {
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = `/staff/${SLUG}/complete-batch/`;
+      form.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+                        <input type="hidden" name="showed_up" value="${count}">`;
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    function handleCallNext() {
+      if (MODE === "batch" && calledEntries.length > 0) {
+        document.getElementById("batchIntercept").classList.add("active");
+        document.getElementById("callNextBtn").style.display = "none";
+      } else {
+        document.getElementById("callNextForm").submit();
+      }
     }
 
     function poll() {
       fetch(statusUrl)
         .then(r => r.json())
         .then(data => {
-          const list = document.getElementById("queue-list");
-          let inner = `<h2><span class="dot"></span>Waiting&nbsp;—&nbsp;<span id="count">${data.waiting.length}</span></h2>`;
-          inner += data.waiting.length
-            ? data.waiting.map(renderEntry).join("")
-            : `<p class="empty">Queue is empty</p>`;
-          list.innerHTML = inner;
+          calledEntries = data.called || [];
 
+          // Stats bar
+          document.getElementById("statWaiting").textContent = data.waiting.length;
           if (data.called_last) {
-            const meta = data.called_last.batch_number
-              ? "Batch #" + data.called_last.batch_number
-              : "Position #" + data.called_last.position;
-            const html = `<div class="label">Last called</div>
-              <div class="name">${data.called_last.name}</div>
-              <div class="meta">${meta}</div>`;
-            let banner = document.getElementById("called-banner");
-            if (!banner) {
-              banner = document.createElement("div");
-              banner.className = "called-banner";
-              banner.id = "called-banner";
-              document.querySelector(".container").prepend(banner);
+            const cur = data.called_last.batch_number
+              ? "B" + data.called_last.batch_number
+              : "#" + data.called_last.position;
+            document.getElementById("statCurrent").textContent = cur;
+          }
+
+          // Waiting list
+          const list = document.getElementById("queue-list");
+          document.getElementById("count").textContent = data.waiting.length;
+          list.innerHTML = data.waiting.length
+            ? data.waiting.map(e => renderEntry(e, data.mode)).join("")
+            : `<p class="empty">Queue is empty</p>`;
+
+          // Called list (person mode)
+          if (data.mode === "person") {
+            const section = document.getElementById("called-section");
+            const calledList = document.getElementById("called-list");
+            if (section && calledList) {
+              if (calledEntries.length > 0) {
+                section.style.display = "block";
+                document.getElementById("called-count").textContent = calledEntries.length;
+                calledList.innerHTML = calledEntries.map(renderCalledEntry).join("");
+              } else {
+                section.style.display = "none";
+              }
             }
-            banner.innerHTML = html;
+          }
+
+          // Batch intercept buttons
+          if (data.mode === "batch" && calledEntries.length > 0) {
+            buildCountButtons(data.batch_size, calledEntries.length);
           }
         })
         .catch(() => {});
     }
+
+    {% if business.mode == "batch" and called_entries %}
+    buildCountButtons({{ business.batch_size }}, {{ called_entries|length }});
+    {% endif %}
 
     setInterval(poll, 5000);
   </script>

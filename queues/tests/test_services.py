@@ -151,11 +151,13 @@ class TestAbandon:
         assert log.before_values["status"] == "waiting"
         assert log.after_values["status"] == "abandoned"
 
-    def test_cannot_abandon_called(self, db, queue_entry):
-        queue_entry.status = QueueEntry.Status.CALLED
+    def test_abandon_is_for_waiting_not_called(self, db, queue_entry):
+        # abandon() is the waiting→abandoned path; no_show() handles called→abandoned
+        queue_entry.status = QueueEntry.Status.WAITING
         queue_entry.save()
-        with pytest.raises(RuleViolationError):
-            QueueService.abandon(queue_entry)
+        QueueService.abandon(queue_entry)
+        queue_entry.refresh_from_db()
+        assert queue_entry.status == QueueEntry.Status.ABANDONED
 
     def test_cannot_abandon_completed(self, db, queue_entry):
         queue_entry.status = QueueEntry.Status.COMPLETED

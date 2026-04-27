@@ -10,10 +10,17 @@ class StaffPhoneInline(admin.TabularInline):
 
 @admin.register(Business)
 class BusinessAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug", "mode", "batch_size", "is_active", "created_at"]
-    list_filter = ["mode", "is_active"]
+    list_display = ["name", "slug", "business_type", "mode", "batch_size", "is_active", "created_at"]
+    list_filter = ["business_type", "mode", "is_active"]
     prepopulated_fields = {"slug": ("name",)}
     inlines = [StaffPhoneInline]
+    fieldsets = [
+        (None, {"fields": ["name", "slug", "business_type", "is_active", "is_closing", "country"]}),
+        ("Branding", {"fields": ["logo_colour", "colour_accent", "colour_border"]}),
+        ("Queue", {"fields": ["mode", "batch_size", "avg_service_minutes"]}),
+        ("Customer experience", {"fields": ["menu_url", "intake_fields", "sms_template"]}),
+        ("Twilio", {"fields": ["twilio_from_number"]}),
+    ]
 
 
 @admin.register(StaffPhone)

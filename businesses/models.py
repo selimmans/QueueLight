@@ -16,11 +16,18 @@ class Business(models.Model):
     MODE_PERSON = "person"
     MODE_CHOICES = [(MODE_BATCH, "Batch"), (MODE_PERSON, "Person")]
 
+    TYPE_RETAIL = "retail"
+    TYPE_CLINIC = "clinic"
+    TYPE_CHOICES = [(TYPE_RETAIL, "Retail"), (TYPE_CLINIC, "Clinic")]
+
     SMS_TEMPLATE_DEFAULT = "You're being called! Please proceed to {business_name}."
 
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
+    business_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_RETAIL)
     logo_colour = models.CharField(max_length=7, default="#3B82F6")
+    colour_accent = models.CharField(max_length=7, default="#6366f1")
+    colour_border = models.CharField(max_length=7, default="#e5e7eb")
     country = models.CharField(
         max_length=2,
         default="CA",
@@ -36,7 +43,10 @@ class Business(models.Model):
         default=SMS_TEMPLATE_DEFAULT,
         help_text="Placeholders: {business_name}, {customer_name}.",
     )
+    menu_url = models.URLField(blank=True, default="")
+    intake_fields = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=False)
+    is_closing = models.BooleanField(default=False)
     avg_service_minutes = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

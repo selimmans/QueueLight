@@ -7,7 +7,7 @@ from .models import QueueEntry, QueueEventLog
 class QueueEntryAdmin(admin.ModelAdmin):
     list_display = ["name", "business", "status", "position", "batch_number", "joined_at", "called_at"]
     list_filter = ["business", "status"]
-    readonly_fields = ["joined_at", "called_at"]
+    readonly_fields = ["joined_at", "called_at", "intake_answers"]
 
 
 @admin.register(QueueEventLog)
