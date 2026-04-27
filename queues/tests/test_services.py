@@ -8,7 +8,7 @@ from queues.services import QueueService, RuleViolationError
 
 @pytest.fixture(autouse=True)
 def mock_sms():
-    with patch("notifications.sms.TwilioSMSBackend.send", return_value=True):
+    with patch("notifications.sms.TwilioSMSBackend.send", return_value=(True, "")):
         yield
 
 
@@ -121,7 +121,7 @@ class TestCallNext:
         assert len(result) == 5
 
     def test_sms_failure_does_not_raise(self, db, batch_entries, active_business):
-        with patch("notifications.sms.TwilioSMSBackend.send", return_value=False):
+        with patch("notifications.sms.TwilioSMSBackend.send", return_value=(False, "sms error")):
             result = QueueService.call_next(active_business)
         assert len(result) == 5
         for entry in batch_entries:
@@ -129,7 +129,7 @@ class TestCallNext:
             assert entry.status == QueueEntry.Status.CALLED
 
     def test_sms_failure_writes_sms_failed_log(self, db, batch_entries, active_business):
-        with patch("notifications.sms.TwilioSMSBackend.send", return_value=False):
+        with patch("notifications.sms.TwilioSMSBackend.send", return_value=(False, "sms error")):
             QueueService.call_next(active_business)
         failed = QueueEventLog.objects.filter(
             business=active_business, event_type=QueueEventLog.EventType.SMS_FAILED

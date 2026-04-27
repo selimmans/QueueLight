@@ -16,7 +16,7 @@ class TestTwilioSMSBackend:
         backend = TwilioSMSBackend()
         result = backend.send(to="+16135550100", body="Hello", from_="+15005550006")
 
-        assert result is True
+        assert result == (True, "")
         mock_client.messages.create.assert_called_once_with(
             to="+16135550100",
             from_="+15005550006",
@@ -32,7 +32,8 @@ class TestTwilioSMSBackend:
         backend = TwilioSMSBackend()
         result = backend.send(to="+16135550100", body="Hello", from_="+15005550006")
 
-        assert result is False
+        assert result[0] is False
+        assert "Twilio error" in result[1]
 
     @patch("notifications.sms.Client")
     def test_send_does_not_raise_on_twilio_exception(self, MockClient):
@@ -55,11 +56,13 @@ class TestSMSTestBackend:
 
     def test_send_returns_true(self):
         backend = SMSTestBackend()
-        assert backend.send(to="+1", body="x", from_="+2") is True
+        sent, error = backend.send(to="+1", body="x", from_="+2")
+        assert sent is True
+        assert error == ""
 
 
 class TestCallNextWithSMSFailure:
-    @patch("notifications.sms.TwilioSMSBackend.send", return_value=False)
+    @patch("notifications.sms.TwilioSMSBackend.send", return_value=(False, "error"))
     def test_call_next_completes_when_sms_fails(self, mock_send, db, active_business, queue_entry):
         targets = QueueService.call_next(active_business)
 
@@ -67,7 +70,7 @@ class TestCallNextWithSMSFailure:
         queue_entry.refresh_from_db()
         assert queue_entry.status == "called"
 
-    @patch("notifications.sms.TwilioSMSBackend.send", return_value=False)
+    @patch("notifications.sms.TwilioSMSBackend.send", return_value=(False, "error"))
     def test_sms_failed_is_logged_when_send_returns_false(self, mock_send, db, active_business, queue_entry):
         QueueService.call_next(active_business)
 

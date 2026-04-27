@@ -119,3 +119,4 @@ DJANGO_TIME_ZONE=America/Toronto
 - [ ] Redis cache for QR PNG in multi-worker deploys
 - [ ] Per-country phone validation (currently uses business.country, CA default)
 - [x] Twilio shared sender fallback — if business.twilio_from_number is blank, fall back to TWILIO_FROM_NUMBER env var (so all businesses can share one number for a pilot)
+- [ ] Public queue browser — /join/ listing all active businesses so customers can find and join without a QR code

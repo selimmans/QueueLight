@@ -298,7 +298,7 @@ class TestCustomerStatusView:
             business=person_business, name="Second", phone="+16135550731",
             status=QueueEntry.Status.WAITING, position=2,
         )
-        with patch("notifications.sms.TwilioSMSBackend.send", return_value=True):
+        with patch("notifications.sms.TwilioSMSBackend.send", return_value=(True, "")):
             QueueService.call_next(person_business)
         data = client.get(self._url(person_business.slug, entry2.pk)).json()
         assert data["currently_serving_position"] == entry1.position
@@ -318,7 +318,7 @@ class TestCustomerStatusView:
             business=person_business, name="A", phone="+16135550750",
             status=QueueEntry.Status.WAITING, position=1,
         )
-        with patch("notifications.sms.TwilioSMSBackend.send", return_value=True):
+        with patch("notifications.sms.TwilioSMSBackend.send", return_value=(True, "")):
             QueueService.call_next(person_business)
         entry.refresh_from_db()
         data = client.get(self._url(person_business.slug, entry.pk)).json()

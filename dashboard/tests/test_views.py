@@ -119,7 +119,7 @@ class TestDashboardView:
 # ── CallNextView ──────────────────────────────────────────────────────────────
 
 class TestCallNextView:
-    @patch("notifications.sms.TwilioSMSBackend.send", return_value=True)
+    @patch("notifications.sms.TwilioSMSBackend.send", return_value=(True, ""))
     def test_post_calls_next_and_redirects(self, mock_send, client, active_business, staff_phone, queue_entry):
         _login(client, active_business, staff_phone)
         resp = client.post(reverse("dashboard:call_next", kwargs={"slug": active_business.slug}))
@@ -127,7 +127,7 @@ class TestCallNextView:
         queue_entry.refresh_from_db()
         assert queue_entry.status == QueueEntry.Status.CALLED
 
-    @patch("notifications.sms.TwilioSMSBackend.send", return_value=True)
+    @patch("notifications.sms.TwilioSMSBackend.send", return_value=(True, ""))
     def test_empty_queue_redirects_without_crash(self, mock_send, client, active_business, staff_phone):
         _login(client, active_business, staff_phone)
         resp = client.post(reverse("dashboard:call_next", kwargs={"slug": active_business.slug}))
@@ -171,7 +171,7 @@ class TestQueueStatusAPI:
         data = client.get(f"/api/queue/{active_business.slug}/status/").json()
         assert data["called_last"] is None
 
-    @patch("notifications.sms.TwilioSMSBackend.send", return_value=True)
+    @patch("notifications.sms.TwilioSMSBackend.send", return_value=(True, ""))
     def test_called_last_populated_after_call_next(self, mock_send, client, active_business, staff_phone, queue_entry):
         _login(client, active_business, staff_phone)
         from queues.services import QueueService
