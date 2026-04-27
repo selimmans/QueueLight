@@ -43,6 +43,7 @@ else:
 # ── Twilio ────────────────────────────────────────────────────────────────────
 TWILIO_ACCOUNT_SID = _env("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = _env("TWILIO_AUTH_TOKEN", "")
+TWILIO_FROM_NUMBER = _env("TWILIO_FROM_NUMBER", "")  # shared fallback sender
 
 # ── Sentry ────────────────────────────────────────────────────────────────────
 SENTRY_DSN = _env("SENTRY_DSN", "")

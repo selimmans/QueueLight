@@ -134,16 +134,18 @@ class QueueService:
 
     @staticmethod
     def _send_sms(business, entry):
+        from django.conf import settings as django_settings
         from notifications.sms import TwilioSMSBackend
         backend = TwilioSMSBackend()
         body = business.sms_template.format(
             business_name=business.name,
             customer_name=entry.name,
         )
+        from_number = business.twilio_from_number or django_settings.TWILIO_FROM_NUMBER
         sent = backend.send(
             to=entry.phone,
             body=body,
-            from_=business.twilio_from_number,
+            from_=from_number,
         )
         event_type = QueueEventLog.EventType.SMS_SENT if sent else QueueEventLog.EventType.SMS_FAILED
         QueueService._log(
@@ -286,11 +288,13 @@ class QueueService:
         business.is_closing = True
         business.save(update_fields=["is_closing"])
 
+        from django.conf import settings as django_settings
         from notifications.sms import TwilioSMSBackend
         backend = TwilioSMSBackend()
         body = f"{business.name} is closing soon — you may not be served today. Sorry for the inconvenience."
+        from_number = business.twilio_from_number or django_settings.TWILIO_FROM_NUMBER
         for entry in waiting:
-            sent = backend.send(to=entry.phone, body=body, from_=business.twilio_from_number)
+            sent = backend.send(to=entry.phone, body=body, from_=from_number)
             event_type = (
                 QueueEventLog.EventType.CLOSING_SOON_SMS if sent
                 else QueueEventLog.EventType.SMS_FAILED
