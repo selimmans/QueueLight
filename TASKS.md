@@ -5,101 +5,116 @@ Update this file at the end of every session. Never commit this file alone.
 ---
 
 ## PHASE 1 — Scaffold and docs
-Commit: `init: project scaffold and docs`
-
-- [x] Create Django project structure (config/, businesses/, queue/, notifications/, customer/, dashboard/, core/)
-- [x] Create config/settings.py adapted from Clove
-- [x] Create AGENT.md
-- [x] Create TASKS.md
-- [x] Create ARCHITECTURE.md
-- [x] Create TESTING.md
-- [x] Create DEFINITION_OF_DONE.md
-- [x] Create KNOWN_ISSUES.md
-- [x] Create requirements.txt
-- [x] Create .env.example
-- [x] Create manage.py, wsgi.py, config/__init__.py, config/urls.py
-- [x] Create __init__.py stubs for all apps
-- [x] Initialise git, make first commit
-
----
+- [x] Project structure, settings, docs, git init
 
 ## PHASE 2 — Core models
-Commit: `feat: core models and migrations`
-
-- [x] businesses app: Business model
-- [x] businesses app: StaffPhone model
-- [x] queue app: QueueEntry model
-- [x] queue app: QueueEventLog model
-- [x] Run migrations and verify
-- [x] Register models in Django admin
-- [x] Update TASKS.md and ARCHITECTURE.md
-
----
+- [x] Business, StaffPhone, QueueEntry, QueueEventLog models + migrations
 
 ## PHASE 3 — QueueService state machine
-Commit: `feat: QueueService state machine, SMS backend, customer and staff pages`
-
-- [x] queues/services.py: QueueService with ALLOWED_TRANSITIONS guard
-- [x] join() — batch and person mode, position + batch_number assignment
-- [x] call_next() — locks rows, marks CALLED, sends SMS outside atomic block
-- [x] abandon() and skip() (skip raises in batch mode)
-- [x] queues/tests/test_services.py — full transition + SMS failure coverage
-
----
+- [x] join(), call_next(), abandon(), skip() with ALLOWED_TRANSITIONS guard
 
 ## PHASE 4 — SMS backend
-Commit: `feat: QueueService state machine, SMS backend, customer and staff pages`
-
-- [x] notifications/sms.py: TwilioSMSBackend — catches own exceptions, returns True/False
-- [x] SMSTestBackend stub for tests
-- [x] SMS failure logs SMS_FAILED and does not crash call_next()
-- [x] notifications/tests/test_sms.py — Twilio mock + failure path tests
-
----
+- [x] TwilioSMSBackend, SMSTestBackend, failure logging
 
 ## PHASE 5 — Customer join page
-Commit: `feat: QueueService state machine, SMS backend, customer and staff pages`
-
-- [x] customer/views.py: JoinView (GET + POST), ConfirmView (GET)
-- [x] Phone validation via phonenumbers using business.country (ISO 3166-1 alpha-2)
-- [x] E.164 storage, rate limiting 20/hr per IP (cache-based)
-- [x] Inactive business → 404 on GET and POST
-- [x] customer/templates/customer/join.html — mobile-first, accent bar, field-level errors
-- [x] customer/templates/customer/confirmation.html — batch number or position, estimated wait
-- [x] URL routing: /q/<slug>/ and /q/<slug>/confirmation/<int:entry_id>/
-- [x] Business.country field (migration 0003), Business.avg_service_minutes (migration 0004)
-- [x] Business.sms_template field with {business_name}/{customer_name} placeholders (migration 0002)
-- [x] customer/tests/test_views.py — 16 tests
-
----
+- [x] JoinView, ConfirmView, phone validation, rate limiting, templates
 
 ## PHASE 6 — Staff dashboard
-Commit: `feat: QueueService state machine, SMS backend, customer and staff pages`
-
-- [x] dashboard/views.py: StaffLoginView, StaffLogoutView, DashboardView, CallNextView, QueueStatusAPIView
-- [x] Session auth: business_id + staff_phone_id, cross-business protection
-- [x] dashboard/templates/dashboard/login.html — phone entry, mobile-first
-- [x] dashboard/templates/dashboard/queue.html — queue list, last-called banner, 5-second polling
-- [x] URL routing: /staff/<slug>/login/, /staff/<slug>/logout/, /staff/<slug>/, /staff/<slug>/next/
-- [x] /api/queue/<slug>/status/ JSON endpoint (waiting, called_last, mode, batch_size, avg_service_minutes)
-- [x] dashboard/tests/test_views.py — 18 tests
-- [x] 81 tests passing across all apps
-
----
+- [x] StaffLoginView, DashboardView, CallNextView, session auth, polling
 
 ## PHASE 7 — QR code
-Commit: `feat: QR code generation and serving`
+- [x] QR PNG generation, cached, displayed on staff dashboard
 
-- [ ] GET /staff/<slug>/qr.png — generate QR pointing to /q/<slug>/
-- [ ] Display on staff dashboard
-- [ ] Update TASKS.md
+## PHASE 8 — Wait time range
+- [x] ~min–max range estimate on confirmation page
+
+## PHASE 9 — Live confirmation + public status API
+- [x] CustomerStatusView polling endpoint, live page, called overlay, abandoned response
+
+## PHASE 10 — Post-call actions
+- [x] complete(), no_show(), complete_batch(), skip(), batch intercept UI
+
+## PHASE 11 — Settings page
+- [x] SettingsView: batch size, avg time, SMS template, mode toggle, closing soon, clear queue
+
+## PHASE 12 — Platform dashboard
+- [x] Superuser login/logout, create/activate/delete businesses
+- [x] Staff phone management in settings page
+- [x] Menu URL field on business (confirmation page shows "View Menu" if set)
+- [x] is_closing flag, closing message on join page
+
+## PHASE 13 — UX improvements
+- [x] Single staff login page /staff/login/ with business picker
+- [x] Country calling code prefix on phone inputs (join + staff login)
+- [x] Superusers bypass staff phone auth (Open button goes straight to dashboard)
+- [x] Root URL / redirects to /staff/login/
+- [x] Brand colours: Primary, Accent, Borders (labelled hex inputs on platform dashboard)
+
+## PHASE 14 — Business type + intake questions
+- [x] Business.business_type field (retail / clinic), default retail
+- [x] Business.intake_fields JSONField (list of question strings)
+- [x] QueueEntry.intake_answers JSONField (dict of question → answer)
+- [x] Settings page: business type toggle, intake questions add/remove
+- [x] menu_url hidden for clinic type
+- [x] Join page renders intake_fields dynamically, saves answers on submit
+- [x] Staff dashboard: expandable entry rows showing intake_answers
+- [x] Admin panel: business_type, intake_fields, intake_answers exposed
+
+## PHASE 15 — Deployment prep
+- [x] gunicorn added to requirements.txt
+- [x] Procfile (web + release command for migrations)
+- [x] railway.json (health check at /health/, restart policy)
+- [x] CSRF_TRUSTED_ORIGINS env var support in settings
+
+## PHASE 16 — UI redesign + polish
+- [x] DM Serif Display font throughout (join, confirmation, staff dashboard, login)
+- [x] Customer pages: white background, card shadows, clean grey palette
+- [x] Staff dashboard: dark #111 header + stats bar, black Call Next, gold called badges
+- [x] Login page: no blue, black Sign in button, custom dropdown chevron
+- [x] Settings page: no brand colour on buttons/focus states
+- [x] All emojis removed from templates
+- [x] Leave queue button on confirmation page (POST → QueueService.abandon → redirect join)
+- [x] Confirmation "In queue" stat fixed — now shows real waiting count not batch_size
+- [x] waiting_total added to CustomerStatusView JSON response (live-updates via poll)
 
 ---
 
-## PHASE 8 — Polish and handover
-Commit: `chore: final polish and doc updates`
+## Pending — needs YOU
 
-- [ ] Show wait time as a range (~15–30 min) rather than single number
-- [ ] Full manual test on mobile
-- [ ] KNOWN_ISSUES.md — document deferred decisions
-- [ ] Update all docs to final state
+| # | Task | Notes |
+|---|------|-------|
+| 1 | Create Twilio account | Get SID, auth token, and a sender phone number |
+| 2 | Set `twilio_from_number` on each business | Via Django admin after deploy |
+| 3 | Deploy to Railway | Connect repo, set env vars below, run migrations |
+| 4 | Set env vars on Railway | See list below |
+| 5 | Set `is_active=True` on businesses | Via platform dashboard after deploy |
+| 6 | Run `python manage.py changepassword admin` | Admin password was cleared during dev |
+
+### Required env vars for Railway
+```
+DJANGO_SECRET_KEY=<generate a long random string>
+DJANGO_ALLOWED_HOSTS=<your-app>.up.railway.app
+CSRF_TRUSTED_ORIGINS=https://<your-app>.up.railway.app
+DEBUG=False
+DB_NAME=railway
+DB_USER=postgres
+DB_PASSWORD=<from Railway Postgres plugin>
+DB_HOST=<from Railway Postgres plugin>
+DB_PORT=5432
+TWILIO_ACCOUNT_SID=<from Twilio>
+TWILIO_AUTH_TOKEN=<from Twilio>
+DJANGO_TIME_ZONE=America/Toronto
+```
+
+---
+
+## Backlog
+
+- [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings
+- [ ] Late arrival banner on staff dashboard (KNOWN_ISSUES)
+- [ ] Analytics UI (data is captured in QueueEventLog, not surfaced)
+- [ ] Clinic-specific dashboard features (expandable intake review, patient notes)
+- [ ] Self-serve business onboarding (currently superuser-only)
+- [ ] Redis cache for QR PNG in multi-worker deploys
+- [ ] Per-country phone validation (currently uses business.country, CA default)
+- [ ] Twilio shared sender fallback — if business.twilio_from_number is blank, fall back to TWILIO_FROM_NUMBER env var (so all businesses can share one number for a pilot)

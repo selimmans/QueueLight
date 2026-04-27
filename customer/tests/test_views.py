@@ -159,7 +159,7 @@ class TestConfirmView:
         response = client.get(url)
         assert response.status_code == 200
         assert str(entry.batch_number).encode() in response.content
-        assert b"Batch number" in response.content
+        assert b"Your batch" in response.content
 
     def test_person_mode_shows_position(self, client, person_business):
         join_url = reverse("customer:join", kwargs={"slug": person_business.slug})
@@ -196,6 +196,17 @@ class TestConfirmView:
         response = client.get(url)
         assert response.status_code == 404
 
+    def test_wait_range_not_shown_when_customer_is_first(self, client, person_business):
+        join_url = reverse("customer:join", kwargs={"slug": person_business.slug})
+        client.post(join_url, {"name": "Solo", "phone": "6135550601"})
+        entry = QueueEntry.objects.get(business=person_business)
+        url = reverse("customer:confirmation", kwargs={
+            "slug": person_business.slug, "entry_id": entry.pk
+        })
+        response = client.get(url)
+        # wait block present in HTML but hidden when no avg_service_minutes
+        assert b'id="waitBlock" style="display:none"' in response.content
+
     def test_wait_shown_when_avg_service_minutes_set(self, client, db):
         biz = Business.objects.create(
             name="Timed Shop", slug="timed-shop",
@@ -215,3 +226,100 @@ class TestConfirmView:
         # Range format: ~X–Y min (1 person ahead × 10 min → ~10–15 min)
         assert b"min" in response.content
         assert "–" in response.content.decode()
+
+
+# ── GET /q/<slug>/status/<entry_id>/ ───────────────────────────────────────────
+
+class TestCustomerStatusView:
+    def _url(self, slug, entry_id):
+        return reverse("customer:status", kwargs={"slug": slug, "entry_id": entry_id})
+
+    def test_returns_200_no_auth(self, client, person_business):
+        entry = QueueEntry.objects.create(
+            business=person_business, name="A", phone="+16135550700",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        response = client.get(self._url(person_business.slug, entry.pk))
+        assert response.status_code == 200
+
+    def test_returns_json(self, client, person_business):
+        entry = QueueEntry.objects.create(
+            business=person_business, name="A", phone="+16135550701",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        response = client.get(self._url(person_business.slug, entry.pk))
+        data = response.json()
+        assert data["status"] == "waiting"
+        assert data["position"] == 1
+        assert data["mode"] == Business.MODE_PERSON
+
+    def test_ahead_count_person_mode(self, client, person_business):
+        QueueEntry.objects.create(
+            business=person_business, name="First", phone="+16135550702",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        entry = QueueEntry.objects.create(
+            business=person_business, name="Second", phone="+16135550703",
+            status=QueueEntry.Status.WAITING, position=2,
+        )
+        data = client.get(self._url(person_business.slug, entry.pk)).json()
+        assert data["ahead_count"] == 1
+
+    def test_ahead_count_batch_mode(self, client, batch_business):
+        QueueEntry.objects.create(
+            business=batch_business, name="B1a", phone="+16135550710",
+            status=QueueEntry.Status.WAITING, position=1, batch_number=1,
+        )
+        entry = QueueEntry.objects.create(
+            business=batch_business, name="B2a", phone="+16135550711",
+            status=QueueEntry.Status.WAITING, position=2, batch_number=2,
+        )
+        data = client.get(self._url(batch_business.slug, entry.pk)).json()
+        assert data["ahead_count"] == 1
+
+    def test_currently_serving_batch_when_none_called(self, client, person_business):
+        entry = QueueEntry.objects.create(
+            business=person_business, name="A", phone="+16135550720",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        data = client.get(self._url(person_business.slug, entry.pk)).json()
+        assert data["currently_serving_batch"] is None
+        assert data["currently_serving_position"] is None
+
+    def test_currently_serving_reflects_called_entry(self, client, person_business):
+        from unittest.mock import patch
+        from queues.services import QueueService
+        entry1 = QueueEntry.objects.create(
+            business=person_business, name="First", phone="+16135550730",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        entry2 = QueueEntry.objects.create(
+            business=person_business, name="Second", phone="+16135550731",
+            status=QueueEntry.Status.WAITING, position=2,
+        )
+        with patch("notifications.sms.TwilioSMSBackend.send", return_value=True):
+            QueueService.call_next(person_business)
+        data = client.get(self._url(person_business.slug, entry2.pk)).json()
+        assert data["currently_serving_position"] == entry1.position
+
+    def test_wrong_slug_returns_404(self, client, person_business, batch_business):
+        entry = QueueEntry.objects.create(
+            business=person_business, name="A", phone="+16135550740",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        response = client.get(self._url(batch_business.slug, entry.pk))
+        assert response.status_code == 404
+
+    def test_called_entry_returns_called_status(self, client, person_business):
+        from unittest.mock import patch
+        from queues.services import QueueService
+        entry = QueueEntry.objects.create(
+            business=person_business, name="A", phone="+16135550750",
+            status=QueueEntry.Status.WAITING, position=1,
+        )
+        with patch("notifications.sms.TwilioSMSBackend.send", return_value=True):
+            QueueService.call_next(person_business)
+        entry.refresh_from_db()
+        data = client.get(self._url(person_business.slug, entry.pk)).json()
+        assert data["status"] == "called"
+        assert data["ahead_count"] == 0

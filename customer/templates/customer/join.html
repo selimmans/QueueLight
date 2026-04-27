@@ -4,172 +4,254 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Join Queue — {{ business.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --brand: {{ business.logo_colour }};
+      --r: 6px;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f4f5;
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 1.5rem 1rem;
     }
 
     .header {
-      width: 100%;
-      max-width: 480px;
+      background: var(--brand);
+      padding: 2.25rem 1.5rem 2rem;
       text-align: center;
-      margin-bottom: 2rem;
     }
 
-    .accent-bar {
-      height: 6px;
-      border-radius: 3px;
-      background: {{ business.logo_colour }};
-      margin-bottom: 1.25rem;
-    }
-
-    .business-name {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #111;
-    }
-
-    .subtitle {
-      margin-top: 0.4rem;
-      font-size: 0.95rem;
-      color: #555;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 480px;
-      background: #fff;
-      border-radius: 12px;
-      padding: 1.75rem 1.5rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,.08);
-    }
-
-    label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: #333;
+    .header-name {
+      font-family: "DM Serif Display", serif;
+      font-size: 2rem;
+      color: #fff;
+      line-height: 1.1;
       margin-bottom: 0.35rem;
     }
 
-    input[type="text"],
-    input[type="tel"] {
+    .header-sub {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.65);
+    }
+
+    .body {
+      flex: 1;
+      padding: 1.25rem 1rem 2.5rem;
+      max-width: 420px;
       width: 100%;
-      padding: 0.75rem 1rem;
-      border: 1.5px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 1rem;
-      color: #111;
-      background: #fafafa;
-      transition: border-color .15s;
-      -webkit-appearance: none;
+      margin: 0 auto;
     }
 
-    input:focus {
-      outline: none;
-      border-color: {{ business.logo_colour }};
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: var(--r);
+      padding: 0.65rem 0.9rem;
+      font-size: 0.85rem;
+      color: #18181b;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
 
-    input.error {
-      border-color: #dc2626;
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--brand);
+      flex-shrink: 0;
+      animation: pulse 2s infinite;
     }
 
-    .field {
-      margin-bottom: 1.25rem;
-    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-    .field-error {
-      margin-top: 0.35rem;
-      font-size: 0.8rem;
-      color: #dc2626;
+    .closing-notice {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: var(--r);
+      padding: 0.75rem 0.9rem;
+      font-size: 0.875rem;
+      color: #92400e;
+      margin-bottom: 1rem;
     }
 
     .global-error {
       background: #fef2f2;
       border: 1px solid #fecaca;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
+      border-radius: var(--r);
+      padding: 0.75rem 0.9rem;
       color: #dc2626;
       font-size: 0.875rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
     }
 
-    button[type="submit"] {
+    .form-card {
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: var(--r);
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    .field { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #71717a;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="text"],
+    input[type="tel"] {
       width: 100%;
-      padding: 0.875rem;
-      background: {{ business.logo_colour }};
+      padding: 0.7rem 0.85rem;
+      border: 1.5px solid #e4e4e7;
+      border-radius: var(--r);
+      font-size: 1rem;
+      color: #18181b;
+      background: #fff;
+      -webkit-appearance: none;
+      transition: border-color .15s;
+    }
+
+    input:focus { outline: none; border-color: var(--brand); }
+    input.error { border-color: #ef4444; }
+
+    .field-error { margin-top: 0.3rem; font-size: 0.78rem; color: #ef4444; }
+
+    .phone-wrap {
+      display: flex;
+      align-items: stretch;
+      border: 1.5px solid #e4e4e7;
+      border-radius: var(--r);
+      overflow: hidden;
+      background: #fff;
+      transition: border-color .15s;
+    }
+
+    .phone-wrap:focus-within { border-color: var(--brand); }
+    .phone-wrap.error { border-color: #ef4444; }
+
+    .phone-prefix {
+      padding: 0.7rem 0.75rem 0.7rem 0.85rem;
+      font-size: 1rem;
+      color: #71717a;
+      background: #f4f4f5;
+      border-right: 1.5px solid #e4e4e7;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .phone-wrap input[type="tel"] {
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      flex: 1;
+    }
+
+    .phone-wrap input[type="tel"]:focus { border-color: transparent; }
+
+    .submit-btn {
+      display: block;
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--brand);
       color: #fff;
       font-size: 1rem;
       font-weight: 600;
       border: none;
-      border-radius: 8px;
+      border-radius: var(--r);
       cursor: pointer;
-      margin-top: 0.5rem;
+      margin-top: 1.1rem;
+      letter-spacing: .01em;
     }
 
-    button[type="submit"]:active {
-      opacity: 0.85;
+    .submit-btn:active { opacity: 0.85; }
+
+    .powered {
+      text-align: center;
+      font-size: 0.72rem;
+      color: #a1a1aa;
+      padding: 1.5rem 0 0;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="accent-bar"></div>
-    <div class="business-name">{{ business.name }}</div>
-    <div class="subtitle">Join the queue below</div>
+    <div class="header-name">{{ business.name }}</div>
+    <div class="header-sub">Join the queue</div>
   </div>
 
-  <div class="card">
+  <div class="body">
+    {% if closing_message %}
+      <div class="closing-notice">{{ closing_message }}</div>
+    {% else %}
+
+    {% if waiting_count %}
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      <span><strong>{{ waiting_count }} {% if waiting_count == 1 %}person{% else %}people{% endif %}</strong> ahead{% if wait_min %}&ensp;&middot;&ensp;~{{ wait_min }}–{{ wait_max }} min wait{% endif %}</span>
+    </div>
+    {% endif %}
+
     {% if global_error %}
       <div class="global-error">{{ global_error }}</div>
     {% endif %}
 
-    <form method="post" action="">
-      {% csrf_token %}
+    <div class="form-card">
+      <form method="post">
+        {% csrf_token %}
 
-      <div class="field">
-        <label for="id_name">Your name</label>
-        <input
-          type="text"
-          id="id_name"
-          name="name"
-          value="{{ name|default:'' }}"
-          autocomplete="given-name"
-          required
-          class="{% if errors.name %}error{% endif %}"
-        >
-        {% if errors.name %}
-          <div class="field-error">{{ errors.name }}</div>
-        {% endif %}
-      </div>
+        <div class="field">
+          <label for="id_name">Your name</label>
+          <input type="text" id="id_name" name="name"
+                 value="{{ name|default:'' }}"
+                 autocomplete="given-name" required
+                 class="{% if errors.name %}error{% endif %}">
+          {% if errors.name %}<div class="field-error">{{ errors.name }}</div>{% endif %}
+        </div>
 
-      <div class="field">
-        <label for="id_phone">Mobile number</label>
-        <input
-          type="tel"
-          id="id_phone"
-          name="phone"
-          value="{{ phone|default:'' }}"
-          autocomplete="tel"
-          required
-          class="{% if errors.phone %}error{% endif %}"
-        >
-        {% if errors.phone %}
-          <div class="field-error">{{ errors.phone }}</div>
-        {% endif %}
-      </div>
+        <div class="field">
+          <label for="id_phone">Phone number</label>
+          <div class="phone-wrap {% if errors.phone %}error{% endif %}">
+            <span class="phone-prefix">+{{ calling_code }}</span>
+            <input type="tel" id="id_phone" name="phone"
+                   value="{{ phone|default:'' }}"
+                   autocomplete="tel" required>
+          </div>
+          {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+        </div>
 
-      <button type="submit">Join Queue</button>
-    </form>
+        {% for question in business.intake_fields %}
+        <div class="field">
+          <label for="intake_{{ forloop.counter0 }}">{{ question }}</label>
+          <input type="text" id="intake_{{ forloop.counter0 }}"
+                 name="intake_{{ forloop.counter0 }}" autocomplete="off">
+        </div>
+        {% endfor %}
+
+        <button class="submit-btn" type="submit">Join the queue &rarr;</button>
+      </form>
+    </div>
+
+    {% endif %}
+
+    <p class="powered">Queue Light</p>
   </div>
 </body>
 </html>

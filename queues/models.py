@@ -17,6 +17,7 @@ class QueueEntry(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
     position = models.PositiveIntegerField()
     batch_number = models.PositiveIntegerField(null=True, blank=True)
+    intake_answers = models.JSONField(default=dict, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     called_at = models.DateTimeField(null=True, blank=True)
 
@@ -32,10 +33,15 @@ class QueueEventLog(models.Model):
     class EventType(models.TextChoices):
         JOINED = "joined", "Joined"
         CALLED = "called", "Called"
+        COMPLETED = "completed", "Completed"
         SKIPPED = "skipped", "Skipped"
         ABANDONED = "abandoned", "Abandoned"
         SMS_SENT = "sms_sent", "SMS Sent"
         SMS_FAILED = "sms_failed", "SMS Failed"
+        LATE_ARRIVAL = "late_arrival", "Late Arrival"
+        LEFT = "left", "Left"
+        QUEUE_CLEARED = "queue_cleared", "Queue Cleared"
+        CLOSING_SOON_SMS = "closing_soon_sms", "Closing Soon SMS"
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="event_logs")
     entry = models.ForeignKey(

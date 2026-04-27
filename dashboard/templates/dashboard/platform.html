@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform — Queue Light</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5; min-height: 100dvh;
+    }
+    .header {
+      background: #6366f1; padding: 1rem 1.25rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .header a  { color: rgba(255,255,255,.8); font-size: 0.85rem; text-decoration: none; }
+    .container { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem; }
+    .section {
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .section h2 {
+      font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .05em; color: #6b7280; margin-bottom: 1rem;
+    }
+    .biz-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6; gap: 0.75rem;
+    }
+    .biz-row:last-child { border-bottom: none; }
+    .biz-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .biz-name { font-weight: 600; font-size: 0.95rem; color: #111; }
+    .biz-slug { font-size: 0.8rem; color: #9ca3af; }
+    .biz-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+    .btn-sm {
+      padding: 0.3rem 0.7rem; border-radius: 6px; border: 1.5px solid;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer; background: #fff;
+    }
+    .btn-open   { border-color: #6366f1; color: #6366f1; }
+    .btn-toggle-on  { border-color: #fcd34d; color: #92400e; }
+    .btn-toggle-off { border-color: #6ee7b7; color: #059669; }
+    .btn-del    { border-color: #fca5a5; color: #dc2626; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+    .hint { font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.3rem; }
+    input, select {
+      width: 100%; padding: 0.6rem 0.75rem;
+      border: 1.5px solid #e5e7eb; border-radius: 8px;
+      font-size: 0.9rem; margin-bottom: 0.75rem;
+    }
+    input:focus, select:focus { outline: none; border-color: #6366f1; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .colour-rows { margin-bottom: 0.75rem; }
+    .colour-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .colour-label { font-size: 0.8rem; font-weight: 600; color: #6b7280; width: 5.5rem; flex-shrink: 0; }
+    .colour-swatch {
+      width: 2rem; height: 2rem; border-radius: 6px; border: 1.5px solid #e5e7eb;
+      flex-shrink: 0; cursor: pointer; padding: 0;
+    }
+    .colour-hex {
+      width: 100%; padding: 0.35rem 0.6rem;
+      border: 1.5px solid #e5e7eb; border-radius: 6px;
+      font-size: 0.85rem; font-family: monospace; margin-bottom: 0;
+    }
+    .colour-hex:focus { outline: none; border-color: #6366f1; }
+    .save-btn {
+      width: 100%; padding: 0.75rem;
+      background: #6366f1; color: #fff; border: none;
+      border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      margin-top: 0.25rem;
+    }
+    .error {
+      background: #fef2f2; border: 1.5px solid #fca5a5;
+      border-radius: 8px; padding: 0.65rem 0.75rem;
+      color: #dc2626; font-size: 0.875rem; margin-bottom: 1.25rem;
+    }
+    .empty { font-size: 0.875rem; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Queue Light — Platform</h1>
+    <a href="{% url 'platform:platform_logout' %}">Sign out</a>
+  </div>
+
+  <div class="container">
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <!-- Business list -->
+    <div class="section">
+      <h2>Businesses ({{ businesses|length }})</h2>
+      {% for biz in businesses %}
+      <div class="biz-row">
+        <div style="display:flex;align-items:center;gap:0.6rem;min-width:0;">
+          <div class="biz-dot" style="background:{{ biz.logo_colour }}"></div>
+          <div style="min-width:0;">
+            <div class="biz-name">{{ biz.name }}</div>
+            <div class="biz-slug">/{{ biz.slug }}/ &mdash; {{ biz.get_mode_display }}{% if biz.is_closing %} &mdash; closing{% endif %}</div>
+          </div>
+        </div>
+        <div class="biz-actions">
+          <a class="btn-sm btn-open" href="{% url 'dashboard:dashboard' slug=biz.slug %}">Open</a>
+          <form method="post" style="display:inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle_active">
+            <input type="hidden" name="business_id" value="{{ biz.pk }}">
+            <button class="btn-sm {% if biz.is_active %}btn-toggle-on{% else %}btn-toggle-off{% endif %}" type="submit">
+              {% if biz.is_active %}Deactivate{% else %}Activate{% endif %}
+            </button>
+          </form>
+          <form method="post" style="display:inline" onsubmit="return confirm('Delete {{ biz.name }}? This cannot be undone.')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_business">
+            <input type="hidden" name="business_id" value="{{ biz.pk }}">
+            <button class="btn-sm btn-del" type="submit">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% empty %}
+      <p class="empty">No businesses yet.</p>
+      {% endfor %}
+    </div>
+
+    <!-- Create business -->
+    <div class="section">
+      <h2>Add business</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_business">
+
+        <label for="biz_name">Business name *</label>
+        <input type="text" id="biz_name" name="name" placeholder="e.g. Cuts by Mansour" autofocus>
+
+        <div class="row2">
+          <div>
+            <label for="biz_slug">URL slug *</label>
+            <div class="hint">Letters, numbers, hyphens only</div>
+            <input type="text" id="biz_slug" name="slug" placeholder="cuts-by-mansour">
+          </div>
+          <div>
+            <label for="biz_country">Country</label>
+            <input type="text" id="biz_country" name="country" value="CA" maxlength="2">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="biz_mode">Mode</label>
+            <select id="biz_mode" name="mode">
+              <option value="person">Person</option>
+              <option value="batch">Batch</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+
+        <label>Brand colours</label>
+        <div class="colour-row">
+          <span class="colour-label">Primary</span>
+          <input type="color" class="colour-swatch" id="pick_primary" value="#3B82F6">
+          <input type="text" class="colour-hex" id="hex_primary" name="logo_colour" value="#3B82F6" maxlength="7" placeholder="#3B82F6">
+        </div>
+        <div class="colour-row">
+          <span class="colour-label">Accent</span>
+          <input type="color" class="colour-swatch" id="pick_accent" value="#6366f1">
+          <input type="text" class="colour-hex" id="hex_accent" name="colour_accent" value="#6366f1" maxlength="7" placeholder="#6366f1">
+        </div>
+        <div class="colour-row">
+          <span class="colour-label">Borders</span>
+          <input type="color" class="colour-swatch" id="pick_border" value="#e5e7eb">
+          <input type="text" class="colour-hex" id="hex_border" name="colour_border" value="#e5e7eb" maxlength="7" placeholder="#e5e7eb">
+        </div>
+
+        <label>First staff member (optional)</label>
+        <div class="row2">
+          <div>
+            <input type="text" name="staff_name" placeholder="Name">
+          </div>
+          <div>
+            <input type="tel" name="staff_phone" placeholder="+14375550100">
+          </div>
+        </div>
+
+        <button class="save-btn" type="submit">Create business</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Sync colour pickers ↔ hex inputs
+    [["pick_primary","hex_primary"],["pick_accent","hex_accent"],["pick_border","hex_border"]].forEach(function([pickId, hexId]) {
+      const pick = document.getElementById(pickId);
+      const hex  = document.getElementById(hexId);
+      pick.addEventListener("input", function() { hex.value = pick.value; });
+      hex.addEventListener("input", function() {
+        if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) pick.value = hex.value;
+      });
+    });
+
+    // Auto-fill slug from name
+    document.getElementById("biz_name").addEventListener("input", function() {
+      const slug = this.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      document.getElementById("biz_slug").value = slug;
+    });
+  </script>
+</body>
+</html>

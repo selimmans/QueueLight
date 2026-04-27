@@ -1,10 +1,12 @@
 import io
 
 import qrcode
+from django.contrib.auth import authenticate, login, logout
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.text import slugify
 from django.views import View
 
 from businesses.models import Business, StaffPhone
@@ -15,7 +17,13 @@ SESSION_BUSINESS = "business_id"
 SESSION_STAFF = "staff_phone_id"
 
 
+def _require_superuser(request):
+    return request.user.is_authenticated and request.user.is_superuser
+
+
 def _require_session(request, business: Business) -> bool:
+    if _require_superuser(request):
+        return True
     return (
         request.session.get(SESSION_BUSINESS) == business.pk
         and request.session.get(SESSION_STAFF) is not None
@@ -30,39 +38,75 @@ def _entry_to_dict(entry: QueueEntry) -> dict:
         "batch_number": entry.batch_number,
         "status": entry.status,
         "joined_at": entry.joined_at.isoformat(),
+        "intake_answers": entry.intake_answers or {},
     }
 
 
-class StaffLoginView(View):
+class StaffUnifiedLoginView(View):
     template_name = "dashboard/login.html"
 
-    def get(self, request, slug):
-        business = get_object_or_404(Business, slug=slug)
-        return render(request, self.template_name, {"business": business})
+    def _businesses_with_codes(self):
+        import phonenumbers as _pn
+        businesses = Business.objects.filter(is_active=True).order_by("name")
+        return [(b, _pn.country_code_for_region(b.country) or 1) for b in businesses]
 
-    def post(self, request, slug):
-        business = get_object_or_404(Business, slug=slug)
-        phone_raw = request.POST.get("phone", "").strip()
+    def get(self, request):
+        if _require_superuser(request):
+            return redirect("platform:platform")
+        selected = request.GET.get("slug", "")
+        return render(request, self.template_name, {
+            "businesses_with_codes": self._businesses_with_codes(),
+            "selected_slug": selected,
+        })
+
+    def post(self, request):
+        import phonenumbers as _pn
+        slug = request.POST.get("slug", "").strip()
+        phone_local = request.POST.get("phone", "").strip()
+
+        def _err(msg):
+            return render(request, self.template_name, {
+                "businesses_with_codes": self._businesses_with_codes(),
+                "selected_slug": slug,
+                "error": msg,
+            })
 
         try:
-            staff = StaffPhone.objects.get(phone=phone_raw, business=business)
+            business = Business.objects.get(slug=slug, is_active=True)
+        except Business.DoesNotExist:
+            return _err("Please select a business.")
+
+        try:
+            parsed = _pn.parse(phone_local, business.country)
+            if not _pn.is_valid_number(parsed):
+                raise ValueError
+            e164 = _pn.format_number(parsed, _pn.PhoneNumberFormat.E164)
+        except Exception:
+            return _err("Invalid phone number.")
+
+        try:
+            staff = StaffPhone.objects.get(phone=e164, business=business)
         except StaffPhone.DoesNotExist:
-            return render(
-                request,
-                self.template_name,
-                {"business": business, "error": "Phone number not recognised."},
-            )
+            return _err("Phone number not recognised.")
 
         request.session[SESSION_BUSINESS] = business.pk
         request.session[SESSION_STAFF] = staff.pk
         return redirect("dashboard:dashboard", slug=slug)
 
 
+class StaffLoginView(View):
+    def get(self, request, slug):
+        return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+
+    def post(self, request, slug):
+        return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+
+
 class StaffLogoutView(View):
     def get(self, request, slug):
         request.session.pop(SESSION_BUSINESS, None)
         request.session.pop(SESSION_STAFF, None)
-        return redirect("dashboard:login", slug=slug)
+        return redirect("dashboard:unified_login")
 
 
 class DashboardView(View):
@@ -71,21 +115,22 @@ class DashboardView(View):
     def get(self, request, slug):
         business = get_object_or_404(Business, slug=slug)
         if not _require_session(request, business):
-            return redirect("dashboard:login", slug=slug)
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
 
         waiting = QueueEntry.objects.filter(
             business=business, status=QueueEntry.Status.WAITING
         ).order_by("position")
 
-        called_last = (
-            QueueEntry.objects.filter(business=business, status=QueueEntry.Status.CALLED)
-            .order_by("-called_at")
-            .first()
-        )
+        called_entries = QueueEntry.objects.filter(
+            business=business, status=QueueEntry.Status.CALLED
+        ).order_by("position")
+
+        called_last = called_entries.order_by("-called_at").first()
 
         return render(request, self.template_name, {
             "business": business,
             "waiting": waiting,
+            "called_entries": called_entries,
             "called_last": called_last,
         })
 
@@ -94,7 +139,7 @@ class CallNextView(View):
     def post(self, request, slug):
         business = get_object_or_404(Business, slug=slug)
         if not _require_session(request, business):
-            return redirect("dashboard:login", slug=slug)
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
 
         try:
             QueueService.call_next(business)
@@ -120,7 +165,7 @@ class QRCodeView(View):
     def get(self, request, slug):
         business = get_object_or_404(Business, slug=slug)
         if not _require_session(request, business):
-            return redirect("dashboard:login", slug=slug)
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
 
         cache_key = f"qr_png:{slug}"
         png = cache.get(cache_key)
@@ -131,6 +176,271 @@ class QRCodeView(View):
             cache.set(cache_key, png, timeout=None)
 
         return HttpResponse(png, content_type="image/png")
+
+
+class SettingsView(View):
+    template_name = "dashboard/settings.html"
+
+    def _render(self, request, business, error=None, success=None):
+        staff_phones = StaffPhone.objects.filter(business=business).order_by("name")
+        return render(request, self.template_name, {
+            "business": business,
+            "staff_phones": staff_phones,
+            "error": error,
+            "success": success,
+        })
+
+    def get(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        return self._render(request, business)
+
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+
+        action = request.POST.get("action", "")
+
+        if action == "save_settings":
+            # Batch size
+            try:
+                batch_size = int(request.POST.get("batch_size", business.batch_size))
+                if batch_size >= 1:
+                    business.batch_size = batch_size
+            except (TypeError, ValueError):
+                pass
+
+            # avg_service_minutes
+            raw_avg = request.POST.get("avg_service_minutes", "").strip()
+            if raw_avg:
+                try:
+                    business.avg_service_minutes = max(1, int(raw_avg))
+                except ValueError:
+                    pass
+            else:
+                business.avg_service_minutes = None
+
+            # SMS template
+            sms_template = request.POST.get("sms_template", "").strip()
+            if sms_template:
+                business.sms_template = sms_template
+
+            menu_url = request.POST.get("menu_url", "").strip()
+            business.menu_url = menu_url
+
+            new_type = request.POST.get("business_type", "").strip()
+            if new_type in (Business.TYPE_RETAIL, Business.TYPE_CLINIC):
+                business.business_type = new_type
+
+            intake_questions = [q.strip() for q in request.POST.getlist("intake_questions") if q.strip()]
+            business.intake_fields = intake_questions
+
+            business.save(update_fields=[
+                "batch_size", "avg_service_minutes", "sms_template", "menu_url",
+                "business_type", "intake_fields",
+            ])
+
+        elif action == "add_staff":
+            import phonenumbers as _pn
+            raw = request.POST.get("phone", "").strip()
+            name = request.POST.get("staff_name", "").strip()
+            try:
+                parsed = _pn.parse(raw, business.country)
+                if not _pn.is_valid_number(parsed):
+                    raise ValueError
+                e164 = _pn.format_number(parsed, _pn.PhoneNumberFormat.E164)
+                StaffPhone.objects.get_or_create(phone=e164, business=business, defaults={"name": name or e164})
+            except Exception:
+                return self._render(request, business, error="Invalid phone number.")
+
+        elif action == "remove_staff":
+            staff_id = request.POST.get("staff_id")
+            StaffPhone.objects.filter(pk=staff_id, business=business).delete()
+
+        elif action == "set_mode":
+            new_mode = request.POST.get("mode", "")
+            if new_mode in (Business.MODE_BATCH, Business.MODE_PERSON):
+                try:
+                    QueueService.set_mode(business, new_mode)
+                except RuleViolationError as e:
+                    return self._render(request, business, error=str(e))
+
+        elif action == "closing_soon":
+            try:
+                QueueService.send_closing_soon_sms(business)
+            except Exception:
+                pass
+
+        elif action == "reopen":
+            business.is_closing = False
+            business.save(update_fields=["is_closing"])
+
+        elif action == "clear_queue":
+            QueueService.clear_queue(business)
+
+        return redirect("dashboard:settings", slug=slug)
+
+
+class SkipEntryView(View):
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(QueueEntry, pk=entry_id, business=business)
+        try:
+            QueueService.skip(entry)
+        except RuleViolationError:
+            pass
+        return redirect("dashboard:dashboard", slug=slug)
+
+
+class CompleteEntryView(View):
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(QueueEntry, pk=entry_id, business=business)
+        try:
+            QueueService.complete(entry)
+        except RuleViolationError:
+            pass
+        return redirect("dashboard:dashboard", slug=slug)
+
+
+class NoShowEntryView(View):
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(QueueEntry, pk=entry_id, business=business)
+        try:
+            QueueService.no_show(entry)
+        except RuleViolationError:
+            pass
+        return redirect("dashboard:dashboard", slug=slug)
+
+
+class CompleteBatchView(View):
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        try:
+            showed_up = int(request.POST.get("showed_up", 0))
+        except (TypeError, ValueError):
+            showed_up = 0
+        try:
+            QueueService.complete_batch(business, showed_up)
+        except RuleViolationError:
+            pass
+        return redirect("dashboard:dashboard", slug=slug)
+
+
+# ── Platform (superuser) views ────────────────────────────────────────────────
+
+
+class PlatformLoginView(View):
+    template_name = "dashboard/platform_login.html"
+
+    def get(self, request):
+        if _require_superuser(request):
+            return redirect("platform:platform")
+        return render(request, self.template_name)
+
+    def post(self, request):
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = authenticate(request, username=username, password=password)
+        if user and user.is_superuser:
+            login(request, user)
+            return redirect("platform:platform")
+        return render(request, self.template_name, {"error": "Invalid credentials."})
+
+
+class PlatformLogoutView(View):
+    def get(self, request):
+        logout(request)
+        return redirect("platform:platform_login")
+
+
+class PlatformDashboardView(View):
+    template_name = "dashboard/platform.html"
+
+    def get(self, request):
+        if not _require_superuser(request):
+            return redirect("platform:platform_login")
+        businesses = Business.objects.order_by("name")
+        return render(request, self.template_name, {"businesses": businesses})
+
+    def post(self, request):
+        if not _require_superuser(request):
+            return redirect("platform:platform_login")
+
+        action = request.POST.get("action", "")
+
+        if action == "create_business":
+            name = request.POST.get("name", "").strip()
+            slug = request.POST.get("slug", "").strip() or slugify(name)
+            mode = request.POST.get("mode", Business.MODE_PERSON)
+            logo_colour = request.POST.get("logo_colour", "#3B82F6").strip()
+            colour_accent = request.POST.get("colour_accent", "#6366f1").strip()
+            colour_border = request.POST.get("colour_border", "#e5e7eb").strip()
+            country = request.POST.get("country", "CA").strip().upper()
+            staff_phone = request.POST.get("staff_phone", "").strip()
+            staff_name = request.POST.get("staff_name", "").strip()
+
+            if not name or not slug:
+                businesses = Business.objects.order_by("name")
+                return render(request, self.template_name, {
+                    "businesses": businesses,
+                    "error": "Business name and slug are required.",
+                })
+
+            if Business.objects.filter(slug=slug).exists():
+                businesses = Business.objects.order_by("name")
+                return render(request, self.template_name, {
+                    "businesses": businesses,
+                    "error": f"Slug '{slug}' is already taken.",
+                })
+
+            business = Business.objects.create(
+                name=name,
+                slug=slug,
+                mode=mode,
+                logo_colour=logo_colour,
+                colour_accent=colour_accent,
+                colour_border=colour_border,
+                country=country,
+                is_active=True,
+            )
+
+            if staff_phone:
+                import phonenumbers as _pn
+                try:
+                    parsed = _pn.parse(staff_phone, country)
+                    if _pn.is_valid_number(parsed):
+                        e164 = _pn.format_number(parsed, _pn.PhoneNumberFormat.E164)
+                        StaffPhone.objects.create(
+                            phone=e164,
+                            business=business,
+                            name=staff_name or e164,
+                        )
+                except Exception:
+                    pass
+
+        elif action == "toggle_active":
+            biz_id = request.POST.get("business_id")
+            biz = get_object_or_404(Business, pk=biz_id)
+            biz.is_active = not biz.is_active
+            biz.save(update_fields=["is_active"])
+
+        elif action == "delete_business":
+            biz_id = request.POST.get("business_id")
+            Business.objects.filter(pk=biz_id).delete()
+
+        return redirect("platform:platform")
 
 
 class QueueStatusAPIView(View):
@@ -151,8 +461,14 @@ class QueueStatusAPIView(View):
             .first()
         )
 
+        called_entries = list(
+            QueueEntry.objects.filter(business=business, status=QueueEntry.Status.CALLED)
+            .order_by("position")
+        )
+
         return JsonResponse({
             "waiting": [_entry_to_dict(e) for e in waiting],
+            "called": [_entry_to_dict(e) for e in called_entries],
             "called_last": _entry_to_dict(called_last) if called_last else None,
             "mode": business.mode,
             "batch_size": business.batch_size,

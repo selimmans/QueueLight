@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — {{ business.name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      min-height: 100dvh;
+    }
+
+    .header {
+      background: #111;
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .header a { color: rgba(255,255,255,.8); font-size: 0.85rem; text-decoration: none; }
+
+    .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
+
+    .section {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .section h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6b7280;
+      margin-bottom: 1rem;
+    }
+
+    .field { margin-bottom: 1rem; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.4rem;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: #111;
+      background: #fff;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #111;
+    }
+
+    textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+
+    .save-btn {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .save-btn:active { opacity: 0.85; }
+
+    .danger-btn {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      background: #fff;
+      color: #dc2626;
+      border: 1.5px solid #fca5a5;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.75rem;
+    }
+
+    .warn-btn {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      background: #fff;
+      color: #92400e;
+      border: 1.5px solid #fcd34d;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.75rem;
+    }
+
+    .action-remove {
+      padding: 0.3rem 0.7rem;
+      border: 1.5px solid #fca5a5;
+      border-radius: 6px;
+      background: #fff;
+      color: #dc2626;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .reopen-btn {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      background: #ecfdf5;
+      color: #059669;
+      border: 1.5px solid #6ee7b7;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.75rem;
+    }
+
+    .closing-banner {
+      background: #fef3c7;
+      border: 1.5px solid #fcd34d;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #92400e;
+      margin-bottom: 1.25rem;
+    }
+
+    .error-msg {
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #dc2626;
+      margin-bottom: 1.25rem;
+    }
+
+    .mode-toggle { display: flex; gap: 0.5rem; }
+
+    .mode-btn {
+      flex: 1;
+      padding: 0.6rem;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .mode-btn.active {
+      border-color: #111;
+      background: #f3f4f6;
+      color: #111;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Settings</h1>
+    <a href="{% url 'dashboard:dashboard' slug=business.slug %}">&larr; Back</a>
+  </div>
+
+  <div class="container">
+    {% if business.is_closing %}
+    <div class="closing-banner">
+      Closing soon is active — no new customers can join.
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <!-- General settings -->
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_settings">
+
+      <div class="section">
+        <h2>Queue settings</h2>
+
+        {% if business.mode == "batch" %}
+        <div class="field">
+          <label for="batch_size">Batch size</label>
+          <div class="hint">How many customers per batch. Takes effect on next Call Next.</div>
+          <input type="number" id="batch_size" name="batch_size" value="{{ business.batch_size }}" min="1" max="50">
+        </div>
+        {% endif %}
+
+        <div class="field">
+          <label for="avg_service_minutes">Average service time (minutes)</label>
+          <div class="hint">Used to estimate wait time shown to customers. Leave blank to hide the estimate.</div>
+          <input type="number" id="avg_service_minutes" name="avg_service_minutes"
+            value="{{ business.avg_service_minutes|default:'' }}" min="1" placeholder="e.g. 10">
+        </div>
+
+        {% if business.business_type == "retail" %}
+        <div class="field" id="menu_url_field">
+          <label for="menu_url">Menu link (optional)</label>
+          <div class="hint">If set, customers see a "View Menu" button while they wait.</div>
+          <input type="text" id="menu_url" name="menu_url" value="{{ business.menu_url }}" placeholder="https://yourbusiness.com/menu">
+        </div>
+        {% endif %}
+
+        <div class="field">
+          <label for="sms_template">SMS message when called</label>
+          <div class="hint">Placeholders: {business_name}, {customer_name}</div>
+          <textarea id="sms_template" name="sms_template">{{ business.sms_template }}</textarea>
+        </div>
+
+        <button class="save-btn" type="submit">Save</button>
+      </div>
+
+      <!-- Intake questions -->
+      <div class="section">
+        <h2>Intake questions</h2>
+        <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
+          Ask customers a question when they join. Answers are shown on the staff dashboard.
+        </p>
+        <div id="intake_list">
+          {% for question in business.intake_fields %}
+          <div class="intake-row" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
+            <input type="text" name="intake_questions" value="{{ question }}" placeholder="e.g. What are you here for?" style="margin-bottom:0;flex:1;">
+            <button type="button" class="action-remove" onclick="this.parentNode.remove()">Remove</button>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="button" onclick="addIntakeQuestion()"
+                style="margin-top:0.5rem;padding:0.4rem 0.9rem;border:1.5px dashed #d1d5db;border-radius:8px;background:#fff;font-size:0.875rem;color:#6b7280;cursor:pointer;">
+          + Add question
+        </button>
+        <button class="save-btn" type="submit" style="margin-top:1rem;">Save questions</button>
+      </div>
+    </form>
+
+    <!-- Staff phones -->
+    <div class="section">
+      <h2>Staff access</h2>
+      <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
+        Only registered numbers can sign in to the staff dashboard.
+      </p>
+
+      {% for sp in staff_phones %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid #f3f4f6;">
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;">{{ sp.name }}</div>
+          <div style="font-size:0.8rem;color:#9ca3af;">{{ sp.phone }}</div>
+        </div>
+        <form method="post" style="margin:0">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="remove_staff">
+          <input type="hidden" name="staff_id" value="{{ sp.pk }}">
+          <button class="action-remove" type="submit">Remove</button>
+        </form>
+      </div>
+      {% empty %}
+      <p style="font-size:0.875rem;color:#9ca3af;margin-bottom:1rem;">No staff registered yet.</p>
+      {% endfor %}
+
+      <form method="post" style="margin-top:1rem">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_staff">
+        <div class="field" style="margin-bottom:0.5rem">
+          <label for="staff_name">Name</label>
+          <input type="text" id="staff_name" name="staff_name" placeholder="e.g. Alex">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="staff_phone">Phone number</label>
+          <input type="tel" id="staff_phone" name="phone" placeholder="+14375550100">
+        </div>
+        <button class="save-btn" type="submit">Add staff member</button>
+      </form>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="section">
+      <h2>Queue mode</h2>
+      <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
+        Currently: <strong>{{ business.get_mode_display }}</strong>.
+        Can only be changed when the queue is empty.
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_mode">
+        <div class="mode-toggle">
+          <button class="mode-btn {% if business.mode == 'person' %}active{% endif %}" type="submit" name="mode" value="person">Person</button>
+          <button class="mode-btn {% if business.mode == 'batch' %}active{% endif %}" type="submit" name="mode" value="batch">Batch</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="section">
+      <h2>Queue actions</h2>
+
+      {% if business.is_closing %}
+        <form method="post" style="margin-bottom:0">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reopen">
+          <button class="reopen-btn" type="submit">Reopen — allow new customers</button>
+        </form>
+      {% else %}
+        <form method="post" id="closingSoonForm">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="closing_soon">
+          <button class="warn-btn" type="button" onclick="confirmClosingSoon()">Closing soon — notify all waiting</button>
+        </form>
+      {% endif %}
+
+      <form method="post" id="clearQueueForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clear_queue">
+        <button class="danger-btn" type="button" onclick="confirmClearQueue()">Clear queue — abandon all waiting</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function addIntakeQuestion() {
+      const row = document.createElement("div");
+      row.className = "intake-row";
+      row.style.cssText = "display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;";
+      row.innerHTML = '<input type="text" name="intake_questions" placeholder="e.g. What are you here for?" style="margin-bottom:0;flex:1;">' +
+        '<button type="button" class="action-remove" onclick="this.parentNode.remove()">Remove</button>';
+      document.getElementById("intake_list").appendChild(row);
+      row.querySelector("input").focus();
+    }
+
+    function confirmClosingSoon() {
+      if (confirm("Send a closing-soon SMS to all waiting customers and stop new joins?")) {
+        document.getElementById("closingSoonForm").submit();
+      }
+    }
+
+    function confirmClearQueue() {
+      if (confirm("Mark all waiting customers as abandoned? This cannot be undone.")) {
+        document.getElementById("clearQueueForm").submit();
+      }
+    }
+  </script>
+</body>
+</html>
