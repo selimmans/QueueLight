@@ -58,7 +58,7 @@
       margin-bottom: 0.4rem;
     }
 
-    select, input[type="tel"] {
+    input[type="tel"] {
       width: 100%;
       padding: 0.7rem 0.85rem;
       border: 1.5px solid #e4e4e7;
@@ -71,14 +71,62 @@
       margin-bottom: 1rem;
     }
 
-    select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2371717a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 0.85rem center;
-      padding-right: 2.25rem;
+    input:focus { outline: none; border-color: #111; }
+
+    /* Custom dropdown */
+    .custom-select { position: relative; margin-bottom: 1rem; }
+
+    .custom-select__trigger {
+      width: 100%;
+      padding: 0.7rem 2.25rem 0.7rem 0.85rem;
+      border: 1.5px solid #e4e4e7;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      color: #18181b;
+      background: #fff;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
     }
 
-    select:focus, input:focus { outline: none; border-color: #111; }
+    .custom-select__trigger:focus { outline: none; border-color: #111; }
+    .custom-select--open .custom-select__trigger { border-color: #111; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+    .custom-select__trigger svg { flex-shrink: 0; transition: transform .15s; }
+    .custom-select--open .custom-select__trigger svg { transform: rotate(180deg); }
+
+    .custom-select__trigger span { color: #a1a1aa; }
+    .custom-select__trigger span.selected { color: #18181b; }
+
+    .custom-select__options {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0; right: 0;
+      background: #fff;
+      border: 1.5px solid #111;
+      border-top: none;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 6px;
+      z-index: 10;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .custom-select--open .custom-select__options { display: block; }
+
+    .custom-select__option {
+      padding: 0.7rem 0.85rem;
+      font-size: 0.95rem;
+      color: #18181b;
+      cursor: pointer;
+    }
+
+    .custom-select__option:hover { background: #f4f4f5; }
+    .custom-select__option--active { background: #f4f4f5; font-weight: 600; }
 
     .phone-wrap {
       display: flex;
@@ -150,16 +198,22 @@
     <form method="post">
       {% csrf_token %}
 
-      <label for="biz_select">Business</label>
-      <select id="biz_select" name="slug" required>
-        <option value="">— select —</option>
-        {% for biz, code in businesses_with_codes %}
-        <option value="{{ biz.slug }}" data-code="{{ code }}"
-          {% if biz.slug == selected_slug %}selected{% endif %}>
-          {{ biz.name }}
-        </option>
-        {% endfor %}
-      </select>
+      <label>Business</label>
+      <input type="hidden" id="biz_slug" name="slug" value="{{ selected_slug }}">
+      <div class="custom-select" id="biz_select_wrap">
+        <button type="button" class="custom-select__trigger" id="biz_trigger" aria-haspopup="listbox">
+          <span id="biz_label">— select —</span>
+          <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 1l5 5 5-5" stroke="#71717a" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <div class="custom-select__options" role="listbox" id="biz_options">
+          {% for biz, code in businesses_with_codes %}
+          <div class="custom-select__option{% if biz.slug == selected_slug %} custom-select__option--active{% endif %}"
+               role="option" data-value="{{ biz.slug }}" data-code="{{ code }}">{{ biz.name }}</div>
+          {% endfor %}
+        </div>
+      </div>
 
       <label for="id_phone">Your phone number</label>
       <div class="phone-wrap">
@@ -173,16 +227,53 @@
   </div>
 
   <script>
-    const sel = document.getElementById("biz_select");
+    const wrap = document.getElementById("biz_select_wrap");
+    const trigger = document.getElementById("biz_trigger");
+    const label = document.getElementById("biz_label");
+    const hiddenInput = document.getElementById("biz_slug");
     const pfx = document.getElementById("phone_prefix");
+    const options = document.querySelectorAll(".custom-select__option");
 
-    function updatePrefix() {
-      const opt = sel.options[sel.selectedIndex];
-      pfx.textContent = opt.dataset.code ? "+" + opt.dataset.code : "+1";
+    // Restore selection if slug pre-selected
+    const preselected = hiddenInput.value;
+    if (preselected) {
+      const match = [...options].find(o => o.dataset.value === preselected);
+      if (match) {
+        label.textContent = match.textContent;
+        label.classList.add("selected");
+        pfx.textContent = "+" + match.dataset.code;
+      }
     }
 
-    sel.addEventListener("change", updatePrefix);
-    updatePrefix();
+    trigger.addEventListener("click", () => {
+      wrap.classList.toggle("custom-select--open");
+    });
+
+    options.forEach(opt => {
+      opt.addEventListener("click", () => {
+        options.forEach(o => o.classList.remove("custom-select__option--active"));
+        opt.classList.add("custom-select__option--active");
+        hiddenInput.value = opt.dataset.value;
+        label.textContent = opt.textContent;
+        label.classList.add("selected");
+        pfx.textContent = "+" + opt.dataset.code;
+        wrap.classList.remove("custom-select--open");
+      });
+    });
+
+    // Close on outside click
+    document.addEventListener("click", e => {
+      if (!wrap.contains(e.target)) wrap.classList.remove("custom-select--open");
+    });
+
+    // Validate on submit
+    document.querySelector("form").addEventListener("submit", e => {
+      if (!hiddenInput.value) {
+        e.preventDefault();
+        trigger.focus();
+        wrap.classList.add("custom-select--open");
+      }
+    });
   </script>
 </body>
 </html>

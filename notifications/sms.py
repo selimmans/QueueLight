@@ -7,14 +7,14 @@ logger = logging.getLogger(__name__)
 
 
 class TwilioSMSBackend:
-    def send(self, to: str, body: str, from_: str) -> bool:
+    def send(self, to: str, body: str, from_: str) -> tuple[bool, str]:
         try:
             client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
             client.messages.create(to=to, from_=from_, body=body)
-            return True
-        except Exception:
+            return True, ""
+        except Exception as exc:
             logger.exception("Twilio SMS send failed to %s", to)
-            return False
+            return False, str(exc)
 
 
 class SMSTestBackend:
@@ -26,6 +26,6 @@ class SMSTestBackend:
     def __init__(self):
         self.sent: list[dict] = []
 
-    def send(self, to: str, body: str, from_: str) -> bool:
+    def send(self, to: str, body: str, from_: str) -> tuple[bool, str]:
         self.sent.append({"to": to, "body": body, "from_": from_})
-        return True
+        return True, ""
