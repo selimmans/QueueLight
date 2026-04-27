@@ -253,7 +253,7 @@
         <div class="big-number">
           {% if entry.batch_number %}B{{ entry.batch_number }}{% else %}#{{ entry.position }}{% endif %}
         </div>
-        <div class="ticket-biz">{{ business.name }}</div>
+        <div class="ticket-biz">{{ entry.name }} &middot; {{ business.name }}</div>
       </div>
     </div>
 

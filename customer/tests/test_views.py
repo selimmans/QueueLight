@@ -204,8 +204,9 @@ class TestConfirmView:
             "slug": person_business.slug, "entry_id": entry.pk
         })
         response = client.get(url)
-        # wait block present in HTML but hidden when no avg_service_minutes
-        assert b'id="waitBlock" style="display:none"' in response.content
+        # No avg_service_minutes → est wait stat shows dash placeholder
+        assert b'id="statWait"' in response.content
+        assert b"&mdash;" not in response.content  # no range text
 
     def test_wait_shown_when_avg_service_minutes_set(self, client, db):
         biz = Business.objects.create(
@@ -223,9 +224,9 @@ class TestConfirmView:
         )
         url = reverse("customer:confirmation", kwargs={"slug": biz.slug, "entry_id": e2.pk})
         response = client.get(url)
-        # Range format: ~X–Y min (1 person ahead × 10 min → ~10–15 min)
-        assert b"min" in response.content
-        assert "–" in response.content.decode()
+        # Stat tile shows ~Xm format (1 person ahead × 10 min → ~10m)
+        assert b"~" in response.content
+        assert b"m" in response.content
 
 
 # ── GET /q/<slug>/status/<entry_id>/ ───────────────────────────────────────────
