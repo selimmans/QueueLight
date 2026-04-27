@@ -142,19 +142,22 @@ class QueueService:
             customer_name=entry.name,
         )
         from_number = business.twilio_from_number or django_settings.TWILIO_FROM_NUMBER
-        sent = backend.send(
+        sent, error = backend.send(
             to=entry.phone,
             body=body,
             from_=from_number,
         )
         event_type = QueueEventLog.EventType.SMS_SENT if sent else QueueEventLog.EventType.SMS_FAILED
+        meta = {"mode": business.mode}
+        if error:
+            meta["sms_error"] = error
         QueueService._log(
             business=business,
             entry=entry,
             event_type=event_type,
             before_values={},
             after_values={},
-            meta={"mode": business.mode},
+            meta=meta,
         )
 
     @staticmethod
@@ -294,18 +297,21 @@ class QueueService:
         body = f"{business.name} is closing soon — you may not be served today. Sorry for the inconvenience."
         from_number = business.twilio_from_number or django_settings.TWILIO_FROM_NUMBER
         for entry in waiting:
-            sent = backend.send(to=entry.phone, body=body, from_=from_number)
+            sent, error = backend.send(to=entry.phone, body=body, from_=from_number)
             event_type = (
                 QueueEventLog.EventType.CLOSING_SOON_SMS if sent
                 else QueueEventLog.EventType.SMS_FAILED
             )
+            meta = {"mode": business.mode}
+            if error:
+                meta["sms_error"] = error
             QueueEventLog.objects.create(
                 business=business,
                 entry=entry,
                 event_type=event_type,
                 before_values={},
                 after_values={},
-                meta={"mode": business.mode},
+                meta=meta,
             )
 
     @staticmethod
