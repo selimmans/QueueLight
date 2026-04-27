@@ -92,7 +92,7 @@ Update this file at the end of every session. Never commit this file alone.
 
 ### Required env vars for Railway
 ```
-DJANGO_SECRET_KEY=<generate a long random string>
+DJANGO_SECRET_KEY=<generate: python3 -c "import secrets; print(secrets.token_urlsafe(50))">
 DJANGO_ALLOWED_HOSTS=<your-app>.up.railway.app
 CSRF_TRUSTED_ORIGINS=https://<your-app>.up.railway.app
 DEBUG=False
@@ -103,6 +103,7 @@ DB_HOST=<from Railway Postgres plugin>
 DB_PORT=5432
 TWILIO_ACCOUNT_SID=<from Twilio>
 TWILIO_AUTH_TOKEN=<from Twilio>
+TWILIO_FROM_NUMBER=<shared sender number, e.g. +18254609913 — used for any business with no twilio_from_number set>
 DJANGO_TIME_ZONE=America/Toronto
 ```
 
@@ -117,4 +118,4 @@ DJANGO_TIME_ZONE=America/Toronto
 - [ ] Self-serve business onboarding (currently superuser-only)
 - [ ] Redis cache for QR PNG in multi-worker deploys
 - [ ] Per-country phone validation (currently uses business.country, CA default)
-- [ ] Twilio shared sender fallback — if business.twilio_from_number is blank, fall back to TWILIO_FROM_NUMBER env var (so all businesses can share one number for a pilot)
+- [x] Twilio shared sender fallback — if business.twilio_from_number is blank, fall back to TWILIO_FROM_NUMBER env var (so all businesses can share one number for a pilot)
