@@ -376,6 +376,12 @@
     let calledEntries = [];
     const expandedIds = new Set();
 
+    // Show intercept immediately if called entries exist on page load
+    if (MODE === "batch" && {{ called_entries|length }} > 0) {
+      buildCountButtons({{ business.batch_size }}, {{ called_entries|length }});
+      showBatchIntercept();
+    }
+
     function toggleExpand(id) {
       if (expandedIds.has(id)) expandedIds.delete(id);
       else expandedIds.add(id);
@@ -465,10 +471,14 @@
       form.submit();
     }
 
+    function showBatchIntercept() {
+      document.getElementById("batchIntercept").classList.add("active");
+      document.getElementById("callNextBtn").style.display = "none";
+    }
+
     function handleCallNext() {
       if (MODE === "batch" && calledEntries.length > 0) {
-        document.getElementById("batchIntercept").classList.add("active");
-        document.getElementById("callNextBtn").style.display = "none";
+        showBatchIntercept();
       } else {
         document.getElementById("callNextForm").submit();
       }
@@ -511,9 +521,13 @@
             }
           }
 
-          // Batch intercept buttons
+          // Batch intercept — only build buttons if intercept isn't already shown
+          const intercept = document.getElementById("batchIntercept");
           if (data.mode === "batch" && calledEntries.length > 0) {
-            buildCountButtons(data.batch_size, calledEntries.length);
+            if (!intercept.classList.contains("active")) {
+              buildCountButtons(data.batch_size, calledEntries.length);
+              showBatchIntercept();
+            }
           }
         })
         .catch(() => {});
