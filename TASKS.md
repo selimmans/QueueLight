@@ -66,6 +66,16 @@ Update this file at the end of every session. Never commit this file alone.
 - [x] railway.json (health check at /health/, restart policy)
 - [x] CSRF_TRUSTED_ORIGINS env var support in settings
 
+## PHASE 17 — Production deploy
+- [x] GitHub repo created and code pushed (selimmans/QueueLight)
+- [x] Deployed to Railway at web-production-d59e3.up.railway.app
+- [x] Procfile release → preDeployCommand migration fix
+- [x] ALLOWED_HOSTS updated to include healthcheck.railway.app
+- [x] Superuser created on production DB
+- [x] Business type selector added to platform create form
+- [x] Business picker reverted to native select on staff login
+- [x] Batch intercept: shows on page load, poll no longer rebuilds during active selection
+
 ## PHASE 16 — UI redesign + polish
 - [x] DM Serif Display font throughout (join, confirmation, staff dashboard, login)
 - [x] Customer pages: white background, card shadows, clean grey palette
