@@ -5,7 +5,7 @@
   },
   "deploy": {
     "startCommand": "gunicorn config.wsgi:application --workers 2 --bind 0.0.0.0:$PORT --timeout 60",
-    "preDeployCommand": "python manage.py migrate --noinput",
+    "preDeployCommand": "python manage.py migrate --noinput && python manage.py createsuperuser --noinput || true",
     "healthcheckPath": "/health/",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
