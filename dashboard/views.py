@@ -384,6 +384,7 @@ class PlatformDashboardView(View):
             name = request.POST.get("name", "").strip()
             slug = request.POST.get("slug", "").strip() or slugify(name)
             mode = request.POST.get("mode", Business.MODE_PERSON)
+            business_type = request.POST.get("business_type", "retail").strip()
             logo_colour = request.POST.get("logo_colour", "#3B82F6").strip()
             colour_accent = request.POST.get("colour_accent", "#6366f1").strip()
             colour_border = request.POST.get("colour_border", "#e5e7eb").strip()
@@ -409,6 +410,7 @@ class PlatformDashboardView(View):
                 name=name,
                 slug=slug,
                 mode=mode,
+                business_type=business_type,
                 logo_colour=logo_colour,
                 colour_accent=colour_accent,
                 colour_border=colour_border,
