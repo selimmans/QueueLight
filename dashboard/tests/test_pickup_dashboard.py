@@ -99,8 +99,7 @@ class TestPickupStatusAPI:
         _login(client, pickup_business, pickup_staff)
         PickupService.register(pickup_business, order_number="5")
         PickupService.register(pickup_business, order_number="6")
-        url = reverse("dashboard:pickup_status", kwargs={"slug": pickup_business.slug})
-        resp = client.get(url)
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["pickup_entries"]) == 2
@@ -110,14 +109,12 @@ class TestPickupStatusAPI:
         entry = PickupService.register(pickup_business, order_number="5")
         PickupService.mark_ready(entry)
         PickupService.mark_picked_up(entry)
-        url = reverse("dashboard:pickup_status", kwargs={"slug": pickup_business.slug})
-        resp = client.get(url)
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
         data = resp.json()
         assert len(data["pickup_entries"]) == 0
 
     def test_requires_auth(self, client, pickup_business):
-        url = reverse("dashboard:pickup_status", kwargs={"slug": pickup_business.slug})
-        resp = client.get(url)
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
         assert resp.status_code == 401
 
 
