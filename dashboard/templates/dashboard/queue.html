@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Queue — {{ business.name }}</title>
+  <title>Dashboard — {{ business.name }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
@@ -24,7 +24,7 @@
       min-height: 100dvh;
     }
 
-    /* Header */
+    /* ── Header ────────────────────────────────────── */
     .header {
       background: #111;
       padding: 1rem 1.25rem;
@@ -49,7 +49,42 @@
     }
     .header-links a:hover { color: rgba(255,255,255,.85); }
 
-    /* Stats bar */
+    /* ── Tab bar (only when both features enabled) ──── */
+    .tab-bar {
+      background: #1a1a1a;
+      display: flex;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.7rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: rgba(255,255,255,.45);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      border-bottom-color: var(--brand);
+    }
+
+    .tab-btn:hover:not(.active) { color: rgba(255,255,255,.7); }
+
+    /* ── Tab panels ─────────────────────────────────── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* When there's only one feature (no tab bar), the panel is always visible */
+    .tab-panel.solo { display: block; }
+
+    /* ── Stats bar ──────────────────────────────────── */
     .stats-bar {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -82,10 +117,10 @@
       color: rgba(255,255,255,.4);
     }
 
-    /* Container */
+    /* ── Container ──────────────────────────────────── */
     .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
 
-    /* Call Next */
+    /* ── Call Next ──────────────────────────────────── */
     .call-btn {
       display: block;
       width: 100%;
@@ -104,7 +139,7 @@
 
     .call-btn:active { opacity: 0.85; }
 
-    /* Batch intercept */
+    /* ── Batch intercept ─────────────────────────────── */
     .batch-intercept {
       display: none;
       background: #fff;
@@ -141,7 +176,7 @@
     .count-btn:hover { background: var(--bg); }
     .count-btn.zero { border-color: #fca5a5; color: #dc2626; }
 
-    /* Section label */
+    /* ── Section label ──────────────────────────────── */
     .section-label {
       font-size: 0.65rem;
       font-weight: 700;
@@ -166,7 +201,7 @@
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-    /* Queue card */
+    /* ── Queue card / entries ───────────────────────── */
     .queue-card {
       background: #fff;
       border: 1px solid var(--border);
@@ -197,10 +232,9 @@
       flex-shrink: 0;
     }
 
-    .badge-called {
-      background: #fef3c7;
-      color: #92400e;
-    }
+    .badge-called  { background: #fef3c7; color: #92400e; }
+    .badge-waiting { background: #f3f4f6; color: #374151; }
+    .badge-ready   { background: #d1fae5; color: #065f46; }
 
     .entry-body { flex: 1; min-width: 0; cursor: default; }
     .entry-body.expandable { cursor: pointer; }
@@ -224,9 +258,11 @@
       background: #fff;
     }
 
-    .btn-skip   { border-color: #d1d5db; color: #6b7280; }
-    .btn-done   { border-color: #6ee7b7; color: #059669; }
-    .btn-noshow { border-color: #fca5a5; color: #dc2626; }
+    .btn-skip     { border-color: #d1d5db; color: #6b7280; }
+    .btn-done     { border-color: #6ee7b7; color: #059669; }
+    .btn-noshow   { border-color: #fca5a5; color: #dc2626; }
+    .btn-ready    { border-color: #6ee7b7; color: #059669; }
+    .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
     .action-btn:hover { opacity: 0.75; }
 
     .empty {
@@ -236,30 +272,17 @@
       font-size: 0.9rem;
     }
 
-    /* Pickup section */
-    .section-divider {
-      border: none;
-      border-top: 2px solid #e5e7eb;
-      margin: 1.5rem 0 1rem;
+    /* ── Inactive notice ────────────────────────────── */
+    .inactive-notice {
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
     }
 
-    .pickup-entry {
-      display: flex;
-      align-items: center;
-      padding: 0.8rem 1rem;
-      border-bottom: 1px solid #f3f4f6;
-      gap: 0.85rem;
-    }
-
-    .pickup-entry:last-child { border-bottom: none; }
-
-    .badge-waiting { background: #f3f4f6; color: #374151; }
-    .badge-ready   { background: #d1fae5; color: #065f46; }
-
-    .btn-ready    { border-color: #6ee7b7; color: #059669; }
-    .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
-
-    /* QR section */
+    /* ── QR section ─────────────────────────────────── */
     .qr-section {
       background: #fff;
       border: 1px solid var(--border);
@@ -292,152 +315,180 @@
     </div>
   </div>
 
-  <div class="stats-bar">
-    <div class="stat-cell">
-      <div class="stat-cell-val" id="statWaiting">{{ waiting|length }}</div>
-      <div class="stat-cell-label">Waiting</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-cell-val" id="statCurrent">
-        {% if called_last %}
-          {% if called_last.batch_number %}B{{ called_last.batch_number }}{% else %}#{{ called_last.position }}{% endif %}
-        {% else %}—{% endif %}
-      </div>
-      <div class="stat-cell-label">{% if business.mode == "batch" %}Current Batch{% else %}Last Called{% endif %}</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-cell-val">{% if business.avg_service_minutes %}{{ business.avg_service_minutes }}m{% else %}—{% endif %}</div>
-      <div class="stat-cell-label">Avg Service</div>
-    </div>
+  {% if dashboard_mode == "inactive" %}
+    <div class="inactive-notice">This business has no active features enabled.</div>
+
+  {% else %}
+
+  {% if dashboard_mode == "both" %}
+  <div class="tab-bar">
+    <button class="tab-btn" id="tabBtnQueue" onclick="switchTab('queue')">Queue</button>
+    <button class="tab-btn" id="tabBtnPickup" onclick="switchTab('pickup')">Pickup</button>
   </div>
+  {% endif %}
 
-  <div class="container">
+  <!-- ═══════════════════════════════════════════════ -->
+  <!--  QUEUE PANEL                                    -->
+  <!-- ═══════════════════════════════════════════════ -->
+  {% if dashboard_mode == "queue_only" or dashboard_mode == "both" %}
+  <div id="panel-queue"
+       class="tab-panel {% if dashboard_mode == 'queue_only' %}solo{% endif %}">
 
-    {% if business.mode == "batch" %}
-      <div class="batch-intercept" id="batchIntercept">
-        <p>How many showed up from the last batch?</p>
-        <div class="count-buttons" id="countButtons"></div>
+    <div class="stats-bar">
+      <div class="stat-cell">
+        <div class="stat-cell-val" id="statWaiting">{{ waiting|length }}</div>
+        <div class="stat-cell-label">Waiting</div>
       </div>
-
-      <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}" id="callNextForm">
-        {% csrf_token %}
-        <button class="call-btn" type="button" id="callNextBtn" onclick="handleCallNext()">Call Next Batch</button>
-      </form>
-    {% else %}
-      <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}">
-        {% csrf_token %}
-        <button class="call-btn" type="submit">Call Next</button>
-      </form>
-    {% endif %}
-
-    {% if business.mode == "person" %}
-    <div id="called-section" {% if not called_entries %}style="display:none"{% endif %}>
-      <div class="section-label"><span class="dot dot-called"></span>Just Called — <span id="called-count">{{ called_entries|length }}</span></div>
-      <div class="queue-card" id="called-list">
-        {% for entry in called_entries %}
-        <div class="entry">
-          <div class="badge badge-called">#{{ entry.position }}</div>
-          <div class="entry-body">
-            <div class="entry-name">{{ entry.name }}</div>
-            <div class="entry-meta">Called {{ entry.called_at|timesince }} ago</div>
-          </div>
-          <div class="entry-actions">
-            <form method="post" action="{% url 'dashboard:complete_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
-              {% csrf_token %}<button class="action-btn btn-done" type="submit">Done</button>
-            </form>
-            <form method="post" action="{% url 'dashboard:noshow_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
-              {% csrf_token %}<button class="action-btn btn-noshow" type="submit">No-show</button>
-            </form>
-          </div>
+      <div class="stat-cell">
+        <div class="stat-cell-val" id="statCurrent">
+          {% if called_last %}
+            {% if called_last.batch_number %}B{{ called_last.batch_number }}{% else %}#{{ called_last.position }}{% endif %}
+          {% else %}—{% endif %}
         </div>
-        {% endfor %}
+        <div class="stat-cell-label">{% if business.mode == "batch" %}Current Batch{% else %}Last Called{% endif %}</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-val">{% if business.avg_service_minutes %}{{ business.avg_service_minutes }}m{% else %}—{% endif %}</div>
+        <div class="stat-cell-label">Avg Service</div>
       </div>
     </div>
-    {% endif %}
 
-    <div class="section-label" style="margin-top:0.25rem"><span class="dot"></span>Waiting — <span id="count">{{ waiting|length }}</span></div>
-    <div class="queue-card" id="queue-list">
-      {% if waiting %}
-        {% for entry in waiting %}
-        <div class="entry">
-          <div class="badge">{% if entry.batch_number %}B{{ entry.batch_number }}{% else %}#{{ entry.position }}{% endif %}</div>
-          <div class="entry-body{% if entry.intake_answers %} expandable{% endif %}"
-               {% if entry.intake_answers %}onclick="toggleExpand({{ entry.pk }})"{% endif %}>
-            <div class="entry-name">{{ entry.name }}</div>
-            <div class="entry-meta">{{ entry.joined_at|timesince }} ago{% if entry.intake_answers %} · tap to expand{% endif %}</div>
-          </div>
-          {% if business.mode == "person" %}
-          <div class="entry-actions">
-            <form method="post" action="{% url 'dashboard:skip_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
-              {% csrf_token %}<button class="action-btn btn-skip" type="submit">Skip</button>
-            </form>
-          </div>
-          {% endif %}
+    <div class="container">
+
+      {% if business.mode == "batch" %}
+        <div class="batch-intercept" id="batchIntercept">
+          <p>How many showed up from the last batch?</p>
+          <div class="count-buttons" id="countButtons"></div>
         </div>
-        {% endfor %}
+
+        <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}" id="callNextForm">
+          {% csrf_token %}
+          <button class="call-btn" type="button" id="callNextBtn" onclick="handleCallNext()">Call Next Batch</button>
+        </form>
       {% else %}
-        <p class="empty">Queue is empty</p>
+        <form method="post" action="{% url 'dashboard:call_next' slug=business.slug %}">
+          {% csrf_token %}
+          <button class="call-btn" type="submit">Call Next</button>
+        </form>
       {% endif %}
-    </div>
 
-    {% if business.pickup_enabled %}
-    <hr class="section-divider">
+      {% if business.mode == "person" %}
+      <div id="called-section" {% if not called_entries %}style="display:none"{% endif %}>
+        <div class="section-label"><span class="dot dot-called"></span>Just Called — <span id="called-count">{{ called_entries|length }}</span></div>
+        <div class="queue-card" id="called-list">
+          {% for entry in called_entries %}
+          <div class="entry">
+            <div class="badge badge-called">#{{ entry.position }}</div>
+            <div class="entry-body">
+              <div class="entry-name">{{ entry.name }}</div>
+              <div class="entry-meta">Called {{ entry.called_at|timesince }} ago</div>
+            </div>
+            <div class="entry-actions">
+              <form method="post" action="{% url 'dashboard:complete_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+                {% csrf_token %}<button class="action-btn btn-done" type="submit">Done</button>
+              </form>
+              <form method="post" action="{% url 'dashboard:noshow_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+                {% csrf_token %}<button class="action-btn btn-noshow" type="submit">No-show</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
 
-    <div class="section-label" style="margin-top:0"><span class="dot" style="background:#4f46e5;animation:none"></span>Pickup Orders — <span id="pickup-count">{{ pickup_entries|length }}</span></div>
-    <div class="queue-card" id="pickup-list">
-      {% if pickup_entries %}
-        {% for entry in pickup_entries %}
-        <div class="pickup-entry">
-          <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
-            {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
-          </div>
-          <div class="entry-body">
-            <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
-            <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
-          </div>
-          <div class="entry-actions">
-            {% if entry.status == 'waiting' %}
-            <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}" style="display:inline">
-              {% csrf_token %}<button class="action-btn btn-ready" type="submit">Ready</button>
-            </form>
-            {% elif entry.status == 'ready' %}
-            <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
-              {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
-            </form>
+      <div class="section-label" style="margin-top:0.25rem"><span class="dot"></span>Waiting — <span id="count">{{ waiting|length }}</span></div>
+      <div class="queue-card" id="queue-list">
+        {% if waiting %}
+          {% for entry in waiting %}
+          <div class="entry">
+            <div class="badge">{% if entry.batch_number %}B{{ entry.batch_number }}{% else %}#{{ entry.position }}{% endif %}</div>
+            <div class="entry-body{% if entry.intake_answers %} expandable{% endif %}"
+                 {% if entry.intake_answers %}onclick="toggleExpand({{ entry.pk }})"{% endif %}>
+              <div class="entry-name">{{ entry.name }}</div>
+              <div class="entry-meta">{{ entry.joined_at|timesince }} ago{% if entry.intake_answers %} · tap to expand{% endif %}</div>
+            </div>
+            {% if business.mode == "person" %}
+            <div class="entry-actions">
+              <form method="post" action="{% url 'dashboard:skip_entry' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+                {% csrf_token %}<button class="action-btn btn-skip" type="submit">Skip</button>
+              </form>
+            </div>
             {% endif %}
           </div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <p class="empty" id="pickup-empty">No active orders</p>
-      {% endif %}
-    </div>
-    {% endif %}
+          {% endfor %}
+        {% else %}
+          <p class="empty">Queue is empty</p>
+        {% endif %}
+      </div>
 
-    <div class="qr-section">
-      <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
-      <div>
-        <p>Share this QR to let customers join</p>
-        <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
+      <div class="qr-section">
+        <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
+        <div>
+          <p>Share this QR to let customers join</p>
+          <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!--  PICKUP PANEL                                   -->
+  <!-- ═══════════════════════════════════════════════ -->
+  {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
+  <div id="panel-pickup"
+       class="tab-panel {% if dashboard_mode == 'pickup_only' %}solo{% endif %}">
+
+    <div class="container">
+      <div class="section-label" style="margin-top:0">
+        <span class="dot" style="background:#4f46e5;animation:none"></span>
+        Active Orders — <span id="pickup-count">{{ pickup_entries|length }}</span>
+      </div>
+      <div class="queue-card" id="pickup-list">
+        {% if pickup_entries %}
+          {% for entry in pickup_entries %}
+          <div class="entry">
+            <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
+              {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
+            </div>
+            <div class="entry-body">
+              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
+              <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
+            </div>
+            <div class="entry-actions">
+              {% if entry.status == 'waiting' %}
+              <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+                {% csrf_token %}<button class="action-btn btn-ready" type="submit">Ready</button>
+              </form>
+              {% elif entry.status == 'ready' %}
+              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="empty">No active orders</p>
+        {% endif %}
       </div>
     </div>
-
   </div>
+  {% endif %}
+
+  {% endif %}{# end dashboard_mode != inactive #}
 
   <script>
-    const statusUrl = "/api/queue/{{ business.slug }}/status/";
-    const MODE = "{{ business.mode }}";
-    const SLUG = "{{ business.slug }}";
-    const CSRF = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const SLUG  = "{{ business.slug }}";
+    const MODE  = "{{ business.mode }}";
+    const CSRF  = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+    const DASHBOARD_MODE = "{{ dashboard_mode }}";
+    const SESSION_KEY = "activeTab_" + SLUG;
 
-    let calledEntries = [];
+    // ── Expand / collapse intake answers ──────────────
     const expandedIds = new Set();
-
-    // Show intercept immediately if called entries exist on page load
-    if (MODE === "batch" && {{ called_entries|length }} > 0) {
-      buildCountButtons({{ business.batch_size }}, {{ called_entries|length }});
-      showBatchIntercept();
-    }
 
     function toggleExpand(id) {
       if (expandedIds.has(id)) expandedIds.delete(id);
@@ -456,6 +507,7 @@
       return `<div class="intake-details${open}" id="intake-${id}">${rows}</div>`;
     }
 
+    // ── Render helpers ─────────────────────────────────
     function renderEntry(e, mode) {
       const badge = e.batch_number ? "B" + e.batch_number : "#" + e.position;
       const hasAnswers = e.intake_answers && Object.keys(e.intake_answers).filter(k => e.intake_answers[k]).length > 0;
@@ -503,6 +555,39 @@
       </div>`;
     }
 
+    {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
+    function renderPickupEntry(e) {
+      const statusBadge = e.status === "ready"
+        ? `<div class="badge badge-ready">Ready</div>`
+        : `<div class="badge badge-waiting">Waiting</div>`;
+      const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
+      const mins = e.minutes_waiting > 0 ? ` · ${e.minutes_waiting}m ago` : "";
+      let action = "";
+      if (e.status === "waiting") {
+        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+          <button class="action-btn btn-ready" type="submit">Ready</button>
+        </form>`;
+      } else if (e.status === "ready") {
+        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/picked-up/" style="display:inline">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+          <button class="action-btn btn-pickedup" type="submit">Picked up</button>
+        </form>`;
+      }
+      return `<div class="entry">
+        ${statusBadge}
+        <div class="entry-body">
+          <div class="entry-name">#${e.order_number}${nameHtml}</div>
+          <div class="entry-meta">Registered${mins}</div>
+        </div>
+        <div class="entry-actions">${action}</div>
+      </div>`;
+    }
+    {% endif %}
+
+    // ── Batch intercept ────────────────────────────────
+    let calledEntries = [];
+
     function buildCountButtons(batchSize, calledCount) {
       const container = document.getElementById("countButtons");
       if (!container) return;
@@ -541,13 +626,18 @@
       }
     }
 
-    function poll() {
-      fetch(statusUrl)
+    {% if business.mode == "batch" and called_entries %}
+    buildCountButtons({{ business.batch_size }}, {{ called_entries|length }});
+    if ({{ called_entries|length }} > 0) showBatchIntercept();
+    {% endif %}
+
+    // ── Polling functions ──────────────────────────────
+    function pollQueue() {
+      fetch("/api/queue/" + SLUG + "/status/")
         .then(r => r.json())
         .then(data => {
           calledEntries = data.called || [];
 
-          // Stats bar
           document.getElementById("statWaiting").textContent = data.waiting.length;
           if (data.called_last) {
             const cur = data.called_last.batch_number
@@ -556,14 +646,12 @@
             document.getElementById("statCurrent").textContent = cur;
           }
 
-          // Waiting list
           const list = document.getElementById("queue-list");
           document.getElementById("count").textContent = data.waiting.length;
           list.innerHTML = data.waiting.length
             ? data.waiting.map(e => renderEntry(e, data.mode)).join("")
             : `<p class="empty">Queue is empty</p>`;
 
-          // Called list (person mode)
           if (data.mode === "person") {
             const section = document.getElementById("called-section");
             const calledList = document.getElementById("called-list");
@@ -578,9 +666,8 @@
             }
           }
 
-          // Batch intercept — only build buttons if intercept isn't already shown
           const intercept = document.getElementById("batchIntercept");
-          if (data.mode === "batch" && calledEntries.length > 0) {
+          if (data.mode === "batch" && calledEntries.length > 0 && intercept) {
             if (!intercept.classList.contains("active")) {
               buildCountButtons(data.batch_size, calledEntries.length);
               showBatchIntercept();
@@ -590,59 +677,69 @@
         .catch(() => {});
     }
 
-    {% if business.mode == "batch" and called_entries %}
-    buildCountButtons({{ business.batch_size }}, {{ called_entries|length }});
-    {% endif %}
-
-    setInterval(poll, 5000);
-
-    {% if business.pickup_enabled %}
-    const pickupStatusUrl = "/api/pickup/{{ business.slug }}/status/";
-
-    function renderPickupEntry(e) {
-      const statusBadge = e.status === "ready"
-        ? `<div class="badge badge-ready">Ready</div>`
-        : `<div class="badge badge-waiting">Waiting</div>`;
-      const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
-      let action = "";
-      if (e.status === "waiting") {
-        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
-          <button class="action-btn btn-ready" type="submit">Ready</button>
-        </form>`;
-      } else if (e.status === "ready") {
-        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/picked-up/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
-          <button class="action-btn btn-pickedup" type="submit">Picked up</button>
-        </form>`;
-      }
-      return `<div class="pickup-entry">
-        ${statusBadge}
-        <div class="entry-body">
-          <div class="entry-name">#${e.order_number}${nameHtml}</div>
-          <div class="entry-meta">Registered</div>
-        </div>
-        <div class="entry-actions">${action}</div>
-      </div>`;
-    }
-
+    {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
     function pollPickup() {
-      fetch(pickupStatusUrl)
+      fetch("/api/pickup/" + SLUG + "/status/")
         .then(r => r.json())
         .then(data => {
-          const list = document.getElementById("pickup-list");
-          const count = document.getElementById("pickup-count");
+          const list    = document.getElementById("pickup-list");
+          const counter = document.getElementById("pickup-count");
           if (!list) return;
-          const entries = data.pickup_entries || [];
-          count.textContent = entries.length;
-          list.innerHTML = entries.length
-            ? entries.map(renderPickupEntry).join("")
+          const orders = data.active_orders || [];
+          if (counter) counter.textContent = orders.length;
+          list.innerHTML = orders.length
+            ? orders.map(renderPickupEntry).join("")
             : `<p class="empty">No active orders</p>`;
         })
         .catch(() => {});
     }
+    {% endif %}
 
-    setInterval(pollPickup, 5000);
+    // ── Tab system (only when both features are enabled) ─
+    let queueTimer  = null;
+    let pickupTimer = null;
+
+    {% if dashboard_mode == "both" %}
+
+    function switchTab(tab) {
+      sessionStorage.setItem(SESSION_KEY, tab);
+
+      // Update tab button styles
+      document.getElementById("tabBtnQueue").classList.toggle("active",  tab === "queue");
+      document.getElementById("tabBtnPickup").classList.toggle("active", tab === "pickup");
+
+      // Show/hide panels
+      document.getElementById("panel-queue").classList.toggle("active",  tab === "queue");
+      document.getElementById("panel-pickup").classList.toggle("active", tab === "pickup");
+
+      // Switch which timer runs
+      clearInterval(queueTimer);
+      clearInterval(pickupTimer);
+      if (tab === "queue") {
+        pollQueue();
+        queueTimer = setInterval(pollQueue, 5000);
+      } else {
+        pollPickup();
+        pickupTimer = setInterval(pollPickup, 5000);
+      }
+    }
+
+    // Restore active tab from sessionStorage (default: queue)
+    const savedTab = sessionStorage.getItem(SESSION_KEY) || "queue";
+    switchTab(savedTab);
+
+    {% elif dashboard_mode == "queue_only" %}
+
+    // Single feature — just poll queue continuously
+    pollQueue();
+    queueTimer = setInterval(pollQueue, 5000);
+
+    {% elif dashboard_mode == "pickup_only" %}
+
+    // Single feature — just poll pickup continuously
+    pollPickup();
+    pickupTimer = setInterval(pollPickup, 5000);
+
     {% endif %}
   </script>
 </body>

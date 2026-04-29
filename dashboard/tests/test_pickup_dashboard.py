@@ -102,7 +102,8 @@ class TestPickupStatusAPI:
         resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data["pickup_entries"]) == 2
+        assert len(data["active_orders"]) == 2
+        assert data["total_active"] == 2
 
     def test_excludes_picked_up_entries(self, client, pickup_business, pickup_staff):
         _login(client, pickup_business, pickup_staff)
@@ -111,11 +112,100 @@ class TestPickupStatusAPI:
         PickupService.mark_picked_up(entry)
         resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
         data = resp.json()
-        assert len(data["pickup_entries"]) == 0
+        assert len(data["active_orders"]) == 0
+        assert data["total_active"] == 0
 
     def test_requires_auth(self, client, pickup_business):
         resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
         assert resp.status_code == 401
+
+    def test_response_includes_minutes_waiting(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        PickupService.register(pickup_business, order_number="77")
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
+        data = resp.json()
+        assert "minutes_waiting" in data["active_orders"][0]
+        assert isinstance(data["active_orders"][0]["minutes_waiting"], int)
+
+    def test_response_shape(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        PickupService.register(pickup_business, order_number="99", customer_name="Bob")
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
+        data = resp.json()
+        order = data["active_orders"][0]
+        assert order["order_number"] == "99"
+        assert order["customer_name"] == "Bob"
+        assert order["status"] == "waiting"
+        assert "registered_at" in order
+
+
+class TestDashboardMode:
+    """Verify correct panel/tab HTML rendered for each feature combination."""
+
+    def _make_biz_and_staff(self, db, slug, queue_enabled, pickup_enabled):
+        biz = Business.objects.create(
+            name="Test Biz", slug=slug, is_active=True,
+            queue_enabled=queue_enabled, pickup_enabled=pickup_enabled,
+        )
+        sp = StaffPhone.objects.create(phone="+16135559900", business=biz, name="Staff")
+        return biz, sp
+
+    def test_queue_only_no_tab_bar(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "q-only", True, False)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.status_code == 200
+        assert b"tabBtnQueue" not in resp.content
+        assert b"tabBtnPickup" not in resp.content
+        assert b"panel-queue" in resp.content
+
+    def test_pickup_only_no_tab_bar(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "p-only", False, True)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.status_code == 200
+        assert b"tabBtnQueue" not in resp.content
+        assert b"tabBtnPickup" not in resp.content
+        assert b"panel-pickup" in resp.content
+        assert b"panel-queue" not in resp.content
+
+    def test_both_shows_tab_bar(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "b-both", True, True)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.status_code == 200
+        assert b"tab-bar" in resp.content
+        assert b"tabBtnQueue" in resp.content
+        assert b"tabBtnPickup" in resp.content
+        assert b"panel-queue" in resp.content
+        assert b"panel-pickup" in resp.content
+
+    def test_inactive_shows_notice(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "inactive-d", False, False)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.status_code == 200
+        assert b"tabBtnQueue" not in resp.content
+        assert b"tabBtnPickup" not in resp.content
+        assert b"inactive-notice" in resp.content
+
+    def test_dashboard_mode_context_both(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "ctx-both", True, True)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.context["dashboard_mode"] == "both"
+
+    def test_dashboard_mode_context_queue_only(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "ctx-q", True, False)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.context["dashboard_mode"] == "queue_only"
+
+    def test_dashboard_mode_context_pickup_only(self, client, db):
+        biz, sp = self._make_biz_and_staff(db, "ctx-p", False, True)
+        _login(client, biz, sp)
+        resp = client.get(reverse("dashboard:dashboard", kwargs={"slug": biz.slug}))
+        assert resp.context["dashboard_mode"] == "pickup_only"
 
 
 class TestSettingsFeatureToggles:

@@ -137,12 +137,23 @@ class DashboardView(View):
                 ).order_by("registered_at")
             )
 
+        # dashboard_mode drives tab visibility in the template
+        if business.queue_enabled and business.pickup_enabled:
+            dashboard_mode = "both"
+        elif business.queue_enabled:
+            dashboard_mode = "queue_only"
+        elif business.pickup_enabled:
+            dashboard_mode = "pickup_only"
+        else:
+            dashboard_mode = "inactive"
+
         return render(request, self.template_name, {
             "business": business,
             "waiting": waiting,
             "called_entries": called_entries,
             "called_last": called_last,
             "pickup_entries": pickup_entries,
+            "dashboard_mode": dashboard_mode,
         })
 
 
@@ -503,6 +514,7 @@ class PickupPickedUpView(View):
 
 class PickupStatusAPIView(View):
     def get(self, request, slug):
+        from django.utils import timezone as tz
         business = get_object_or_404(Business, slug=slug)
         if not _require_session(request, business):
             return JsonResponse({"error": "Unauthorized"}, status=401)
@@ -513,18 +525,21 @@ class PickupStatusAPIView(View):
                 status__in=[PickupEntry.Status.WAITING, PickupEntry.Status.READY],
             ).order_by("registered_at")
         )
+        now = tz.now()
 
         def _entry_dict(e):
+            minutes_waiting = int((now - e.registered_at).total_seconds() / 60)
             return {
                 "id": e.pk,
                 "order_number": e.order_number,
                 "customer_name": e.customer_name,
                 "status": e.status,
                 "registered_at": e.registered_at.isoformat(),
-                "ready_at": e.ready_at.isoformat() if e.ready_at else None,
+                "minutes_waiting": minutes_waiting,
             }
 
-        return JsonResponse({"pickup_entries": [_entry_dict(e) for e in entries]})
+        active_orders = [_entry_dict(e) for e in entries]
+        return JsonResponse({"active_orders": active_orders, "total_active": len(active_orders)})
 
 
 class QueueStatusAPIView(View):

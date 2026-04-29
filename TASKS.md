@@ -101,6 +101,20 @@ Update this file at the end of every session. Never commit this file alone.
 - [x] Django admin: Business fieldsets updated; PickupEntry + PickupEventLog registered
 - [x] 102 tests passing (31 new pickup tests)
 
+## PHASE 19 — Dashboard tab system
+- [x] DashboardView passes `dashboard_mode` context variable ("queue_only" / "pickup_only" / "both" / "inactive")
+- [x] queue.html: 4-state layout — queue_only (solo panel, no tab bar), pickup_only (solo panel, no tab bar), both (tab bar with Queue + Pickup buttons), inactive (inactive-notice message)
+- [x] Tab bar: dark #1a1a1a strip below header; tabBtnQueue / tabBtnPickup buttons; active tab has brand colour underline
+- [x] Tab panels: `.tab-panel { display:none }` / `.tab-panel.active { display:block }` / `.tab-panel.solo { display:block }` for single-feature modes
+- [x] sessionStorage persistence keyed by slug (`activeTab_<slug>`) — survives page refresh / poll redirects
+- [x] Tab-aware polling: `queueTimer` / `pickupTimer` module-level vars; `switchTab()` clears both before starting the active one; single-feature modes poll directly without switchTab
+- [x] Stats bar moved inside queue panel (only visible on queue tab in "both" mode)
+- [x] PickupStatusAPIView response shape updated: `{active_orders: [{id, order_number, customer_name, status, registered_at, minutes_waiting}], total_active: N}`
+- [x] `minutes_waiting` calculated server-side (avoids JS timezone issues)
+- [x] TestDashboardMode: 7 tests verifying HTML/context for all 4 states
+- [x] TestPickupStatusAPI: updated for new response shape + added minutes_waiting and response_shape tests
+- [x] 149 tests passing
+
 ---
 
 ## Pending — needs YOU

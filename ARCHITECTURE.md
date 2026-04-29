@@ -249,6 +249,53 @@ Add clinic-specific blocks behind `{% if business.business_type == "clinic" %}` 
 
 ---
 
+## Staff Dashboard Tab System
+
+The staff dashboard (`/staff/<slug>/`) adapts its layout based on `dashboard_mode`, a context variable set by `DashboardView`:
+
+| `dashboard_mode` | Condition                              | Layout                                              |
+|------------------|----------------------------------------|-----------------------------------------------------|
+| `"queue_only"`   | queue_enabled=True, pickup_enabled=False | No tab bar. Queue panel rendered with `.solo` class (always visible). |
+| `"pickup_only"`  | queue_enabled=False, pickup_enabled=True | No tab bar. Pickup panel rendered with `.solo` class. |
+| `"both"`         | queue_enabled=True, pickup_enabled=True  | Tab bar shown below header. Active panel toggled via `switchTab()` JS function. |
+| `"inactive"`     | queue_enabled=False, pickup_enabled=False | No tab bar. Shows `inactive-notice` message. No panels rendered. |
+
+### Tab Bar (both mode only)
+
+- Rendered as `<button id="tabBtnQueue">` / `<button id="tabBtnPickup">` inside `<div class="tab-bar">`
+- Active button gets `border-bottom-color: var(--brand)` via `.tab-btn.active`
+- Active tab persisted to `sessionStorage` under key `activeTab_<slug>` (namespaced per business)
+- Survives page refresh — restored on load via `sessionStorage.getItem(SESSION_KEY) || "queue"`
+
+### Polling Architecture
+
+- `queueTimer` and `pickupTimer` are module-level variables holding `setInterval` handles
+- `switchTab(tab)` clears both timers before starting the one for the active tab
+- In `queue_only` / `pickup_only` modes, the relevant poll starts immediately — no `switchTab()` call
+- Only the active tab polls. The inactive tab's data is stale until the user switches back.
+
+### Pickup Status API Response Shape
+
+`GET /api/pickup/<slug>/status/` returns:
+```json
+{
+  "active_orders": [
+    {
+      "id": 1,
+      "order_number": "42",
+      "customer_name": "Bob",
+      "status": "waiting",
+      "registered_at": "2026-04-29T12:00:00+00:00",
+      "minutes_waiting": 5
+    }
+  ],
+  "total_active": 1
+}
+```
+`minutes_waiting` is calculated server-side (integer, rounded down) to avoid JS timezone issues. `active_orders` excludes `picked_up` entries.
+
+---
+
 ## Deployment
 
 - Platform: Railway (railway.json + Procfile)
