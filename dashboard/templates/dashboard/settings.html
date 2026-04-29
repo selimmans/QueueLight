@@ -24,6 +24,28 @@
     .header h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
     .header a { color: rgba(255,255,255,.8); font-size: 0.85rem; text-decoration: none; }
 
+    .admin-bar {
+      background: #4f46e5;
+      padding: 0.5rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .admin-badge {
+      display: inline-block;
+      background: rgba(255,255,255,.2);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .admin-bar span { color: rgba(255,255,255,.7); font-size: 0.8rem; }
+
     .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
 
     .section {
@@ -34,14 +56,38 @@
       margin-bottom: 1.25rem;
     }
 
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
     .section h2 {
       font-size: 0.8rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .05em;
       color: #6b7280;
-      margin-bottom: 1rem;
     }
+
+    .section-header h2 { margin-bottom: 0; }
+
+    .collapse-btn {
+      background: none;
+      border: none;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .collapse-btn:hover { color: #374151; background: #f3f4f6; }
+
+    .collapsible-body { }
+    .collapsible-body.collapsed { display: none; }
 
     .field { margin-bottom: 1rem; }
     .field:last-child { margin-bottom: 0; }
@@ -188,6 +234,15 @@
       background: #f3f4f6;
       color: #111;
     }
+
+    .feature-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-row:last-child { margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -197,16 +252,16 @@
   </div>
 
   {% if is_admin %}
-  <div style="background:#4f46e5;padding:0.5rem 1.25rem;display:flex;align-items:center;gap:0.5rem;">
-    <span style="display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:0.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0.2rem 0.5rem;border-radius:4px;">Admin</span>
-    <span style="color:rgba(255,255,255,.7);font-size:0.8rem;">Viewing as superuser — SMS templates and feature toggles visible</span>
+  <div class="admin-bar">
+    <span class="admin-badge">Admin</span>
+    <span>Viewing as superuser — SMS templates visible</span>
   </div>
   {% endif %}
 
   <div class="container">
     {% if business.is_closing %}
     <div class="closing-banner">
-      Closing soon is active — no new customers can join.
+      Closing soon is active — no new customers can join the queue.
     </div>
     {% endif %}
 
@@ -214,11 +269,11 @@
     <div class="error-msg">{{ error }}</div>
     {% endif %}
 
-    <!-- Features -->
+    <!-- ── Features ──────────────────────────────────── -->
     <div class="section">
-      <h2>Features</h2>
+      <h2 style="margin-bottom:1rem">Features</h2>
 
-      <div class="field" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <div class="feature-row">
         <div>
           <label style="margin-bottom:0;font-size:0.875rem;text-transform:none;letter-spacing:0;color:#111;font-weight:600;">Virtual queue</label>
           <div class="hint" style="margin-top:0.2rem;">Let customers join a virtual queue and get called by name.</div>
@@ -236,7 +291,7 @@
         </form>
       </div>
 
-      <div class="field" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+      <div class="feature-row">
         <div>
           <label style="margin-bottom:0;font-size:0.875rem;text-transform:none;letter-spacing:0;color:#111;font-weight:600;">Order pickup notifications</label>
           <div class="hint" style="margin-top:0.2rem;">Let customers register an order number and get an SMS when it's ready.</div>
@@ -255,13 +310,14 @@
       </div>
     </div>
 
-    <!-- General settings -->
+    <!-- ── Queue settings (only when queue enabled) ──── -->
+    {% if business.queue_enabled %}
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_settings">
 
       <div class="section">
-        <h2>Queue settings</h2>
+        <h2 style="margin-bottom:1rem">Queue settings</h2>
 
         {% if business.mode == "batch" %}
         <div class="field">
@@ -279,14 +335,14 @@
         </div>
 
         {% if business.business_type == "retail" %}
-        <div class="field" id="menu_url_field">
+        <div class="field">
           <label for="menu_url">Menu link (optional)</label>
           <div class="hint">If set, customers see a "View Menu" button while they wait.</div>
           <input type="text" id="menu_url" name="menu_url" value="{{ business.menu_url }}" placeholder="https://yourbusiness.com/menu">
         </div>
         {% endif %}
 
-        {% if business.queue_enabled and is_admin %}
+        {% if is_admin %}
         <div class="field">
           <label for="sms_template">SMS message when called</label>
           <div class="hint">Placeholders: {business_name}, {customer_name}</div>
@@ -294,43 +350,66 @@
         </div>
         {% endif %}
 
-        {% if business.pickup_enabled and is_admin %}
+        <button class="save-btn" type="submit">Save</button>
+      </div>
+    </form>
+
+    <!-- ── Intake questions (collapsible) ────────────── -->
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_settings">
+
+      <div class="section">
+        <div class="section-header">
+          <h2>Intake questions</h2>
+          <button type="button" class="collapse-btn" onclick="toggleIntake(this)">Hide</button>
+        </div>
+        <div id="intakeBody" class="collapsible-body">
+          <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
+            Ask customers a question when they join. Answers are shown on the staff dashboard.
+          </p>
+          <div id="intake_list">
+            {% for question in business.intake_fields %}
+            <div class="intake-row" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
+              <input type="text" name="intake_questions" value="{{ question }}" placeholder="e.g. What are you here for?" style="margin-bottom:0;flex:1;">
+              <button type="button" class="action-remove" onclick="this.parentNode.remove()">Remove</button>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" onclick="addIntakeQuestion()"
+                  style="margin-top:0.5rem;padding:0.4rem 0.9rem;border:1.5px dashed #d1d5db;border-radius:8px;background:#fff;font-size:0.875rem;color:#6b7280;cursor:pointer;">
+            + Add question
+          </button>
+          <button class="save-btn" type="submit" style="margin-top:1rem;">Save questions</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}{# end queue_enabled #}
+
+    <!-- ── Pickup settings (only when pickup enabled + admin) ── -->
+    {% if business.pickup_enabled and is_admin %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_pickup_settings">
+
+      <div class="section">
+        <h2 style="margin-bottom:1rem">Pickup settings</h2>
+
         <div class="field">
-          <label for="pickup_notification_message">Pickup ready SMS</label>
+          <label for="pickup_notification_message">SMS when order is ready</label>
           <div class="hint">Sent when you mark an order ready. Placeholders: {business_name}, {order_number}, {customer_name}</div>
           <textarea id="pickup_notification_message" name="pickup_notification_message"
             placeholder="{{ business.PICKUP_NOTIFICATION_DEFAULT }}">{{ business.pickup_notification_message }}</textarea>
         </div>
-        {% endif %}
 
         <button class="save-btn" type="submit">Save</button>
       </div>
-
-      <!-- Intake questions -->
-      <div class="section">
-        <h2>Intake questions</h2>
-        <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
-          Ask customers a question when they join. Answers are shown on the staff dashboard.
-        </p>
-        <div id="intake_list">
-          {% for question in business.intake_fields %}
-          <div class="intake-row" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
-            <input type="text" name="intake_questions" value="{{ question }}" placeholder="e.g. What are you here for?" style="margin-bottom:0;flex:1;">
-            <button type="button" class="action-remove" onclick="this.parentNode.remove()">Remove</button>
-          </div>
-          {% endfor %}
-        </div>
-        <button type="button" onclick="addIntakeQuestion()"
-                style="margin-top:0.5rem;padding:0.4rem 0.9rem;border:1.5px dashed #d1d5db;border-radius:8px;background:#fff;font-size:0.875rem;color:#6b7280;cursor:pointer;">
-          + Add question
-        </button>
-        <button class="save-btn" type="submit" style="margin-top:1rem;">Save questions</button>
-      </div>
     </form>
+    {% endif %}
 
-    <!-- Staff phones -->
+    <!-- ── Staff access ───────────────────────────────── -->
     <div class="section">
-      <h2>Staff access</h2>
+      <h2 style="margin-bottom:1rem">Staff access</h2>
       <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
         Only registered numbers can sign in to the staff dashboard.
       </p>
@@ -367,9 +446,10 @@
       </form>
     </div>
 
-    <!-- Mode toggle -->
+    <!-- ── Queue mode (only when queue enabled) ──────── -->
+    {% if business.queue_enabled %}
     <div class="section">
-      <h2>Queue mode</h2>
+      <h2 style="margin-bottom:1rem">Queue mode</h2>
       <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
         Currently: <strong>{{ business.get_mode_display }}</strong>.
         Can only be changed when the queue is empty.
@@ -384,9 +464,9 @@
       </form>
     </div>
 
-    <!-- Danger zone -->
+    <!-- ── Queue actions (only when queue enabled) ───── -->
     <div class="section">
-      <h2>Queue actions</h2>
+      <h2 style="margin-bottom:1rem">Queue actions</h2>
 
       {% if business.is_closing %}
         <form method="post" style="margin-bottom:0">
@@ -408,6 +488,25 @@
         <button class="danger-btn" type="button" onclick="confirmClearQueue()">Clear queue — abandon all waiting</button>
       </form>
     </div>
+    {% endif %}{# end queue_enabled #}
+
+    <!-- ── Pickup actions (only when pickup enabled) ─── -->
+    {% if business.pickup_enabled %}
+    <div class="section">
+      <h2 style="margin-bottom:1rem">Pickup actions</h2>
+
+      <form method="post" id="pickupClosingSoonForm" action="{% url 'dashboard:pickup_closing_soon' slug=business.slug %}">
+        {% csrf_token %}
+        <button class="warn-btn" type="button" onclick="confirmPickupClosingSoon()">Closing soon — notify all with orders</button>
+      </form>
+
+      <form method="post" id="pickupClearForm" action="{% url 'dashboard:pickup_clear' slug=business.slug %}">
+        {% csrf_token %}
+        <button class="danger-btn" type="button" onclick="confirmPickupClear()">Clear active orders — cancel all waiting</button>
+      </form>
+    </div>
+    {% endif %}
+
   </div>
 
   <script>
@@ -421,6 +520,12 @@
       row.querySelector("input").focus();
     }
 
+    function toggleIntake(btn) {
+      const body = document.getElementById("intakeBody");
+      const collapsed = body.classList.toggle("collapsed");
+      btn.textContent = collapsed ? "Show" : "Hide";
+    }
+
     function confirmClosingSoon() {
       if (confirm("Send a closing-soon SMS to all waiting customers and stop new joins?")) {
         document.getElementById("closingSoonForm").submit();
@@ -430,6 +535,18 @@
     function confirmClearQueue() {
       if (confirm("Mark all waiting customers as abandoned? This cannot be undone.")) {
         document.getElementById("clearQueueForm").submit();
+      }
+    }
+
+    function confirmPickupClosingSoon() {
+      if (confirm("Send a closing-soon SMS to all customers with active orders? This cannot be undone.")) {
+        document.getElementById("pickupClosingSoonForm").submit();
+      }
+    }
+
+    function confirmPickupClear() {
+      if (confirm("Cancel all waiting and ready pickup orders? This cannot be undone.")) {
+        document.getElementById("pickupClearForm").submit();
       }
     }
   </script>

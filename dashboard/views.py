@@ -260,13 +260,15 @@ class SettingsView(View):
             intake_questions = [q.strip() for q in request.POST.getlist("intake_questions") if q.strip()]
             business.intake_fields = intake_questions
 
-            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
-            business.pickup_notification_message = pickup_msg
-
             business.save(update_fields=[
                 "batch_size", "avg_service_minutes", "sms_template", "menu_url",
-                "business_type", "intake_fields", "pickup_notification_message",
+                "business_type", "intake_fields",
             ])
+
+        elif action == "save_pickup_settings":
+            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
+            business.pickup_notification_message = pickup_msg
+            business.save(update_fields=["pickup_notification_message"])
 
         elif action == "toggle_queue":
             enable = request.POST.get("queue_enabled") == "1"
@@ -511,6 +513,24 @@ class PickupPickedUpView(View):
         if entry.status == PickupEntry.Status.READY:
             PickupService.mark_picked_up(entry)
         return redirect("dashboard:dashboard", slug=slug)
+
+
+class PickupClosingSoonView(View):
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        PickupService.send_closing_soon_sms(business)
+        return redirect("dashboard:settings", slug=slug)
+
+
+class PickupClearView(View):
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        PickupService.clear_active_orders(business)
+        return redirect("dashboard:settings", slug=slug)
 
 
 class PickupStatusAPIView(View):
