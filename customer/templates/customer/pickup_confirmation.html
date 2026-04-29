@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Registered — {{ business.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --brand: {{ business.logo_colour }}; --r: 6px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f4f5; min-height: 100dvh; display: flex; flex-direction: column; }
+    .header { background: var(--brand); padding: 2.25rem 1.5rem 2rem; text-align: center; }
+    .header-name { font-family: "DM Serif Display", serif; font-size: 2rem; color: #fff; line-height: 1.1; margin-bottom: 0.35rem; }
+    .header-sub { font-size: 0.7rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+    .body { flex: 1; padding: 1.25rem 1rem 2.5rem; max-width: 420px; width: 100%; margin: 0 auto; }
+    .confirm-card {
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: var(--r);
+      padding: 1.75rem 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      text-align: center;
+    }
+    .order-label { font-size: 0.68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #71717a; margin-bottom: 0.4rem; }
+    .order-number { font-family: "DM Serif Display", serif; font-size: 2.5rem; color: #18181b; line-height: 1.1; margin-bottom: 1.25rem; }
+    .confirm-msg { font-size: 0.95rem; color: #3f3f46; line-height: 1.5; }
+    .confirm-msg strong { color: #18181b; }
+    .powered { text-align: center; font-size: 0.72rem; color: #a1a1aa; padding: 1.5rem 0 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-name">{{ business.name }}</div>
+    <div class="header-sub">Order registered</div>
+  </div>
+
+  <div class="body">
+    <div class="confirm-card">
+      <div class="order-label">Order</div>
+      <div class="order-number">#{{ entry.order_number }}</div>
+
+      {% if entry.phone %}
+        <p class="confirm-msg">Got it. We'll text you when order <strong>#{{ entry.order_number }}</strong> is ready.</p>
+      {% else %}
+        <p class="confirm-msg">We'll call your name when your order is ready.</p>
+      {% endif %}
+    </div>
+
+    <p class="powered">Queue Light</p>
+  </div>
+</body>
+</html>

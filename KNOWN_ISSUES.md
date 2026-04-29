@@ -33,6 +33,14 @@ STATUS: OPEN — intentional, field is in place for when the time comes.
 
 ---
 
+**Pickup entries have no expiry / auto-archival** — PickupEntry rows with status=waiting or status=ready accumulate indefinitely. Staff must mark each as Picked Up manually or entries stay on the dashboard forever. No background job exists to age out stale entries.
+STATUS: OPEN — deferred. Low impact in early deployments. Consider a daily management command to auto-abandon old entries.
+
+**Pickup polling is independent of queue polling** — when both features are enabled, the dashboard makes two separate fetch() calls every 5 seconds (one for queue, one for pickup). This is intentional for simplicity but doubles polling load.
+STATUS: OPEN — acceptable. Could be merged into one combined endpoint later.
+
+---
+
 ## Resolved Issues
 
 _(none yet)_

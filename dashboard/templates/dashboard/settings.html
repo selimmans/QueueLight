@@ -207,6 +207,47 @@
     <div class="error-msg">{{ error }}</div>
     {% endif %}
 
+    <!-- Features -->
+    <div class="section">
+      <h2>Features</h2>
+
+      <div class="field" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+        <div>
+          <label style="margin-bottom:0;font-size:0.875rem;text-transform:none;letter-spacing:0;color:#111;font-weight:600;">Virtual queue</label>
+          <div class="hint" style="margin-top:0.2rem;">Let customers join a virtual queue and get called by name.</div>
+        </div>
+        <form method="post" style="margin:0">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="toggle_queue">
+          {% if business.queue_enabled %}
+            <input type="hidden" name="queue_enabled" value="0">
+            <button class="mode-btn active" type="submit" style="min-width:60px;padding:0.4rem 0.75rem;">On</button>
+          {% else %}
+            <input type="hidden" name="queue_enabled" value="1">
+            <button class="mode-btn" type="submit" style="min-width:60px;padding:0.4rem 0.75rem;">Off</button>
+          {% endif %}
+        </form>
+      </div>
+
+      <div class="field" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+        <div>
+          <label style="margin-bottom:0;font-size:0.875rem;text-transform:none;letter-spacing:0;color:#111;font-weight:600;">Order pickup notifications</label>
+          <div class="hint" style="margin-top:0.2rem;">Let customers register an order number and get an SMS when it's ready.</div>
+        </div>
+        <form method="post" style="margin:0">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="toggle_pickup">
+          {% if business.pickup_enabled %}
+            <input type="hidden" name="pickup_enabled" value="0">
+            <button class="mode-btn active" type="submit" style="min-width:60px;padding:0.4rem 0.75rem;">On</button>
+          {% else %}
+            <input type="hidden" name="pickup_enabled" value="1">
+            <button class="mode-btn" type="submit" style="min-width:60px;padding:0.4rem 0.75rem;">Off</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
     <!-- General settings -->
     <form method="post">
       {% csrf_token %}
@@ -243,6 +284,15 @@
           <div class="hint">Placeholders: {business_name}, {customer_name}</div>
           <textarea id="sms_template" name="sms_template">{{ business.sms_template }}</textarea>
         </div>
+
+        {% if business.pickup_enabled %}
+        <div class="field">
+          <label for="pickup_notification_message">Pickup ready SMS</label>
+          <div class="hint">Sent when you mark an order ready. Placeholders: {business_name}, {order_number}, {customer_name}</div>
+          <textarea id="pickup_notification_message" name="pickup_notification_message"
+            placeholder="{{ business.PICKUP_NOTIFICATION_DEFAULT }}">{{ business.pickup_notification_message }}</textarea>
+        </div>
+        {% endif %}
 
         <button class="save-btn" type="submit">Save</button>
       </div>

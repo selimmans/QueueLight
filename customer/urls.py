@@ -10,4 +10,6 @@ urlpatterns = [
     path("<slug:slug>/status/<int:entry_id>/", views.CustomerStatusView.as_view(), name="status"),
     path("<slug:slug>/response/<int:entry_id>/", views.CustomerResponseView.as_view(), name="response"),
     path("<slug:slug>/leave/<int:entry_id>/", views.LeaveQueueView.as_view(), name="leave"),
+    path("<slug:slug>/pickup/", views.PickupJoinView.as_view(), name="pickup_join"),
+    path("<slug:slug>/pickup/confirmation/<int:entry_id>/", views.PickupConfirmView.as_view(), name="pickup_confirmation"),
 ]
