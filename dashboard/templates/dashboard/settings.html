@@ -256,7 +256,7 @@
   {% if is_admin %}
   <div class="admin-bar">
     <span class="admin-badge">Admin</span>
-    <span>Viewing as superuser — SMS templates visible</span>
+    <span>Viewing as superuser — feature toggles and intake questions visible</span>
   </div>
   {% endif %}
 
@@ -271,7 +271,8 @@
     <div class="error-msg">{{ error }}</div>
     {% endif %}
 
-    <!-- ── Features ──────────────────────────────────── -->
+    <!-- ── Features (admin only) ─────────────────────── -->
+    {% if is_admin %}
     <div class="section">
       <h2 style="margin-bottom:1rem">Features</h2>
 
@@ -311,6 +312,7 @@
         </form>
       </div>
     </div>
+    {% endif %}{# end is_admin features #}
 
     <!-- ── Queue settings (only when queue enabled) ──── -->
     {% if business.queue_enabled %}
@@ -344,19 +346,18 @@
         </div>
         {% endif %}
 
-        {% if is_admin %}
         <div class="field">
           <label for="sms_template">SMS message when called</label>
           <div class="hint">Placeholders: {business_name}, {customer_name}</div>
           <textarea id="sms_template" name="sms_template">{{ business.sms_template }}</textarea>
         </div>
-        {% endif %}
 
         <button class="save-btn" type="submit">Save</button>
       </div>
     </form>
 
-    <!-- ── Intake questions (collapsible) ────────────── -->
+    <!-- ── Intake questions (admin only, collapsible) ── -->
+    {% if is_admin %}
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_settings">
@@ -386,10 +387,11 @@
         </div>
       </div>
     </form>
+    {% endif %}{# end is_admin intake #}
     {% endif %}{# end queue_enabled #}
 
-    <!-- ── Pickup settings (admin only) ── -->
-    {% if business.pickup_enabled and is_admin %}
+    <!-- ── Pickup settings (SMS, visible to all staff) ── -->
+    {% if business.pickup_enabled %}
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_pickup_sms">
@@ -409,8 +411,8 @@
     </form>
     {% endif %}
 
-    <!-- ── Pickup intake questions (collapsible, default hidden) ── -->
-    {% if business.pickup_enabled %}
+    <!-- ── Pickup intake questions (admin only, collapsible, default hidden) ── -->
+    {% if business.pickup_enabled and is_admin %}
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_pickup_intake">
