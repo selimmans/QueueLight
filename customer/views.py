@@ -275,7 +275,12 @@ class PickupJoinView(View):
         business = self._get_business(slug)
         if not business.is_active or not business.pickup_enabled:
             raise Http404
-        return render(request, self.template_name, {"business": business, "errors": {}})
+        calling_code = phonenumbers.country_code_for_region(business.country) or 1
+        return render(request, self.template_name, {
+            "business": business,
+            "errors": {},
+            "calling_code": calling_code,
+        })
 
     def post(self, request, slug):
         business = self._get_business(slug)
@@ -316,11 +321,18 @@ class PickupJoinView(View):
                 "calling_code": calling_code,
             })
 
+        pickup_intake_fields = business.pickup_intake_fields or []
+        intake_answers = {
+            q: request.POST.get(f"pickup_intake_{i}", "").strip()
+            for i, q in enumerate(pickup_intake_fields)
+        }
+
         entry = PickupService.register(
             business,
             order_number=order_number,
             customer_name=customer_name,
             phone=phone,
+            intake_answers=intake_answers,
         )
         return redirect("customer:pickup_confirmation", slug=slug, entry_id=entry.pk)
 

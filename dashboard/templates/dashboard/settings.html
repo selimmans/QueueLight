@@ -239,10 +239,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 2rem;
       margin-bottom: 0.75rem;
     }
 
     .feature-row:last-child { margin-bottom: 0; }
+    .feature-row > div { flex: 1; }
   </style>
 </head>
 <body>
@@ -386,11 +388,11 @@
     </form>
     {% endif %}{# end queue_enabled #}
 
-    <!-- ── Pickup settings (only when pickup enabled + admin) ── -->
+    <!-- ── Pickup settings (admin only) ── -->
     {% if business.pickup_enabled and is_admin %}
     <form method="post">
       {% csrf_token %}
-      <input type="hidden" name="action" value="save_pickup_settings">
+      <input type="hidden" name="action" value="save_pickup_sms">
 
       <div class="section">
         <h2 style="margin-bottom:1rem">Pickup settings</h2>
@@ -403,6 +405,39 @@
         </div>
 
         <button class="save-btn" type="submit">Save</button>
+      </div>
+    </form>
+    {% endif %}
+
+    <!-- ── Pickup intake questions (collapsible, default hidden) ── -->
+    {% if business.pickup_enabled %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_pickup_intake">
+
+      <div class="section">
+        <div class="section-header">
+          <h2>Pickup intake questions</h2>
+          <button type="button" class="collapse-btn" onclick="togglePickupIntake(this)">Show</button>
+        </div>
+        <div id="pickupIntakeBody" class="collapsible-body collapsed">
+          <p style="font-size:0.875rem;color:#555;margin-bottom:1rem;">
+            Ask customers a question when they register an order. Answers are shown on the staff dashboard.
+          </p>
+          <div id="pickup_intake_list">
+            {% for question in business.pickup_intake_fields %}
+            <div class="intake-row" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
+              <input type="text" name="pickup_intake_questions" value="{{ question }}" placeholder="e.g. Any special instructions?" style="margin-bottom:0;flex:1;">
+              <button type="button" class="action-remove" onclick="this.parentNode.remove()">Remove</button>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" onclick="addPickupIntakeQuestion()"
+                  style="margin-top:0.5rem;padding:0.4rem 0.9rem;border:1.5px dashed #d1d5db;border-radius:8px;background:#fff;font-size:0.875rem;color:#6b7280;cursor:pointer;">
+            + Add question
+          </button>
+          <button class="save-btn" type="submit" style="margin-top:1rem;">Save questions</button>
+        </div>
       </div>
     </form>
     {% endif %}
@@ -524,6 +559,22 @@
       const body = document.getElementById("intakeBody");
       const collapsed = body.classList.toggle("collapsed");
       btn.textContent = collapsed ? "Show" : "Hide";
+    }
+
+    function togglePickupIntake(btn) {
+      const body = document.getElementById("pickupIntakeBody");
+      const collapsed = body.classList.toggle("collapsed");
+      btn.textContent = collapsed ? "Show" : "Hide";
+    }
+
+    function addPickupIntakeQuestion() {
+      const row = document.createElement("div");
+      row.className = "intake-row";
+      row.style.cssText = "display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;";
+      row.innerHTML = '<input type="text" name="pickup_intake_questions" placeholder="e.g. Any special instructions?" style="margin-bottom:0;flex:1;">' +
+        '<button type="button" class="action-remove" onclick="this.parentNode.remove()">Remove</button>';
+      document.getElementById("pickup_intake_list").appendChild(row);
+      row.querySelector("input").focus();
     }
 
     function confirmClosingSoon() {

@@ -570,6 +570,17 @@
         : `<div class="badge badge-waiting">Waiting</div>`;
       const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
       const mins = e.minutes_waiting > 0 ? ` · ${e.minutes_waiting}m ago` : "";
+      const answers = e.intake_answers || {};
+      const answerEntries = Object.entries(answers).filter(([,v]) => v);
+      const hasAnswers = answerEntries.length > 0;
+      const intakeHtml = hasAnswers
+        ? `<div class="intake-details" id="pickup-intake-${e.id}">${
+            answerEntries.map(([q,a]) => `<div class="intake-item"><strong>${q}:</strong> ${a}</div>`).join("")
+          }</div>`
+        : "";
+      const expandAttr = hasAnswers ? ` onclick="togglePickupExpand(${e.id})"` : "";
+      const expandClass = hasAnswers ? " expandable" : "";
+      const metaExtra = hasAnswers ? " · tap to expand" : "";
       let action = "";
       if (e.status === "waiting") {
         action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
@@ -584,12 +595,21 @@
       }
       return `<div class="entry">
         ${statusBadge}
-        <div class="entry-body">
+        <div class="entry-body${expandClass}"${expandAttr}>
           <div class="entry-name">#${e.order_number}${nameHtml}</div>
-          <div class="entry-meta">Registered${mins}</div>
+          <div class="entry-meta">Registered${mins}${metaExtra}</div>
+          ${intakeHtml}
         </div>
         <div class="entry-actions">${action}</div>
       </div>`;
+    }
+
+    const pickupExpandedIds = new Set();
+    function togglePickupExpand(id) {
+      if (pickupExpandedIds.has(id)) pickupExpandedIds.delete(id);
+      else pickupExpandedIds.add(id);
+      const det = document.getElementById("pickup-intake-" + id);
+      if (det) det.classList.toggle("open", pickupExpandedIds.has(id));
     }
     {% endif %}
 

@@ -72,6 +72,7 @@ class PickupEntry(models.Model):
     customer_name = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
+    intake_answers = models.JSONField(default=dict, blank=True)
     registered_at = models.DateTimeField(auto_now_add=True)
     ready_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

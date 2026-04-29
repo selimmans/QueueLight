@@ -11,13 +11,14 @@ logger = logging.getLogger(__name__)
 
 class PickupService:
     @staticmethod
-    def register(business: Business, order_number: str, customer_name: str = "", phone: str = "") -> PickupEntry:
+    def register(business: Business, order_number: str, customer_name: str = "", phone: str = "", intake_answers: dict | None = None) -> PickupEntry:
         entry = PickupEntry.objects.create(
             business=business,
             order_number=order_number,
             customer_name=customer_name,
             phone=phone,
             status=PickupEntry.Status.WAITING,
+            intake_answers=intake_answers or {},
         )
         PickupEventLog.objects.create(
             business=business,

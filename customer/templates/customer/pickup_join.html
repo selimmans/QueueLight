@@ -76,6 +76,16 @@
           {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
         </div>
 
+        {% for question in business.pickup_intake_fields %}
+        <div class="field">
+          <label for="pickup_intake_{{ forloop.counter0 }}">{{ question }}</label>
+          <input type="text" id="pickup_intake_{{ forloop.counter0 }}"
+                 name="pickup_intake_{{ forloop.counter0 }}"
+                 value="{{ request.POST|default_if_none:'' }}"
+                 autocomplete="off">
+        </div>
+        {% endfor %}
+
         <button class="submit-btn" type="submit">Notify me when ready &rarr;</button>
       </form>
     </div>

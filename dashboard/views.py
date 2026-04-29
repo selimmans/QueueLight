@@ -265,10 +265,23 @@ class SettingsView(View):
                 "business_type", "intake_fields",
             ])
 
-        elif action == "save_pickup_settings":
+        elif action == "save_pickup_sms":
             pickup_msg = request.POST.get("pickup_notification_message", "").strip()
             business.pickup_notification_message = pickup_msg
             business.save(update_fields=["pickup_notification_message"])
+
+        elif action == "save_pickup_intake":
+            pickup_questions = [q.strip() for q in request.POST.getlist("pickup_intake_questions") if q.strip()]
+            business.pickup_intake_fields = pickup_questions
+            business.save(update_fields=["pickup_intake_fields"])
+
+        elif action == "save_pickup_settings":
+            # Legacy alias — saves both fields together
+            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
+            business.pickup_notification_message = pickup_msg
+            pickup_questions = [q.strip() for q in request.POST.getlist("pickup_intake_questions") if q.strip()]
+            business.pickup_intake_fields = pickup_questions
+            business.save(update_fields=["pickup_notification_message", "pickup_intake_fields"])
 
         elif action == "toggle_queue":
             enable = request.POST.get("queue_enabled") == "1"
@@ -557,6 +570,7 @@ class PickupStatusAPIView(View):
                 "status": e.status,
                 "registered_at": e.registered_at.isoformat(),
                 "minutes_waiting": minutes_waiting,
+                "intake_answers": e.intake_answers or {},
             }
 
         active_orders = [_entry_dict(e) for e in entries]
