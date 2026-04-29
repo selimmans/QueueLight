@@ -196,6 +196,13 @@
     <a href="{% url 'dashboard:dashboard' slug=business.slug %}">&larr; Back</a>
   </div>
 
+  {% if is_admin %}
+  <div style="background:#4f46e5;padding:0.5rem 1.25rem;display:flex;align-items:center;gap:0.5rem;">
+    <span style="display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:0.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:0.2rem 0.5rem;border-radius:4px;">Admin</span>
+    <span style="color:rgba(255,255,255,.7);font-size:0.8rem;">Viewing as superuser — SMS templates and feature toggles visible</span>
+  </div>
+  {% endif %}
+
   <div class="container">
     {% if business.is_closing %}
     <div class="closing-banner">
@@ -279,13 +286,15 @@
         </div>
         {% endif %}
 
+        {% if business.queue_enabled and is_admin %}
         <div class="field">
           <label for="sms_template">SMS message when called</label>
           <div class="hint">Placeholders: {business_name}, {customer_name}</div>
           <textarea id="sms_template" name="sms_template">{{ business.sms_template }}</textarea>
         </div>
+        {% endif %}
 
-        {% if business.pickup_enabled %}
+        {% if business.pickup_enabled and is_admin %}
         <div class="field">
           <label for="pickup_notification_message">Pickup ready SMS</label>
           <div class="hint">Sent when you mark an order ready. Placeholders: {business_name}, {order_number}, {customer_name}</div>

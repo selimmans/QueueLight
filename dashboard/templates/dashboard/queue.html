@@ -474,6 +474,14 @@
           <p class="empty">No active orders</p>
         {% endif %}
       </div>
+
+      <div class="qr-section">
+        <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
+        <div>
+          <p>Share this QR to let customers register</p>
+          <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
+        </div>
+      </div>
     </div>
   </div>
   {% endif %}

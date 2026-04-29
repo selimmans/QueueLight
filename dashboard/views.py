@@ -210,6 +210,7 @@ class SettingsView(View):
             "staff_phones": staff_phones,
             "error": error,
             "success": success,
+            "is_admin": _require_superuser(request),
         })
 
     def get(self, request, slug):
