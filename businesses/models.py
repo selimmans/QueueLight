@@ -21,6 +21,7 @@ class Business(models.Model):
     TYPE_CHOICES = [(TYPE_RETAIL, "Retail"), (TYPE_CLINIC, "Clinic")]
 
     SMS_TEMPLATE_DEFAULT = "You're being called! Please proceed to {business_name}."
+    PICKUP_NOTIFICATION_DEFAULT = "{business_name} — order #{order_number} is ready, come pick it up!"
 
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
@@ -45,6 +46,14 @@ class Business(models.Model):
     )
     menu_url = models.URLField(blank=True, default="")
     intake_fields = models.JSONField(default=list, blank=True)
+    queue_enabled = models.BooleanField(default=True)
+    pickup_enabled = models.BooleanField(default=False)
+    pickup_notification_message = models.CharField(
+        max_length=320,
+        blank=True,
+        default="",
+        help_text="Placeholders: {business_name}, {order_number}, {customer_name}. Leave blank to use default.",
+    )
     is_active = models.BooleanField(default=False)
     is_closing = models.BooleanField(default=False)
     avg_service_minutes = models.PositiveIntegerField(null=True, blank=True)

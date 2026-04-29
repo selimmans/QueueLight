@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Join Queue — {{ business.name }}</title>
+  <title>{% if mode == "pickup_only" %}Track Order{% else %}Join Queue{% endif %} — {{ business.name }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
@@ -86,6 +86,17 @@
       margin-bottom: 1rem;
     }
 
+    .inactive-notice {
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: var(--r);
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+      color: #71717a;
+      font-size: 0.95rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
     .global-error {
       background: #fef2f2;
       border: 1px solid #fecaca;
@@ -94,6 +105,35 @@
       color: #dc2626;
       font-size: 0.875rem;
       margin-bottom: 1rem;
+    }
+
+    .tab-toggle {
+      display: flex;
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: var(--r);
+      padding: 3px;
+      margin-bottom: 1rem;
+      gap: 3px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.6rem;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #71717a;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+
+    .tab-btn.active {
+      background: var(--brand);
+      color: #fff;
     }
 
     .form-card {
@@ -189,69 +229,150 @@
       color: #a1a1aa;
       padding: 1.5rem 0 0;
     }
+
+    .optional-hint {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      margin-top: 0.25rem;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="header-name">{{ business.name }}</div>
-    <div class="header-sub">Join the queue</div>
+    <div class="header-sub">
+      {% if mode == "pickup_only" %}Track your order{% elif mode == "both" %}Queue &amp; Pickup{% else %}Join the queue{% endif %}
+    </div>
   </div>
 
   <div class="body">
-    {% if closing_message %}
+
+    {% if mode == "inactive" %}
+      <div class="inactive-notice">
+        {{ business.name }} is not currently accepting customers.
+      </div>
+
+    {% elif closing_message %}
       <div class="closing-notice">{{ closing_message }}</div>
+
     {% else %}
 
-    {% if waiting_count %}
-    <div class="status-pill">
-      <span class="status-dot"></span>
-      <span><strong>{{ waiting_count }} {% if waiting_count == 1 %}person{% else %}people{% endif %}</strong> ahead{% if wait_min %}&ensp;&middot;&ensp;~{{ wait_min }}–{{ wait_max }} min wait{% endif %}</span>
-    </div>
-    {% endif %}
+      {% if global_error %}
+        <div class="global-error">{{ global_error }}</div>
+      {% endif %}
 
-    {% if global_error %}
-      <div class="global-error">{{ global_error }}</div>
-    {% endif %}
-
-    <div class="form-card">
-      <form method="post">
-        {% csrf_token %}
-
-        <div class="field">
-          <label for="id_name">Your name</label>
-          <input type="text" id="id_name" name="name"
-                 value="{{ name|default:'' }}"
-                 autocomplete="given-name" required
-                 class="{% if errors.name %}error{% endif %}">
-          {% if errors.name %}<div class="field-error">{{ errors.name }}</div>{% endif %}
+      {% if mode == "both" %}
+        <div class="tab-toggle">
+          <button class="tab-btn {% if active_tab != 'pickup' %}active{% endif %}"
+                  id="tab-queue" type="button" onclick="showTab('queue')">Join the queue</button>
+          <button class="tab-btn {% if active_tab == 'pickup' %}active{% endif %}"
+                  id="tab-pickup" type="button" onclick="showTab('pickup')">Track my order</button>
         </div>
+      {% endif %}
 
-        <div class="field">
-          <label for="id_phone">Phone number</label>
-          <div class="phone-wrap {% if errors.phone %}error{% endif %}">
-            <span class="phone-prefix">+{{ calling_code }}</span>
-            <input type="tel" id="id_phone" name="phone"
-                   value="{{ phone|default:'' }}"
-                   autocomplete="tel" required>
-          </div>
-          {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+      <!-- Queue form -->
+      {% if mode == "queue_only" or mode == "both" %}
+      <div id="panel-queue" {% if mode == "both" and active_tab == "pickup" %}style="display:none"{% endif %}>
+        {% if waiting_count %}
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span><strong>{{ waiting_count }} {% if waiting_count == 1 %}person{% else %}people{% endif %}</strong> ahead{% if wait_min %}&ensp;&middot;&ensp;~{{ wait_min }}–{{ wait_max }} min wait{% endif %}</span>
         </div>
+        {% endif %}
 
-        {% for question in business.intake_fields %}
-        <div class="field">
-          <label for="intake_{{ forloop.counter0 }}">{{ question }}</label>
-          <input type="text" id="intake_{{ forloop.counter0 }}"
-                 name="intake_{{ forloop.counter0 }}" autocomplete="off">
+        <div class="form-card">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="queue">
+
+            <div class="field">
+              <label for="id_name">Your name</label>
+              <input type="text" id="id_name" name="name"
+                     value="{{ name|default:'' }}"
+                     autocomplete="given-name" required
+                     class="{% if errors.name %}error{% endif %}">
+              {% if errors.name %}<div class="field-error">{{ errors.name }}</div>{% endif %}
+            </div>
+
+            <div class="field">
+              <label for="id_phone">Phone number</label>
+              <div class="phone-wrap {% if errors.phone %}error{% endif %}">
+                <span class="phone-prefix">+{{ calling_code }}</span>
+                <input type="tel" id="id_phone" name="phone"
+                       value="{{ phone|default:'' }}"
+                       autocomplete="tel" required>
+              </div>
+              {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+            </div>
+
+            {% for question in business.intake_fields %}
+            <div class="field">
+              <label for="intake_{{ forloop.counter0 }}">{{ question }}</label>
+              <input type="text" id="intake_{{ forloop.counter0 }}"
+                     name="intake_{{ forloop.counter0 }}" autocomplete="off">
+            </div>
+            {% endfor %}
+
+            <button class="submit-btn" type="submit">Join the queue &rarr;</button>
+          </form>
         </div>
-        {% endfor %}
+      </div>
+      {% endif %}
 
-        <button class="submit-btn" type="submit">Join the queue &rarr;</button>
-      </form>
-    </div>
+      <!-- Pickup form -->
+      {% if mode == "pickup_only" or mode == "both" %}
+      <div id="panel-pickup" {% if mode == "both" and active_tab != "pickup" %}style="display:none"{% endif %}>
+        <div class="form-card">
+          <form method="post" action="{% url 'customer:pickup_join' slug=business.slug %}">
+            {% csrf_token %}
+
+            <div class="field">
+              <label for="id_order_number">Order number</label>
+              <input type="text" id="id_order_number" name="order_number"
+                     value="{{ order_number|default:'' }}"
+                     autocomplete="off" required
+                     class="{% if errors.order_number %}error{% endif %}">
+              {% if errors.order_number %}<div class="field-error">{{ errors.order_number }}</div>{% endif %}
+            </div>
+
+            <div class="field">
+              <label for="id_pickup_name">Your name <span class="optional-hint">(optional)</span></label>
+              <input type="text" id="id_pickup_name" name="customer_name"
+                     value="{{ customer_name|default:'' }}"
+                     autocomplete="given-name">
+            </div>
+
+            <div class="field">
+              <label for="id_pickup_phone">Get a text when ready <span class="optional-hint">(optional)</span></label>
+              <div class="phone-wrap {% if errors.phone %}error{% endif %}">
+                <span class="phone-prefix">+{{ calling_code }}</span>
+                <input type="tel" id="id_pickup_phone" name="phone"
+                       value="{{ phone|default:'' }}"
+                       autocomplete="tel">
+              </div>
+              {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+            </div>
+
+            <button class="submit-btn" type="submit">Notify me when ready &rarr;</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
 
     {% endif %}
 
     <p class="powered">Queue Light</p>
   </div>
+
+  {% if mode == "both" %}
+  <script>
+    function showTab(tab) {
+      document.getElementById("panel-queue").style.display = tab === "queue" ? "" : "none";
+      document.getElementById("panel-pickup").style.display = tab === "pickup" ? "" : "none";
+      document.getElementById("tab-queue").classList.toggle("active", tab === "queue");
+      document.getElementById("tab-pickup").classList.toggle("active", tab === "pickup");
+    }
+  </script>
+  {% endif %}
 </body>
 </html>

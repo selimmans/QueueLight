@@ -236,6 +236,29 @@
       font-size: 0.9rem;
     }
 
+    /* Pickup section */
+    .section-divider {
+      border: none;
+      border-top: 2px solid #e5e7eb;
+      margin: 1.5rem 0 1rem;
+    }
+
+    .pickup-entry {
+      display: flex;
+      align-items: center;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid #f3f4f6;
+      gap: 0.85rem;
+    }
+
+    .pickup-entry:last-child { border-bottom: none; }
+
+    .badge-waiting { background: #f3f4f6; color: #374151; }
+    .badge-ready   { background: #d1fae5; color: #065f46; }
+
+    .btn-ready    { border-color: #6ee7b7; color: #059669; }
+    .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
+
     /* QR section */
     .qr-section {
       background: #fff;
@@ -356,6 +379,40 @@
         <p class="empty">Queue is empty</p>
       {% endif %}
     </div>
+
+    {% if business.pickup_enabled %}
+    <hr class="section-divider">
+
+    <div class="section-label" style="margin-top:0"><span class="dot" style="background:#4f46e5;animation:none"></span>Pickup Orders — <span id="pickup-count">{{ pickup_entries|length }}</span></div>
+    <div class="queue-card" id="pickup-list">
+      {% if pickup_entries %}
+        {% for entry in pickup_entries %}
+        <div class="pickup-entry">
+          <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
+            {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
+          </div>
+          <div class="entry-body">
+            <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
+            <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
+          </div>
+          <div class="entry-actions">
+            {% if entry.status == 'waiting' %}
+            <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+              {% csrf_token %}<button class="action-btn btn-ready" type="submit">Ready</button>
+            </form>
+            {% elif entry.status == 'ready' %}
+            <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+              {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty" id="pickup-empty">No active orders</p>
+      {% endif %}
+    </div>
+    {% endif %}
 
     <div class="qr-section">
       <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
@@ -538,6 +595,55 @@
     {% endif %}
 
     setInterval(poll, 5000);
+
+    {% if business.pickup_enabled %}
+    const pickupStatusUrl = "/api/pickup/{{ business.slug }}/status/";
+
+    function renderPickupEntry(e) {
+      const statusBadge = e.status === "ready"
+        ? `<div class="badge badge-ready">Ready</div>`
+        : `<div class="badge badge-waiting">Waiting</div>`;
+      const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
+      let action = "";
+      if (e.status === "waiting") {
+        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+          <button class="action-btn btn-ready" type="submit">Ready</button>
+        </form>`;
+      } else if (e.status === "ready") {
+        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/picked-up/" style="display:inline">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+          <button class="action-btn btn-pickedup" type="submit">Picked up</button>
+        </form>`;
+      }
+      return `<div class="pickup-entry">
+        ${statusBadge}
+        <div class="entry-body">
+          <div class="entry-name">#${e.order_number}${nameHtml}</div>
+          <div class="entry-meta">Registered</div>
+        </div>
+        <div class="entry-actions">${action}</div>
+      </div>`;
+    }
+
+    function pollPickup() {
+      fetch(pickupStatusUrl)
+        .then(r => r.json())
+        .then(data => {
+          const list = document.getElementById("pickup-list");
+          const count = document.getElementById("pickup-count");
+          if (!list) return;
+          const entries = data.pickup_entries || [];
+          count.textContent = entries.length;
+          list.innerHTML = entries.length
+            ? entries.map(renderPickupEntry).join("")
+            : `<p class="empty">No active orders</p>`;
+        })
+        .catch(() => {});
+    }
+
+    setInterval(pollPickup, 5000);
+    {% endif %}
   </script>
 </body>
 </html>

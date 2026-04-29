@@ -57,6 +57,10 @@ queuelight/
 | country            | CharField             | ISO 3166-1 alpha-2. Used for phone validation + prefix.    |
 | created_at         | DateTimeField         | auto_now_add                                               |
 
+| queue_enabled      | BooleanField          | Default True. False hides queue form on join page.         |
+| pickup_enabled     | BooleanField          | Default False. True shows pickup form on join page.        |
+| pickup_notification_message | CharField  | SMS sent when order marked ready. Blank → default template.|
+
 ### businesses.StaffPhone
 
 | Field    | Type         | Notes                                |
@@ -99,6 +103,33 @@ Immutable. Never update rows. Only insert.
 | after_values | JSONField     | State after the event.                               |
 | timestamp    | DateTimeField | auto_now_add                                         |
 | meta         | JSONField     | Extra context: mode, batch_size, batch_number        |
+
+### queues.PickupEntry
+
+| Field          | Type                  | Notes                                              |
+|----------------|-----------------------|----------------------------------------------------|
+| id             | BigAutoField          | PK                                                 |
+| business       | FK → Business         | CASCADE                                            |
+| order_number   | CharField             | Required. Provided by customer.                    |
+| customer_name  | CharField             | Optional.                                          |
+| phone          | CharField             | Optional. E.164 format. SMS sent here on ready.    |
+| status         | CharField             | waiting / ready / picked_up                        |
+| registered_at  | DateTimeField         | auto_now_add                                       |
+| ready_at       | DateTimeField         | Set when staff marks Ready.                        |
+| completed_at   | DateTimeField         | Set when staff marks Picked Up.                    |
+
+### queues.PickupEventLog
+
+Immutable. Never update rows. Only insert.
+
+| Field      | Type          | Notes                                                   |
+|------------|---------------|---------------------------------------------------------|
+| id         | BigAutoField  | PK                                                      |
+| business   | FK → Business | CASCADE                                                 |
+| entry      | FK → PickupEntry | SET_NULL, nullable                                   |
+| event_type | CharField     | registered / ready / picked_up / sms_sent / sms_failed  |
+| timestamp  | DateTimeField | auto_now_add                                            |
+| meta       | JSONField     | Extra context: order_number, to, error                  |
 
 ---
 
@@ -151,6 +182,12 @@ Terminal states: COMPLETED, ABANDONED, SKIPPED
 | GET /platform/                           | dashboard.views.PlatformDashboardView | Superuser   | Manage businesses                            |
 | GET/POST /platform/login/                | dashboard.views.PlatformLoginView   | None          | Superuser login                              |
 | GET /platform/logout/                    | dashboard.views.PlatformLogoutView  | Superuser     | Superuser logout                             |
+| GET /q/<slug>/pickup/                    | customer.views.PickupJoinView       | None          | Pickup order registration form               |
+| POST /q/<slug>/pickup/                   | customer.views.PickupJoinView       | None          | Process pickup registration                  |
+| GET /q/<slug>/pickup/confirmation/<id>/  | customer.views.PickupConfirmView    | None          | Pickup confirmation page                     |
+| POST /staff/<slug>/pickup/<id>/ready/    | dashboard.views.PickupReadyView     | Session/Super | Mark order ready, fire SMS if phone present  |
+| POST /staff/<slug>/pickup/<id>/picked-up/| dashboard.views.PickupPickedUpView  | Session/Super | Mark order picked up                         |
+| GET /api/pickup/<slug>/status/           | dashboard.views.PickupStatusAPIView | Session/Super | Pickup polling endpoint (waiting + ready)    |
 | GET /health/                             | core.views.HealthCheckView          | None          | DB health probe                              |
 | GET /admin/                              | Django admin                        | is_staff      | Full admin panel                             |
 
@@ -188,6 +225,27 @@ Add clinic-specific blocks behind `{% if business.business_type == "clinic" %}` 
 3. On success: logs SMS_SENT to QueueEventLog
 4. On failure: logs SMS_FAILED, swallows exception, returns False
 5. call_next() completes regardless of SMS outcome
+
+---
+
+## Pickup Flow
+
+1. Customer visits `/q/<slug>/` — if `pickup_enabled=True`, sees "Track my order" form (tab or standalone)
+2. Customer submits order number (+ optional name and phone) → `PickupService.register()` creates `PickupEntry`
+3. Customer sees confirmation page — "We'll text you" if phone given, else "We'll call your name"
+4. Staff dashboard shows pickup orders section — polling `/api/pickup/<slug>/status/` every 5 seconds
+5. Staff taps **Ready** → `PickupService.mark_ready()` sets status=ready, sets ready_at, sends SMS if phone present
+6. SMS outcome (sent/failed) logged to `PickupEventLog`
+7. Staff taps **Picked up** → `PickupService.mark_picked_up()` sets status=picked_up, entry removed from active list
+
+### Customer Join Page States
+
+| queue_enabled | pickup_enabled | Result                                              |
+|---------------|----------------|-----------------------------------------------------|
+| True          | False          | Queue join form only (unchanged behaviour)          |
+| False         | True           | Pickup form only                                    |
+| True          | True           | Tab toggle — "Join the queue" / "Track my order"    |
+| False         | False          | "Not currently accepting customers" message         |
 
 ---
 

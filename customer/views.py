@@ -6,7 +6,8 @@ from django.views import View
 import phonenumbers
 
 from businesses.models import Business
-from queues.models import QueueEntry, QueueEventLog
+from queues.models import QueueEntry, QueueEventLog, PickupEntry
+from queues.pickup_service import PickupService
 from queues.services import QueueService, RuleViolationError
 
 _JOIN_LIMIT = 20
@@ -42,13 +43,26 @@ class JoinView(View):
         business = self._get_business(slug)
         if not business.is_active:
             raise Http404
+
+        # State 4: nothing enabled
+        if not business.queue_enabled and not business.pickup_enabled:
+            return render(request, self.template_name, {"business": business, "mode": "inactive"})
+
         calling_code = phonenumbers.country_code_for_region(business.country) or 1
         waiting_count = QueueEntry.objects.filter(
             business=business, status=QueueEntry.Status.WAITING
         ).count()
         wait_min, wait_max = _wait_range(business, waiting_count)
-        ctx = {"business": business, "errors": {}, "calling_code": calling_code,
-               "waiting_count": waiting_count, "wait_min": wait_min, "wait_max": wait_max}
+        ctx = {
+            "business": business,
+            "errors": {},
+            "calling_code": calling_code,
+            "waiting_count": waiting_count,
+            "wait_min": wait_min,
+            "wait_max": wait_max,
+            "mode": _join_mode(business),
+            "active_tab": request.GET.get("tab", "queue"),
+        }
         if business.is_closing:
             ctx["closing_message"] = f"{business.name} is closing soon and is no longer accepting new customers."
         return render(request, self.template_name, ctx)
@@ -56,6 +70,8 @@ class JoinView(View):
     def post(self, request, slug):
         business = self._get_business(slug)
         if not business.is_active:
+            raise Http404
+        if not business.queue_enabled:
             raise Http404
         if business.is_closing:
             raise Http404
@@ -66,6 +82,8 @@ class JoinView(View):
                 "business": business,
                 "errors": {},
                 "global_error": "Too many requests. Please try again later.",
+                "mode": _join_mode(business),
+                "active_tab": "queue",
             }, status=429)
 
         name = request.POST.get("name", "").strip()
@@ -86,6 +104,8 @@ class JoinView(View):
                 "name": name,
                 "phone": raw_phone,
                 "calling_code": calling_code,
+                "mode": _join_mode(business),
+                "active_tab": "queue",
             })
 
         intake_fields = business.intake_fields or []
@@ -193,6 +213,17 @@ class LeaveQueueView(View):
         return redirect("customer:join", slug=slug)
 
 
+def _join_mode(business: Business) -> str:
+    """Return a string describing which forms to show on the join page."""
+    if business.queue_enabled and business.pickup_enabled:
+        return "both"
+    if business.queue_enabled:
+        return "queue_only"
+    if business.pickup_enabled:
+        return "pickup_only"
+    return "inactive"
+
+
 _VALID_RESPONSES = {"late_arrival", "left_other", "left_home"}
 
 
@@ -230,3 +261,74 @@ class CustomerResponseView(View):
             )
 
         return JsonResponse({"ok": True})
+
+
+class PickupJoinView(View):
+    """Customer submits an order number to get a pickup notification."""
+
+    template_name = "customer/pickup_join.html"
+
+    def _get_business(self, slug):
+        return get_object_or_404(Business, slug=slug)
+
+    def get(self, request, slug):
+        business = self._get_business(slug)
+        if not business.is_active or not business.pickup_enabled:
+            raise Http404
+        return render(request, self.template_name, {"business": business, "errors": {}})
+
+    def post(self, request, slug):
+        business = self._get_business(slug)
+        if not business.is_active or not business.pickup_enabled:
+            raise Http404
+
+        ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")).split(",")[0].strip()
+        if _is_rate_limited(ip):
+            return render(request, self.template_name, {
+                "business": business,
+                "errors": {},
+                "global_error": "Too many requests. Please try again later.",
+            }, status=429)
+
+        order_number = request.POST.get("order_number", "").strip()
+        customer_name = request.POST.get("customer_name", "").strip()
+        raw_phone = request.POST.get("phone", "").strip()
+        errors = {}
+
+        if not order_number:
+            errors["order_number"] = "Please enter your order number"
+
+        phone = ""
+        if raw_phone:
+            phone, phone_error = _parse_phone(raw_phone, business.country)
+            if phone_error:
+                errors["phone"] = phone_error
+
+        calling_code = phonenumbers.country_code_for_region(business.country) or 1
+
+        if errors:
+            return render(request, self.template_name, {
+                "business": business,
+                "errors": errors,
+                "order_number": order_number,
+                "customer_name": customer_name,
+                "phone": raw_phone,
+                "calling_code": calling_code,
+            })
+
+        entry = PickupService.register(
+            business,
+            order_number=order_number,
+            customer_name=customer_name,
+            phone=phone,
+        )
+        return redirect("customer:pickup_confirmation", slug=slug, entry_id=entry.pk)
+
+
+class PickupConfirmView(View):
+    template_name = "customer/pickup_confirmation.html"
+
+    def get(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
+        return render(request, self.template_name, {"business": business, "entry": entry})

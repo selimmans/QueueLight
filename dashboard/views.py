@@ -10,7 +10,8 @@ from django.utils.text import slugify
 from django.views import View
 
 from businesses.models import Business, StaffPhone
-from queues.models import QueueEntry
+from queues.models import QueueEntry, PickupEntry
+from queues.pickup_service import PickupService
 from queues.services import QueueService, RuleViolationError
 
 SESSION_BUSINESS = "business_id"
@@ -127,11 +128,21 @@ class DashboardView(View):
 
         called_last = called_entries.order_by("-called_at").first()
 
+        pickup_entries = []
+        if business.pickup_enabled:
+            pickup_entries = list(
+                PickupEntry.objects.filter(
+                    business=business,
+                    status__in=[PickupEntry.Status.WAITING, PickupEntry.Status.READY],
+                ).order_by("registered_at")
+            )
+
         return render(request, self.template_name, {
             "business": business,
             "waiting": waiting,
             "called_entries": called_entries,
             "called_last": called_last,
+            "pickup_entries": pickup_entries,
         })
 
 
@@ -237,10 +248,28 @@ class SettingsView(View):
             intake_questions = [q.strip() for q in request.POST.getlist("intake_questions") if q.strip()]
             business.intake_fields = intake_questions
 
+            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
+            business.pickup_notification_message = pickup_msg
+
             business.save(update_fields=[
                 "batch_size", "avg_service_minutes", "sms_template", "menu_url",
-                "business_type", "intake_fields",
+                "business_type", "intake_fields", "pickup_notification_message",
             ])
+
+        elif action == "toggle_queue":
+            enable = request.POST.get("queue_enabled") == "1"
+            if not enable:
+                has_waiting = QueueEntry.objects.filter(
+                    business=business, status=QueueEntry.Status.WAITING
+                ).exists()
+                if has_waiting:
+                    return self._render(request, business, error="Cannot disable the queue while customers are waiting.")
+            business.queue_enabled = enable
+            business.save(update_fields=["queue_enabled"])
+
+        elif action == "toggle_pickup":
+            business.pickup_enabled = request.POST.get("pickup_enabled") == "1"
+            business.save(update_fields=["pickup_enabled"])
 
         elif action == "add_staff":
             import phonenumbers as _pn
@@ -406,6 +435,9 @@ class PlatformDashboardView(View):
                     "error": f"Slug '{slug}' is already taken.",
                 })
 
+            queue_enabled = request.POST.get("queue_enabled", "1") == "1"
+            pickup_enabled = request.POST.get("pickup_enabled", "0") == "1"
+
             business = Business.objects.create(
                 name=name,
                 slug=slug,
@@ -415,6 +447,8 @@ class PlatformDashboardView(View):
                 colour_accent=colour_accent,
                 colour_border=colour_border,
                 country=country,
+                queue_enabled=queue_enabled,
+                pickup_enabled=pickup_enabled,
                 is_active=True,
             )
 
@@ -443,6 +477,54 @@ class PlatformDashboardView(View):
             Business.objects.filter(pk=biz_id).delete()
 
         return redirect("platform:platform")
+
+
+class PickupReadyView(View):
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
+        if entry.status == PickupEntry.Status.WAITING:
+            PickupService.mark_ready(entry)
+        return redirect("dashboard:dashboard", slug=slug)
+
+
+class PickupPickedUpView(View):
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
+        if entry.status == PickupEntry.Status.READY:
+            PickupService.mark_picked_up(entry)
+        return redirect("dashboard:dashboard", slug=slug)
+
+
+class PickupStatusAPIView(View):
+    def get(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return JsonResponse({"error": "Unauthorized"}, status=401)
+
+        entries = list(
+            PickupEntry.objects.filter(
+                business=business,
+                status__in=[PickupEntry.Status.WAITING, PickupEntry.Status.READY],
+            ).order_by("registered_at")
+        )
+
+        def _entry_dict(e):
+            return {
+                "id": e.pk,
+                "order_number": e.order_number,
+                "customer_name": e.customer_name,
+                "status": e.status,
+                "registered_at": e.registered_at.isoformat(),
+                "ready_at": e.ready_at.isoformat() if e.ready_at else None,
+            }
+
+        return JsonResponse({"pickup_entries": [_entry_dict(e) for e in entries]})
 
 
 class QueueStatusAPIView(View):

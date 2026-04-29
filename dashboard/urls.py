@@ -16,10 +16,13 @@ urlpatterns = [
     path("<slug:slug>/complete/<int:entry_id>/", views.CompleteEntryView.as_view(), name="complete_entry"),
     path("<slug:slug>/noshow/<int:entry_id>/", views.NoShowEntryView.as_view(), name="noshow_entry"),
     path("<slug:slug>/qr.png", views.QRCodeView.as_view(), name="qr_code"),
+    path("<slug:slug>/pickup/<int:entry_id>/ready/", views.PickupReadyView.as_view(), name="pickup_ready"),
+    path("<slug:slug>/pickup/<int:entry_id>/picked-up/", views.PickupPickedUpView.as_view(), name="pickup_picked_up"),
 ]
 
 api_urlpatterns = [
     path("queue/<slug:slug>/status/", views.QueueStatusAPIView.as_view(), name="queue_status"),
+    path("pickup/<slug:slug>/status/", views.PickupStatusAPIView.as_view(), name="pickup_status"),
 ]
 
 platform_urlpatterns = [

@@ -87,6 +87,20 @@ Update this file at the end of every session. Never commit this file alone.
 - [x] Confirmation "In queue" stat fixed — now shows real waiting count not batch_size
 - [x] waiting_total added to CustomerStatusView JSON response (live-updates via poll)
 
+## PHASE 18 — Pickup notifications
+- [x] Business.queue_enabled (default True) + Business.pickup_enabled (default False) fields + migration
+- [x] Business.pickup_notification_message field (blank → falls back to hardcoded default)
+- [x] PickupEntry model (id, business, order_number, customer_name, phone, status, registered_at, ready_at, completed_at)
+- [x] PickupEventLog model (business, entry FK, event_type, timestamp, meta)
+- [x] PickupService: register(), mark_ready(), mark_picked_up(); SMS via TwilioSMSBackend on mark_ready()
+- [x] Customer join page: 4 states (queue_only / pickup_only / both / inactive) with tab toggle for both
+- [x] Pickup join page (/q/<slug>/pickup/) + pickup confirmation page
+- [x] Staff dashboard: pickup orders section with Ready / Picked up buttons, 5s polling
+- [x] Settings page: Features section — queue toggle (blocked when queue non-empty), pickup toggle, pickup SMS message field
+- [x] Platform create form: queue_enabled / pickup_enabled dropdowns
+- [x] Django admin: Business fieldsets updated; PickupEntry + PickupEventLog registered
+- [x] 102 tests passing (31 new pickup tests)
+
 ---
 
 ## Pending — needs YOU
