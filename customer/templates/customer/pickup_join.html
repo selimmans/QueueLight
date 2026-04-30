@@ -92,5 +92,69 @@
 
     <p class="powered">Queue Light</p>
   </div>
+
+  <script>
+  (function() {
+    var LS_PHONE = 'ql_phone';
+    var LS_NAME  = 'ql_name';
+    var callingCode = String({{ calling_code }});
+    var maxLocal = 15 - callingCode.length;
+
+    function prefill(el, key) {
+      if (!el || el.value) return;
+      try { var v = localStorage.getItem(key); if (v) el.value = v; } catch(e) {}
+    }
+
+    function getDigits(val) { return val.replace(/\D/g, ''); }
+
+    function showPhoneError(input, msg) {
+      var wrap = input.closest('.phone-wrap');
+      if (wrap) wrap.classList.add('error');
+      var parent = wrap ? wrap.parentElement : input.parentElement;
+      var err = parent.querySelector('.field-error');
+      if (!err) { err = document.createElement('div'); err.className = 'field-error'; parent.appendChild(err); }
+      err.textContent = msg;
+    }
+
+    function clearPhoneError(input) {
+      var wrap = input.closest('.phone-wrap');
+      if (wrap) wrap.classList.remove('error');
+      var parent = wrap ? wrap.parentElement : input.parentElement;
+      var err = parent.querySelector('.field-error');
+      if (err) err.textContent = '';
+    }
+
+    function validatePhone(input) {
+      var digits = getDigits(input.value);
+      if (!digits) { clearPhoneError(input); return true; } // optional
+      if (digits.length < 6 || digits.length > maxLocal) {
+        showPhoneError(input, 'Please enter a valid phone number');
+        return false;
+      }
+      clearPhoneError(input);
+      return true;
+    }
+
+    var nameEl  = document.getElementById('id_customer_name');
+    var phoneEl = document.getElementById('id_phone');
+    prefill(nameEl,  LS_NAME);
+    prefill(phoneEl, LS_PHONE);
+
+    if (phoneEl) {
+      phoneEl.setAttribute('maxlength', '15');
+      phoneEl.addEventListener('input', function() { clearPhoneError(phoneEl); });
+      var form = phoneEl.closest('form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          if (!validatePhone(phoneEl)) { e.preventDefault(); return; }
+          try {
+            if (nameEl && nameEl.value.trim()) localStorage.setItem(LS_NAME, nameEl.value.trim());
+            if (phoneEl.value.trim()) localStorage.setItem(LS_PHONE, phoneEl.value.trim());
+          } catch(ex) {}
+        });
+      }
+    }
+  })();
+  </script>
 </body>
 </html>

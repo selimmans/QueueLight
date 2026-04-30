@@ -300,7 +300,7 @@
                 <span class="phone-prefix">+{{ calling_code }}</span>
                 <input type="tel" id="id_phone" name="phone"
                        value="{{ phone|default:'' }}"
-                       autocomplete="tel" required>
+                       autocomplete="tel" required maxlength="15">
               </div>
               {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
             </div>
@@ -348,7 +348,7 @@
                 <span class="phone-prefix">+{{ calling_code }}</span>
                 <input type="tel" id="id_pickup_phone" name="phone"
                        value="{{ phone|default:'' }}"
-                       autocomplete="tel">
+                       autocomplete="tel" maxlength="15">
               </div>
               {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
             </div>
@@ -374,5 +374,92 @@
     }
   </script>
   {% endif %}
+
+  <script>
+  (function() {
+    var LS_PHONE = 'ql_phone';
+    var LS_NAME  = 'ql_name';
+    var callingCode = String({{ calling_code }});
+    var maxLocal = 15 - callingCode.length; // E.164: 15 total digits minus country code
+
+    function prefill(el, key) {
+      if (!el || el.value) return; // don't overwrite server-repopulated value
+      try { var v = localStorage.getItem(key); if (v) el.value = v; } catch(e) {}
+    }
+
+    function getDigits(val) { return val.replace(/\D/g, ''); }
+
+    function showPhoneError(input, msg) {
+      var wrap = input.closest('.phone-wrap');
+      if (wrap) wrap.classList.add('error');
+      var parent = wrap ? wrap.parentElement : input.parentElement;
+      var err = parent.querySelector('.field-error');
+      if (!err) { err = document.createElement('div'); err.className = 'field-error'; parent.appendChild(err); }
+      err.textContent = msg;
+    }
+
+    function clearPhoneError(input) {
+      var wrap = input.closest('.phone-wrap');
+      if (wrap) wrap.classList.remove('error');
+      var parent = wrap ? wrap.parentElement : input.parentElement;
+      var err = parent.querySelector('.field-error');
+      if (err) err.textContent = '';
+    }
+
+    function validatePhone(input, required) {
+      var digits = getDigits(input.value);
+      if (!digits) {
+        if (required) { showPhoneError(input, 'Please enter your phone number'); return false; }
+        clearPhoneError(input);
+        return true;
+      }
+      if (digits.length < 6 || digits.length > maxLocal) {
+        showPhoneError(input, 'Please enter a valid phone number');
+        return false;
+      }
+      clearPhoneError(input);
+      return true;
+    }
+
+    function saveToStorage(nameEl, phoneEl) {
+      try {
+        if (nameEl && nameEl.value.trim()) localStorage.setItem(LS_NAME, nameEl.value.trim());
+        if (phoneEl && phoneEl.value.trim()) localStorage.setItem(LS_PHONE, phoneEl.value.trim());
+      } catch(e) {}
+    }
+
+    // --- Queue form ---
+    var queueName  = document.getElementById('id_name');
+    var queuePhone = document.getElementById('id_phone');
+    prefill(queueName,  LS_NAME);
+    prefill(queuePhone, LS_PHONE);
+    if (queuePhone) {
+      queuePhone.addEventListener('input', function() { clearPhoneError(queuePhone); });
+      var queueForm = queuePhone.closest('form');
+      if (queueForm) {
+        queueForm.addEventListener('submit', function(e) {
+          if (!validatePhone(queuePhone, true)) { e.preventDefault(); return; }
+          saveToStorage(queueName, queuePhone);
+        });
+      }
+    }
+
+    // --- Pickup form (in "both" mode, embedded in this page) ---
+    var pickupName  = document.getElementById('id_pickup_name');
+    var pickupPhone = document.getElementById('id_pickup_phone');
+    prefill(pickupName,  LS_NAME);
+    prefill(pickupPhone, LS_PHONE);
+    if (pickupPhone) {
+      pickupPhone.addEventListener('input', function() { clearPhoneError(pickupPhone); });
+      var pickupForm = pickupPhone.closest('form');
+      if (pickupForm) {
+        pickupForm.addEventListener('submit', function(e) {
+          if (!validatePhone(pickupPhone, false)) { e.preventDefault(); return; }
+          saveToStorage(pickupName, pickupPhone);
+        });
+      }
+    }
+  })();
+  </script>
 </body>
 </html>
