@@ -26,6 +26,7 @@ class Business(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     business_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_RETAIL)
+    logo = models.ImageField(upload_to="logos/", blank=True, null=True)
     logo_colour = models.CharField(max_length=7, default="#3B82F6")
     colour_accent = models.CharField(max_length=7, default="#6366f1")
     colour_border = models.CharField(max_length=7, default="#e5e7eb")

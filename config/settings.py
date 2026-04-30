@@ -181,9 +181,9 @@ STORAGES = {
     }
 }
 
-# Media files (QR code PNGs if stored to disk)
+# Media files — on Railway, set MEDIA_ROOT=/data (persistent Volume mounted at /data)
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

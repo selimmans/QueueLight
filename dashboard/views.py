@@ -265,6 +265,16 @@ class SettingsView(View):
                 "business_type", "intake_fields",
             ])
 
+        elif action == "upload_logo":
+            if not _require_superuser(request):
+                return self._render(request, business, error="Admin access required.")
+            logo_file = request.FILES.get("logo")
+            if logo_file:
+                if business.logo:
+                    business.logo.delete(save=False)
+                business.logo = logo_file
+                business.save(update_fields=["logo"])
+
         elif action == "save_pickup_sms":
             pickup_msg = request.POST.get("pickup_notification_message", "").strip()
             business.pickup_notification_message = pickup_msg

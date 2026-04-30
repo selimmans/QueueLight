@@ -390,6 +390,28 @@
     {% endif %}{# end is_admin intake #}
     {% endif %}{# end queue_enabled #}
 
+    <!-- ── Logo (admin only) ─────────────────────────── -->
+    {% if is_admin %}
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="upload_logo">
+      <div class="section">
+        <h2 style="margin-bottom:1rem">Logo</h2>
+        {% if business.logo %}
+        <img src="{{ business.logo.url }}" alt="Logo"
+             style="height:64px;object-fit:contain;border-radius:8px;margin-bottom:1rem;display:block;">
+        {% endif %}
+        <div class="field" style="margin-bottom:0">
+          <label for="logo_upload">Upload image</label>
+          <div class="hint">PNG or JPG. Shown in the customer join page header.</div>
+          <input type="file" id="logo_upload" name="logo" accept="image/*"
+                 style="padding:0.4rem 0;border:none;font-size:0.9rem;">
+        </div>
+        <button class="save-btn" type="submit">Upload logo</button>
+      </div>
+    </form>
+    {% endif %}
+
     <!-- ── Pickup settings (SMS, visible to all staff) ── -->
     {% if business.pickup_enabled %}
     <form method="post">

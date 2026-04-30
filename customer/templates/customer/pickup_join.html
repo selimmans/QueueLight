@@ -36,7 +36,12 @@
 </head>
 <body>
   <div class="header">
-    <div class="header-name">{{ business.name }}</div>
+    {% if business.logo %}
+      <img src="{{ business.logo.url }}" alt="{{ business.name }}"
+           style="height:56px;object-fit:contain;margin-bottom:0.5rem;display:block;margin-left:auto;margin-right:auto;">
+    {% else %}
+      <div class="header-name">{{ business.name }}</div>
+    {% endif %}
     <div class="header-sub">Track your order</div>
   </div>
 
