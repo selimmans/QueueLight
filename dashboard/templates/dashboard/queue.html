@@ -491,7 +491,10 @@
   <script>
     const SLUG  = "{{ business.slug }}";
     const MODE  = "{{ business.mode }}";
-    const CSRF  = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+    function getCsrf() {
+      const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    }
     const DASHBOARD_MODE = "{{ dashboard_mode }}";
     const SESSION_KEY = "activeTab_" + SLUG;
 
@@ -527,7 +530,7 @@
       if (mode === "person") {
         actions = `<div class="entry-actions">
           <form method="post" action="/staff/${SLUG}/skip/${e.id}/" style="display:inline">
-            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
             <button class="action-btn btn-skip" type="submit">Skip</button>
           </form>
         </div>`;
@@ -552,11 +555,11 @@
         </div>
         <div class="entry-actions">
           <form method="post" action="/staff/${SLUG}/complete/${e.id}/" style="display:inline">
-            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
             <button class="action-btn btn-done" type="submit">Done</button>
           </form>
           <form method="post" action="/staff/${SLUG}/noshow/${e.id}/" style="display:inline">
-            <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
             <button class="action-btn btn-noshow" type="submit">No-show</button>
           </form>
         </div>
@@ -584,12 +587,12 @@
       let action = "";
       if (e.status === "waiting") {
         action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
           <button class="action-btn btn-ready" type="submit">Ready</button>
         </form>`;
       } else if (e.status === "ready") {
         action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/picked-up/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
           <button class="action-btn btn-pickedup" type="submit">Picked up</button>
         </form>`;
       }
@@ -635,7 +638,7 @@
       const form = document.createElement("form");
       form.method = "post";
       form.action = `/staff/${SLUG}/complete-batch/`;
-      form.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="${CSRF}">
+      form.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
                         <input type="hidden" name="showed_up" value="${count}">`;
       document.body.appendChild(form);
       form.submit();
