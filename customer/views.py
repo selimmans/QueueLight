@@ -1,7 +1,9 @@
 from django.core.cache import cache
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 import phonenumbers
 
@@ -33,6 +35,7 @@ def _parse_phone(raw: str, country: str) -> tuple[str | None, str | None]:
     return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164), None
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class JoinView(View):
     template_name = "customer/join.html"
 
@@ -200,6 +203,7 @@ class CustomerStatusView(View):
         })
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class LeaveQueueView(View):
     """Customer voluntarily leaves the queue."""
 
@@ -227,6 +231,7 @@ def _join_mode(business: Business) -> str:
 _VALID_RESPONSES = {"late_arrival", "left_other", "left_home"}
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class CustomerResponseView(View):
     """Record what a customer does after being abandoned/skipped."""
 
@@ -263,6 +268,7 @@ class CustomerResponseView(View):
         return JsonResponse({"ok": True})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PickupJoinView(View):
     """Customer submits an order number to get a pickup notification."""
 
