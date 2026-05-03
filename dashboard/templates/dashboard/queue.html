@@ -236,13 +236,6 @@
     .badge-waiting { background: #f3f4f6; color: #374151; }
     .badge-ready   { background: #d1fae5; color: #065f46; }
 
-    @keyframes flash-ready {
-      0%   { background: #d1fae5; }
-      40%  { background: #6ee7b7; }
-      100% { background: #fff; }
-    }
-    .entry-flash-ready { animation: flash-ready 1.8s ease-out; }
-
     .entry-body { flex: 1; min-width: 0; cursor: default; }
     .entry-body.expandable { cursor: pointer; }
     .entry-name { font-weight: 600; color: var(--text); font-size: 0.95rem; }
@@ -449,49 +442,37 @@
        class="tab-panel {% if dashboard_mode == 'pickup_only' %}solo{% endif %}">
 
     <div class="container">
-      <div id="pickup-ready-section" {% if not pickup_entries %}style="display:none"{% endif %}>
-        <div class="section-label" style="margin-top:0">
-          <span class="dot" style="background:#059669;animation:none"></span>
-          Ready — <span id="pickup-ready-count">{% for e in pickup_entries %}{% if e.status == 'ready' %}{{ forloop.counter }}{% endif %}{% endfor %}</span>
-        </div>
-        <div class="queue-card" id="pickup-ready-list">
-          {% for entry in pickup_entries %}{% if entry.status == 'ready' %}
-          <div class="entry">
-            <div class="badge badge-ready">Ready</div>
-            <div class="entry-body">
-              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
-              <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago</div>
-            </div>
-            <div class="entry-actions">
-              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
-                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
-              </form>
-            </div>
-          </div>
-          {% endif %}{% endfor %}
-        </div>
-      </div>
-
-      <div class="section-label">
+      <div class="section-label" style="margin-top:0">
         <span class="dot" style="background:#4f46e5;animation:none"></span>
-        Waiting — <span id="pickup-count">{{ pickup_entries|length }}</span>
+        Active Orders — <span id="pickup-count">{{ pickup_entries|length }}</span>
       </div>
       <div class="queue-card" id="pickup-list">
-        {% for entry in pickup_entries %}{% if entry.status == 'waiting' %}
+        {% if pickup_entries %}
+          {% for entry in pickup_entries %}
           <div class="entry">
-            <div class="badge badge-waiting">Waiting</div>
+            <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
+              {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
+            </div>
             <div class="entry-body">
               <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
               <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
             </div>
             <div class="entry-actions">
+              {% if entry.status == 'waiting' %}
               <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}" style="display:inline">
                 {% csrf_token %}<button class="action-btn btn-ready" type="submit">Ready</button>
               </form>
+              {% elif entry.status == 'ready' %}
+              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
+                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+              </form>
+              {% endif %}
             </div>
           </div>
-        {% endif %}{% endfor %}
-        {% if not pickup_entries %}<p class="empty">No active orders</p>{% endif %}
+          {% endfor %}
+        {% else %}
+          <p class="empty">No active orders</p>
+        {% endif %}
       </div>
 
       <div class="qr-section">
@@ -586,7 +567,7 @@
     }
 
     {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
-    function renderPickupEntry(e, flash) {
+    function renderPickupEntry(e) {
       const statusBadge = e.status === "ready"
         ? `<div class="badge badge-ready">Ready</div>`
         : `<div class="badge badge-waiting">Waiting</div>`;
@@ -603,7 +584,6 @@
       const expandAttr = hasAnswers ? ` onclick="togglePickupExpand(${e.id})"` : "";
       const expandClass = hasAnswers ? " expandable" : "";
       const metaExtra = hasAnswers ? " · tap to expand" : "";
-      const flashClass = flash ? " entry-flash-ready" : "";
       let action = "";
       if (e.status === "waiting") {
         action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
@@ -616,7 +596,7 @@
           <button class="action-btn btn-pickedup" type="submit">Picked up</button>
         </form>`;
       }
-      return `<div class="entry${flashClass}">
+      return `<div class="entry">
         ${statusBadge}
         <div class="entry-body${expandClass}"${expandAttr}>
           <div class="entry-name">#${e.order_number}${nameHtml}</div>
@@ -729,48 +709,18 @@
     }
 
     {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
-    var prevPickupStatuses = {
-      {% for entry in pickup_entries %}"{{ entry.pk }}": "{{ entry.status }}"{% if not forloop.last %},{% endif %}{% endfor %}
-    };
-
     function pollPickup() {
       fetch("/api/pickup/" + SLUG + "/status/")
         .then(r => r.json())
         .then(data => {
-          const waitingList  = document.getElementById("pickup-list");
-          const readyList    = document.getElementById("pickup-ready-list");
-          const readySection = document.getElementById("pickup-ready-section");
-          const counter      = document.getElementById("pickup-count");
-          const readyCounter = document.getElementById("pickup-ready-count");
-          if (!waitingList) return;
-
-          const orders  = data.active_orders || [];
-          const ready   = orders.filter(e => e.status === "ready");
-          const waiting = orders.filter(e => e.status === "waiting");
-
-          // Find orders that just became ready this poll
-          const newlyReady = new Set(
-            ready.filter(e => prevPickupStatuses[e.id] === "waiting").map(e => e.id)
-          );
-
-          // Update previous statuses
-          prevPickupStatuses = {};
-          orders.forEach(e => { prevPickupStatuses[e.id] = e.status; });
-
-          // Render ready section
-          if (readySection) readySection.style.display = ready.length ? "" : "none";
-          if (readyCounter) readyCounter.textContent = ready.length;
-          if (readyList) {
-            readyList.innerHTML = ready.length
-              ? ready.map(e => renderPickupEntry(e, newlyReady.has(e.id))).join("")
-              : "";
-          }
-
-          // Render waiting section
-          if (counter) counter.textContent = waiting.length;
-          waitingList.innerHTML = waiting.length
-            ? waiting.map(e => renderPickupEntry(e, false)).join("")
-            : `<p class="empty">No orders waiting</p>`;
+          const list    = document.getElementById("pickup-list");
+          const counter = document.getElementById("pickup-count");
+          if (!list) return;
+          const orders = data.active_orders || [];
+          if (counter) counter.textContent = orders.length;
+          list.innerHTML = orders.length
+            ? orders.map(renderPickupEntry).join("")
+            : `<p class="empty">No active orders</p>`;
         })
         .catch(() => {});
     }
