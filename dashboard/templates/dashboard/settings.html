@@ -314,6 +314,65 @@
     </div>
     {% endif %}{# end is_admin features #}
 
+    <!-- ── Branding (admin only) ─────────────────────── -->
+    {% if is_admin %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_branding">
+
+      <div class="section">
+        <h2 style="margin-bottom:1rem">Branding</h2>
+
+        <div class="field">
+          <label for="logo_colour">Brand colour</label>
+          <div class="hint">Main colour used in customer-facing pages (headers, buttons, accents).</div>
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <input type="color" id="logo_colour_picker" value="{{ business.logo_colour }}"
+                   oninput="document.getElementById('logo_colour').value=this.value;document.getElementById('logo_colour_preview').textContent=this.value;"
+                   style="width:40px;height:36px;padding:2px;border:1.5px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;">
+            <input type="text" id="logo_colour" name="logo_colour" value="{{ business.logo_colour }}"
+                   maxlength="7" placeholder="#3B82F6"
+                   oninput="syncPicker(this,'logo_colour_picker','logo_colour_preview')"
+                   style="flex:1;">
+            <span id="logo_colour_preview" style="font-size:0.8rem;color:#6b7280;width:4rem;text-align:right;">{{ business.logo_colour }}</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="colour_accent">Accent colour</label>
+          <div class="hint">Secondary colour for highlights and active states.</div>
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <input type="color" id="colour_accent_picker" value="{{ business.colour_accent }}"
+                   oninput="document.getElementById('colour_accent').value=this.value;document.getElementById('colour_accent_preview').textContent=this.value;"
+                   style="width:40px;height:36px;padding:2px;border:1.5px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;">
+            <input type="text" id="colour_accent" name="colour_accent" value="{{ business.colour_accent }}"
+                   maxlength="7" placeholder="#6366f1"
+                   oninput="syncPicker(this,'colour_accent_picker','colour_accent_preview')"
+                   style="flex:1;">
+            <span id="colour_accent_preview" style="font-size:0.8rem;color:#6b7280;width:4rem;text-align:right;">{{ business.colour_accent }}</span>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label for="colour_border">Border colour</label>
+          <div class="hint">Used for card and input borders in the dashboard.</div>
+          <div style="display:flex;align-items:center;gap:0.6rem;">
+            <input type="color" id="colour_border_picker" value="{{ business.colour_border }}"
+                   oninput="document.getElementById('colour_border').value=this.value;document.getElementById('colour_border_preview').textContent=this.value;"
+                   style="width:40px;height:36px;padding:2px;border:1.5px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;">
+            <input type="text" id="colour_border" name="colour_border" value="{{ business.colour_border }}"
+                   maxlength="7" placeholder="#e5e7eb"
+                   oninput="syncPicker(this,'colour_border_picker','colour_border_preview')"
+                   style="flex:1;">
+            <span id="colour_border_preview" style="font-size:0.8rem;color:#6b7280;width:4rem;text-align:right;">{{ business.colour_border }}</span>
+          </div>
+        </div>
+
+        <button class="save-btn" type="submit">Save colours</button>
+      </div>
+    </form>
+    {% endif %}{# end is_admin branding #}
+
     <!-- ── Queue settings (only when queue enabled) ──── -->
     {% if business.queue_enabled %}
     <form method="post">
@@ -389,28 +448,6 @@
     </form>
     {% endif %}{# end is_admin intake #}
     {% endif %}{# end queue_enabled #}
-
-    <!-- ── Logo (admin only) ─────────────────────────── -->
-    {% if is_admin %}
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="upload_logo">
-      <div class="section">
-        <h2 style="margin-bottom:1rem">Logo</h2>
-        {% if business.logo %}
-        <img src="{{ business.logo.url }}" alt="Logo"
-             style="height:64px;object-fit:contain;border-radius:8px;margin-bottom:1rem;display:block;">
-        {% endif %}
-        <div class="field" style="margin-bottom:0">
-          <label for="logo_upload">Upload image</label>
-          <div class="hint">PNG or JPG. Shown in the customer join page header.</div>
-          <input type="file" id="logo_upload" name="logo" accept="image/*"
-                 style="padding:0.4rem 0;border:none;font-size:0.9rem;">
-        </div>
-        <button class="save-btn" type="submit">Upload logo</button>
-      </div>
-    </form>
-    {% endif %}
 
     <!-- ── Pickup settings (SMS, visible to all staff) ── -->
     {% if business.pickup_enabled %}
@@ -569,6 +606,15 @@
   </div>
 
   <script>
+    function syncPicker(textInput, pickerId, previewId) {
+      const val = textInput.value.trim();
+      const preview = document.getElementById(previewId);
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        document.getElementById(pickerId).value = val;
+        if (preview) preview.textContent = val;
+      }
+    }
+
     function addIntakeQuestion() {
       const row = document.createElement("div");
       row.className = "intake-row";

@@ -265,28 +265,7 @@ class SettingsView(View):
                 "business_type", "intake_fields",
             ])
 
-        elif action == "upload_logo":
-            if not _require_superuser(request):
-                return self._render(request, business, error="Admin access required.")
-            logo_file = request.FILES.get("logo")
-            if logo_file:
-                if business.logo:
-                    business.logo.delete(save=False)
-                business.logo = logo_file
-                business.save(update_fields=["logo"])
-
-        elif action == "save_pickup_sms":
-            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
-            business.pickup_notification_message = pickup_msg
-            business.save(update_fields=["pickup_notification_message"])
-
-        elif action == "save_pickup_intake":
-            pickup_questions = [q.strip() for q in request.POST.getlist("pickup_intake_questions") if q.strip()]
-            business.pickup_intake_fields = pickup_questions
-            business.save(update_fields=["pickup_intake_fields"])
-
         elif action == "save_pickup_settings":
-            # Legacy alias — saves both fields together
             pickup_msg = request.POST.get("pickup_notification_message", "").strip()
             business.pickup_notification_message = pickup_msg
             pickup_questions = [q.strip() for q in request.POST.getlist("pickup_intake_questions") if q.strip()]
@@ -345,6 +324,16 @@ class SettingsView(View):
 
         elif action == "clear_queue":
             QueueService.clear_queue(business)
+
+        elif action == "save_branding":
+            if _require_superuser(request):
+                import re
+                hex_re = re.compile(r'^#[0-9A-Fa-f]{6}$')
+                for field in ("logo_colour", "colour_accent", "colour_border"):
+                    val = request.POST.get(field, "").strip()
+                    if hex_re.match(val):
+                        setattr(business, field, val)
+                business.save(update_fields=["logo_colour", "colour_accent", "colour_border"])
 
         return redirect("dashboard:settings", slug=slug)
 
