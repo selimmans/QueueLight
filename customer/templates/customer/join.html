@@ -341,14 +341,7 @@
             </div>
 
             <div class="field">
-              <label for="id_pickup_name">Your name <span class="optional-hint">(optional)</span></label>
-              <input type="text" id="id_pickup_name" name="customer_name"
-                     value="{{ customer_name|default:'' }}"
-                     autocomplete="given-name">
-            </div>
-
-            <div class="field">
-              <label for="id_pickup_phone">Get a text when ready <span class="optional-hint">(optional)</span></label>
+              <label for="id_pickup_phone">Phone number</label>
               <div class="phone-wrap {% if errors.phone %}error{% endif %}">
                 <span class="phone-prefix">+{{ calling_code }}</span>
                 <input type="tel" id="id_pickup_phone" name="phone"
@@ -356,6 +349,13 @@
                        autocomplete="tel" maxlength="15">
               </div>
               {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+            </div>
+
+            <div class="field">
+              <label for="id_pickup_name">Your name <span class="optional-hint">(optional)</span></label>
+              <input type="text" id="id_pickup_name" name="customer_name"
+                     value="{{ customer_name|default:'' }}"
+                     autocomplete="given-name">
             </div>
 
             <button class="submit-btn" type="submit">Notify me when ready &rarr;</button>
