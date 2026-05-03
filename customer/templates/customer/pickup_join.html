@@ -8,25 +8,25 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --brand: {{ business.logo_colour }}; --r: 6px; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f4f5; min-height: 100dvh; display: flex; flex-direction: column; }
+    :root { --brand: {{ business.logo_colour }}; --accent: {{ business.colour_accent }}; --border: {{ business.colour_border }}; --r: 6px; --bg: #f4f4f5; --surface: #fff; --text: #18181b; --text-muted: #71717a; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); min-height: 100dvh; display: flex; flex-direction: column; }
     .header { background: var(--brand); padding: 2.25rem 1.5rem 2rem; text-align: center; }
     .header-name { font-family: "DM Serif Display", serif; font-size: 2rem; color: #fff; line-height: 1.1; margin-bottom: 0.35rem; }
     .header-sub { font-size: 0.7rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: rgba(255,255,255,.65); }
     .body { flex: 1; padding: 1.25rem 1rem 2.5rem; max-width: 420px; width: 100%; margin: 0 auto; }
     .global-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--r); padding: 0.75rem 0.9rem; color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; }
-    .form-card { background: #fff; border: 1px solid #e4e4e7; border-radius: var(--r); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
     .field { margin-bottom: 1rem; }
-    label { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #71717a; margin-bottom: 0.4rem; }
+    label { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
     .optional-hint { font-size: 0.75rem; color: #a1a1aa; }
-    input[type="text"], input[type="tel"] { width: 100%; padding: 0.7rem 0.85rem; border: 1.5px solid #e4e4e7; border-radius: var(--r); font-size: 1rem; color: #18181b; background: #fff; -webkit-appearance: none; transition: border-color .15s; }
-    input:focus { outline: none; border-color: var(--brand); }
+    input[type="text"], input[type="tel"] { width: 100%; padding: 0.7rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 1rem; color: var(--text); background: var(--surface); -webkit-appearance: none; transition: border-color .15s; }
+    input:focus { outline: none; border-color: var(--accent); }
     input.error { border-color: #ef4444; }
     .field-error { margin-top: 0.3rem; font-size: 0.78rem; color: #ef4444; }
-    .phone-wrap { display: flex; align-items: stretch; border: 1.5px solid #e4e4e7; border-radius: var(--r); overflow: hidden; background: #fff; transition: border-color .15s; }
-    .phone-wrap:focus-within { border-color: var(--brand); }
+    .phone-wrap { display: flex; align-items: stretch; border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; background: var(--surface); transition: border-color .15s; }
+    .phone-wrap:focus-within { border-color: var(--accent); }
     .phone-wrap.error { border-color: #ef4444; }
-    .phone-prefix { padding: 0.7rem 0.75rem 0.7rem 0.85rem; font-size: 1rem; color: #71717a; background: #f4f4f5; border-right: 1.5px solid #e4e4e7; white-space: nowrap; user-select: none; }
+    .phone-prefix { padding: 0.7rem 0.75rem 0.7rem 0.85rem; font-size: 1rem; color: var(--text-muted); background: var(--bg); border-right: 1.5px solid var(--border); white-space: nowrap; user-select: none; }
     .phone-wrap input[type="tel"] { border: none; border-radius: 0; background: transparent; flex: 1; }
     .phone-wrap input[type="tel"]:focus { border-color: transparent; }
     .submit-btn { display: block; width: 100%; padding: 0.9rem; background: var(--brand); color: #fff; font-size: 1rem; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; margin-top: 1.1rem; letter-spacing: .01em; }

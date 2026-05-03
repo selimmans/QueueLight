@@ -14,7 +14,8 @@
       --r:          6px;
       --bg:         #f4f4f5;
       --surface:    #fff;
-      --border:     #d4d4d8;
+      --accent:     {{ business.colour_accent }};
+      --border:     {{ business.colour_border }};
       --text:       #18181b;
       --text-muted: #71717a;
     }
@@ -233,7 +234,7 @@
     }
 
     .response-btn:hover { background: var(--bg); }
-    .response-btn.selected { border-color: var(--brand); }
+    .response-btn.selected { border-color: var(--accent); }
     .response-thanks { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center; display: none; }
   </style>
 </head>
