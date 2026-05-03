@@ -323,7 +323,7 @@
       <div class="section">
         <h2 style="margin-bottom:1rem">Branding</h2>
 
-        <div class="field">
+        <div class="field" style="margin-bottom:0">
           <label for="logo_colour">Brand colour</label>
           <div class="hint">Main colour used in customer-facing pages (headers, buttons, accents).</div>
           <div style="display:flex;align-items:center;gap:0.6rem;">
@@ -338,37 +338,7 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="colour_accent">Accent colour</label>
-          <div class="hint">Secondary colour for highlights and active states.</div>
-          <div style="display:flex;align-items:center;gap:0.6rem;">
-            <input type="color" id="colour_accent_picker" value="{{ business.colour_accent }}"
-                   oninput="document.getElementById('colour_accent').value=this.value;document.getElementById('colour_accent_preview').textContent=this.value;"
-                   style="width:40px;height:36px;padding:2px;border:1.5px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;">
-            <input type="text" id="colour_accent" name="colour_accent" value="{{ business.colour_accent }}"
-                   maxlength="7" placeholder="#6366f1"
-                   oninput="syncPicker(this,'colour_accent_picker','colour_accent_preview')"
-                   style="flex:1;">
-            <span id="colour_accent_preview" style="font-size:0.8rem;color:#6b7280;width:4rem;text-align:right;">{{ business.colour_accent }}</span>
-          </div>
-        </div>
-
-        <div class="field" style="margin-bottom:0">
-          <label for="colour_border">Border colour</label>
-          <div class="hint">Used for card and input borders in the dashboard.</div>
-          <div style="display:flex;align-items:center;gap:0.6rem;">
-            <input type="color" id="colour_border_picker" value="{{ business.colour_border }}"
-                   oninput="document.getElementById('colour_border').value=this.value;document.getElementById('colour_border_preview').textContent=this.value;"
-                   style="width:40px;height:36px;padding:2px;border:1.5px solid #e5e7eb;border-radius:6px;cursor:pointer;background:#fff;">
-            <input type="text" id="colour_border" name="colour_border" value="{{ business.colour_border }}"
-                   maxlength="7" placeholder="#e5e7eb"
-                   oninput="syncPicker(this,'colour_border_picker','colour_border_preview')"
-                   style="flex:1;">
-            <span id="colour_border_preview" style="font-size:0.8rem;color:#6b7280;width:4rem;text-align:right;">{{ business.colour_border }}</span>
-          </div>
-        </div>
-
-        <button class="save-btn" type="submit">Save colours</button>
+        <button class="save-btn" type="submit">Save colour</button>
       </div>
     </form>
     {% endif %}{# end is_admin branding #}
