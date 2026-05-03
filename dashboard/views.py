@@ -210,6 +210,7 @@ class SettingsView(View):
             "staff_phones": staff_phones,
             "error": error,
             "success": success,
+            "is_admin": _require_superuser(request),
         })
 
     def get(self, request, slug):
@@ -259,13 +260,17 @@ class SettingsView(View):
             intake_questions = [q.strip() for q in request.POST.getlist("intake_questions") if q.strip()]
             business.intake_fields = intake_questions
 
-            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
-            business.pickup_notification_message = pickup_msg
-
             business.save(update_fields=[
                 "batch_size", "avg_service_minutes", "sms_template", "menu_url",
-                "business_type", "intake_fields", "pickup_notification_message",
+                "business_type", "intake_fields",
             ])
+
+        elif action == "save_pickup_settings":
+            pickup_msg = request.POST.get("pickup_notification_message", "").strip()
+            business.pickup_notification_message = pickup_msg
+            pickup_questions = [q.strip() for q in request.POST.getlist("pickup_intake_questions") if q.strip()]
+            business.pickup_intake_fields = pickup_questions
+            business.save(update_fields=["pickup_notification_message", "pickup_intake_fields"])
 
         elif action == "toggle_queue":
             enable = request.POST.get("queue_enabled") == "1"
@@ -319,6 +324,16 @@ class SettingsView(View):
 
         elif action == "clear_queue":
             QueueService.clear_queue(business)
+
+        elif action == "save_branding":
+            if _require_superuser(request):
+                import re
+                hex_re = re.compile(r'^#[0-9A-Fa-f]{6}$')
+                for field in ("logo_colour", "colour_accent", "colour_border"):
+                    val = request.POST.get(field, "").strip()
+                    if hex_re.match(val):
+                        setattr(business, field, val)
+                business.save(update_fields=["logo_colour", "colour_accent", "colour_border"])
 
         return redirect("dashboard:settings", slug=slug)
 
@@ -512,6 +527,24 @@ class PickupPickedUpView(View):
         return redirect("dashboard:dashboard", slug=slug)
 
 
+class PickupClosingSoonView(View):
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        PickupService.send_closing_soon_sms(business)
+        return redirect("dashboard:settings", slug=slug)
+
+
+class PickupClearView(View):
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        PickupService.clear_active_orders(business)
+        return redirect("dashboard:settings", slug=slug)
+
+
 class PickupStatusAPIView(View):
     def get(self, request, slug):
         from django.utils import timezone as tz
@@ -536,6 +569,7 @@ class PickupStatusAPIView(View):
                 "status": e.status,
                 "registered_at": e.registered_at.isoformat(),
                 "minutes_waiting": minutes_waiting,
+                "intake_answers": e.intake_answers or {},
             }
 
         active_orders = [_entry_dict(e) for e in entries]

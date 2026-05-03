@@ -18,6 +18,8 @@ urlpatterns = [
     path("<slug:slug>/qr.png", views.QRCodeView.as_view(), name="qr_code"),
     path("<slug:slug>/pickup/<int:entry_id>/ready/", views.PickupReadyView.as_view(), name="pickup_ready"),
     path("<slug:slug>/pickup/<int:entry_id>/picked-up/", views.PickupPickedUpView.as_view(), name="pickup_picked_up"),
+    path("<slug:slug>/pickup/closing-soon/", views.PickupClosingSoonView.as_view(), name="pickup_closing_soon"),
+    path("<slug:slug>/pickup/clear/", views.PickupClearView.as_view(), name="pickup_clear"),
 ]
 
 api_urlpatterns = [

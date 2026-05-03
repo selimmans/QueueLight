@@ -65,12 +65,14 @@ class PickupEntry(models.Model):
         WAITING = "waiting", "Waiting"
         READY = "ready", "Ready"
         PICKED_UP = "picked_up", "Picked Up"
+        CANCELLED = "cancelled", "Cancelled"
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="pickup_entries")
     order_number = models.CharField(max_length=100)
     customer_name = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
+    intake_answers = models.JSONField(default=dict, blank=True)
     registered_at = models.DateTimeField(auto_now_add=True)
     ready_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -88,8 +90,10 @@ class PickupEventLog(models.Model):
         REGISTERED = "registered", "Registered"
         READY = "ready", "Ready"
         PICKED_UP = "picked_up", "Picked Up"
+        CANCELLED = "cancelled", "Cancelled"
         SMS_SENT = "sms_sent", "SMS Sent"
         SMS_FAILED = "sms_failed", "SMS Failed"
+        CLOSING_SOON_SMS = "closing_soon_sms", "Closing Soon SMS"
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="pickup_event_logs")
     entry = models.ForeignKey(
