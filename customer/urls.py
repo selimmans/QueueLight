@@ -12,4 +12,5 @@ urlpatterns = [
     path("<slug:slug>/leave/<int:entry_id>/", views.LeaveQueueView.as_view(), name="leave"),
     path("<slug:slug>/pickup/", views.PickupJoinView.as_view(), name="pickup_join"),
     path("<slug:slug>/pickup/confirmation/<int:entry_id>/", views.PickupConfirmView.as_view(), name="pickup_confirmation"),
+    path("<slug:slug>/pickup/status/<int:entry_id>/", views.PickupCustomerStatusView.as_view(), name="pickup_status"),
 ]

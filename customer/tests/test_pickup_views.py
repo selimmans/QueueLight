@@ -142,4 +142,4 @@ class TestPickupConfirmView:
             "slug": pickup_only_business.slug, "entry_id": entry.pk
         })
         resp = client.get(url)
-        assert b"call your name" in resp.content
+        assert b"Keep this page open" in resp.content

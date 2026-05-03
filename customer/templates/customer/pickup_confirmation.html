@@ -10,10 +10,13 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root { --brand: {{ business.logo_colour }}; --r: 6px; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f4f5; min-height: 100dvh; display: flex; flex-direction: column; }
+
     .header { background: var(--brand); padding: 2.25rem 1.5rem 2rem; text-align: center; }
     .header-name { font-family: "DM Serif Display", serif; font-size: 2rem; color: #fff; line-height: 1.1; margin-bottom: 0.35rem; }
     .header-sub { font-size: 0.7rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+
     .body { flex: 1; padding: 1.25rem 1rem 2.5rem; max-width: 420px; width: 100%; margin: 0 auto; }
+
     .confirm-card {
       background: #fff;
       border: 1px solid #e4e4e7;
@@ -26,28 +29,152 @@
     .order-number { font-family: "DM Serif Display", serif; font-size: 2.5rem; color: #18181b; line-height: 1.1; margin-bottom: 1.25rem; }
     .confirm-msg { font-size: 0.95rem; color: #3f3f46; line-height: 1.5; }
     .confirm-msg strong { color: #18181b; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: #f4f4f5;
+      border: 1px solid #e4e4e7;
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #52525b;
+      margin-top: 1.25rem;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--brand);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    /* Ready overlay — same pattern as queue "called" overlay */
+    .ready-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #059669;
+      color: #fff;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      z-index: 10;
+    }
+    .ready-overlay.active { display: flex; }
+    .ready-overlay .ov-title {
+      font-family: "DM Serif Display", serif;
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      line-height: 1.2;
+    }
+    .ready-overlay .ov-order {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 0.5rem;
+    }
+    .ready-overlay .ov-sub { font-size: 0.95rem; opacity: 0.8; }
+
+    /* Cancelled/collected state */
+    .done-card {
+      display: none;
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: var(--r);
+      padding: 1.75rem 1.25rem;
+      text-align: center;
+      color: #71717a;
+      font-size: 0.95rem;
+    }
+
     .powered { text-align: center; font-size: 0.72rem; color: #a1a1aa; padding: 1.5rem 0 0; }
   </style>
 </head>
 <body>
+
+  <div class="ready-overlay" id="readyOverlay">
+    <div class="ov-title">Your order is ready!</div>
+    <div class="ov-order">Order #{{ entry.order_number }}</div>
+    <div class="ov-sub">Come pick it up at {{ business.name }}.</div>
+  </div>
+
   <div class="header">
-    <div class="header-name">{{ business.name }}</div>
+    {% if business.logo %}
+      <img src="{{ business.logo.url }}" alt="{{ business.name }}"
+           style="height:56px;object-fit:contain;margin-bottom:0.5rem;display:block;margin-left:auto;margin-right:auto;">
+    {% else %}
+      <div class="header-name">{{ business.name }}</div>
+    {% endif %}
     <div class="header-sub">Order registered</div>
   </div>
 
-  <div class="body">
-    <div class="confirm-card">
+  <div class="body" id="mainBody">
+    <div class="confirm-card" id="waitingCard">
       <div class="order-label">Order</div>
       <div class="order-number">#{{ entry.order_number }}</div>
 
       {% if entry.phone %}
         <p class="confirm-msg">Got it. We'll text you when order <strong>#{{ entry.order_number }}</strong> is ready.</p>
       {% else %}
-        <p class="confirm-msg">We'll call your name when your order is ready.</p>
+        <p class="confirm-msg">Keep this page open — it'll update when your order is ready.</p>
       {% endif %}
+
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Waiting
+      </div>
     </div>
+
+    <div class="done-card" id="doneCard"></div>
 
     <p class="powered">Queue Light</p>
   </div>
+
+  <script>
+    const STATUS_URL = "{% url 'customer:pickup_status' slug=business.slug entry_id=entry.pk %}";
+    var pollInterval;
+
+    function applyState(data) {
+      const status = data.status;
+
+      if (status === "ready") {
+        document.getElementById("readyOverlay").classList.add("active");
+        clearInterval(pollInterval);
+        return;
+      }
+
+      if (status === "collected") {
+        clearInterval(pollInterval);
+        document.getElementById("waitingCard").style.display = "none";
+        var done = document.getElementById("doneCard");
+        done.style.display = "block";
+        done.textContent = "Order #{{ entry.order_number }} has been picked up. Thanks!";
+        return;
+      }
+
+      if (status === "cancelled") {
+        clearInterval(pollInterval);
+        document.getElementById("waitingCard").style.display = "none";
+        var done = document.getElementById("doneCard");
+        done.style.display = "block";
+        done.textContent = "This order has been cancelled.";
+        return;
+      }
+    }
+
+    function poll() {
+      fetch(STATUS_URL)
+        .then(function(r) { return r.json(); })
+        .then(applyState)
+        .catch(function() {});
+    }
+
+    pollInterval = setInterval(poll, 5000);
+    poll();
+  </script>
 </body>
 </html>

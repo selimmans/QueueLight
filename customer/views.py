@@ -350,3 +350,10 @@ class PickupConfirmView(View):
         business = get_object_or_404(Business, slug=slug)
         entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
         return render(request, self.template_name, {"business": business, "entry": entry})
+
+
+class PickupCustomerStatusView(View):
+    def get(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
+        return JsonResponse({"status": entry.status})
