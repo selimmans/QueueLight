@@ -262,7 +262,7 @@ def _build_poster_png(business, join_url: str, tagline: str) -> bytes:
     draw.rectangle([(0, H - FOOTER_H), (W, H)], fill=BRAND)
 
     buf = io.BytesIO()
-    img.save(buf, format="PNG", optimize=True)
+    img.save(buf, format="PNG", optimize=True, dpi=(200, 200))
     return buf.getvalue()
 
 
