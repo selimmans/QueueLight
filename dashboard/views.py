@@ -207,84 +207,88 @@ def _build_qr_png(url: str) -> bytes:
 _FONTS_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 
 
-def _load_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
-    """Load a bundled font; fall back to system fonts then PIL default."""
-    bundled = os.path.join(_FONTS_DIR, "Roboto-Bold.ttf" if bold else "Roboto-Regular.ttf")
-    candidates = [bundled]
-    if bold:
-        candidates += [
-            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        ]
-    else:
-        candidates += [
-            "/System/Library/Fonts/Supplemental/Arial.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        ]
-    for path in candidates:
-        try:
-            return ImageFont.truetype(path, size)
-        except (IOError, OSError):
-            continue
-    return ImageFont.load_default()
+def _font(name: str, size: int) -> ImageFont.ImageFont:
+    """Load a bundled font by filename."""
+    try:
+        return ImageFont.truetype(os.path.join(_FONTS_DIR, name), size)
+    except (IOError, OSError):
+        return ImageFont.load_default()
 
 
-def _build_poster_png(business, join_url: str, tagline: str) -> bytes:
-    """Generate a high-res poster PNG (~1800×2400, ~200 DPI A4-ish)."""
+def _text_wrap(text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    """Wrap text to fit within max_width pixels."""
+    words = text.split()
+    lines, current = [], ""
+    for word in words:
+        test = (current + " " + word).strip()
+        if font.getlength(test) <= max_width:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _build_poster_png(business, join_url: str, heading: str, tagline: str) -> bytes:
+    """Generate a high-res poster PNG (1800×2400 at 200 DPI)."""
     W, H = 1800, 2400
-    HEADER_H = 520
-    FOOTER_H = 28
     BRAND = ImageColor.getrgb(business.logo_colour)
 
     img = Image.new("RGB", (W, H), "#ffffff")
     draw = ImageDraw.Draw(img)
 
-    # Header
+    # ── Header ──────────────────────────────────────────────
+    HEADER_H = 500
     draw.rectangle([(0, 0), (W, HEADER_H)], fill=BRAND)
 
-    # Business name — centred in header
-    name_font = _load_font(108, bold=True)
-    draw.text((W // 2, HEADER_H // 2), business.name, font=name_font,
-              fill="#ffffff", anchor="mm")
+    # Heading in DM Serif Display — same font as the HTML poster
+    heading_font = _font("DMSerifDisplay-Regular.ttf", 148)
+    lines = _text_wrap(heading, heading_font, W - 160)
+    line_h = 168  # line height
+    total_h = len(lines) * line_h
+    start_y = (HEADER_H - total_h) // 2 + line_h // 2
+    for i, line in enumerate(lines):
+        draw.text((W // 2, start_y + i * line_h), line,
+                  font=heading_font, fill="#ffffff", anchor="mm")
 
-    # QR code — large, pixel-perfect
+    # ── QR code ─────────────────────────────────────────────
     qr = qrcode.QRCode(version=None, box_size=18, border=2,
                        error_correction=qrcode.constants.ERROR_CORRECT_H)
     qr.add_data(join_url)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    qr_size = 900
+    qr_size = 960
     qr_img = qr_img.resize((qr_size, qr_size), Image.NEAREST)
     qr_x = (W - qr_size) // 2
-    qr_y = HEADER_H + 140
+    qr_y = HEADER_H + 100
 
-    # QR border box
-    pad = 24
+    pad = 32
     draw.rounded_rectangle(
         [(qr_x - pad, qr_y - pad), (qr_x + qr_size + pad, qr_y + qr_size + pad)],
-        radius=20, fill="#ffffff", outline="#e5e7eb", width=3,
+        radius=24, fill="#ffffff", outline="#e5e7eb", width=4,
     )
     img.paste(qr_img, (qr_x, qr_y))
 
-    # Divider bar (brand accent)
-    bar_y = qr_y + qr_size + pad + 70
-    bar_w, bar_h = 80, 6
+    # ── Divider ──────────────────────────────────────────────
+    bar_y = qr_y + qr_size + pad + 80
+    bw, bh = 80, 8
     draw.rounded_rectangle(
-        [(W // 2 - bar_w // 2, bar_y), (W // 2 + bar_w // 2, bar_y + bar_h)],
-        radius=3, fill=BRAND,
+        [(W // 2 - bw // 2, bar_y), (W // 2 + bw // 2, bar_y + bh)],
+        radius=4, fill=BRAND,
     )
 
-    # Tagline
-    tag_font = _load_font(68, bold=True)
-    tag_y = bar_y + bar_h + 60
+    # ── Tagline ──────────────────────────────────────────────
+    tag_font = _font("Roboto-Bold.ttf", 76)
+    tag_y = bar_y + bh + 72
     for i, line in enumerate(tagline.split("\n")):
-        draw.text((W // 2, tag_y + i * 90), line.strip(), font=tag_font,
-                  fill="#111111", anchor="mm")
+        draw.text((W // 2, tag_y + i * 106), line.strip(),
+                  font=tag_font, fill="#111111", anchor="mm")
 
-    # Footer bar
-    draw.rectangle([(0, H - FOOTER_H), (W, H)], fill=BRAND)
+    # ── Footer bar ───────────────────────────────────────────
+    draw.rectangle([(0, H - 32), (W, H)], fill=BRAND)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
@@ -308,7 +312,7 @@ class QRPosterPNGView(View):
         else:
             tagline = "Scan to get notified\nwhen your order is ready"
 
-        png = _build_poster_png(business, join_url, tagline)
+        png = _build_poster_png(business, join_url, heading, tagline)
         response = HttpResponse(png, content_type="image/png")
         response["Content-Disposition"] = f'attachment; filename="{slug}-qr-poster.png"'
         return response
