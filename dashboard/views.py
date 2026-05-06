@@ -1,4 +1,5 @@
 import io
+import os
 import struct
 import zlib
 
@@ -203,24 +204,24 @@ def _build_qr_png(url: str) -> bytes:
     return buf.getvalue()
 
 
+_FONTS_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+
+
 def _load_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
-    """Try to load a TrueType font; fall back to PIL default."""
-    candidates = []
+    """Load a bundled font; fall back to system fonts then PIL default."""
+    bundled = os.path.join(_FONTS_DIR, "Roboto-Bold.ttf" if bold else "Roboto-Regular.ttf")
+    candidates = [bundled]
     if bold:
-        candidates = [
-            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",          # macOS
-            "/System/Library/Fonts/Helvetica.ttc",                         # macOS
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",        # Ubuntu
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",# Ubuntu alt
-            "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",               # Ubuntu alt
+        candidates += [
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         ]
     else:
-        candidates = [
+        candidates += [
             "/System/Library/Fonts/Supplemental/Arial.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
         ]
     for path in candidates:
         try:
