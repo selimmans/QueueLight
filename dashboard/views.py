@@ -308,8 +308,10 @@ class QRPosterPNGView(View):
 
         poster_type = request.GET.get("type", "pickup")
         if poster_type == "queue":
+            heading = "Join the queue."
             tagline = "Scan to save your spot —\nwe'll let you know when it's your turn"
         else:
+            heading = "Don't miss your order."
             tagline = "Scan to get notified\nwhen your order is ready"
 
         png = _build_poster_png(business, join_url, heading, tagline)
