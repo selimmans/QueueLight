@@ -153,12 +153,10 @@
 <body>
 
   <div class="controls">
-    <a class="ctrl-btn ctrl-primary"
-       href="{% url 'dashboard:qr_poster_png' slug=business.slug %}?type={{ poster_type }}"
-       download="{{ business.slug }}-qr-poster.png">
+    <button class="ctrl-btn ctrl-primary" onclick="downloadPNG(this)">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0-3-3m3 3 3-3"/><path d="M2 11v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1"/></svg>
       Download PNG
-    </a>
+    </button>
   </div>
 
   <div class="poster" id="poster">
@@ -186,5 +184,25 @@
   </div>
 
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    function downloadPNG(btn) {
+      btn.textContent = 'Generating…';
+      btn.disabled = true;
+      html2canvas(document.getElementById('poster'), {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      }).then(function(canvas) {
+        var a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = '{{ business.slug }}-qr-poster.png';
+        a.click();
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0-3-3m3 3 3-3"/><path d="M2 11v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1"/></svg> Download PNG';
+        btn.disabled = false;
+      });
+    }
+  </script>
 </body>
 </html>
