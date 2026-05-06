@@ -1,6 +1,7 @@
 import io
 
 import qrcode
+from PIL import Image, ImageColor, ImageDraw, ImageFont
 from django.contrib.auth import authenticate, login, logout
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
@@ -178,6 +179,116 @@ def _build_qr_png(url: str) -> bytes:
     return buf.getvalue()
 
 
+def _load_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
+    """Try to load a TrueType font; fall back to PIL default."""
+    candidates = []
+    if bold:
+        candidates = [
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",          # macOS
+            "/System/Library/Fonts/Helvetica.ttc",                         # macOS
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",        # Ubuntu
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",# Ubuntu alt
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",               # Ubuntu alt
+        ]
+    else:
+        candidates = [
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+        ]
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size)
+        except (IOError, OSError):
+            continue
+    return ImageFont.load_default()
+
+
+def _build_poster_png(business, join_url: str, tagline: str) -> bytes:
+    """Generate a high-res poster PNG (~1800×2400, ~200 DPI A4-ish)."""
+    W, H = 1800, 2400
+    HEADER_H = 520
+    FOOTER_H = 28
+    BRAND = ImageColor.getrgb(business.logo_colour)
+
+    img = Image.new("RGB", (W, H), "#ffffff")
+    draw = ImageDraw.Draw(img)
+
+    # Header
+    draw.rectangle([(0, 0), (W, HEADER_H)], fill=BRAND)
+
+    # Business name — centred in header
+    name_font = _load_font(108, bold=True)
+    draw.text((W // 2, HEADER_H // 2), business.name, font=name_font,
+              fill="#ffffff", anchor="mm")
+
+    # QR code — large, pixel-perfect
+    qr = qrcode.QRCode(version=None, box_size=18, border=2,
+                       error_correction=qrcode.constants.ERROR_CORRECT_H)
+    qr.add_data(join_url)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    qr_size = 900
+    qr_img = qr_img.resize((qr_size, qr_size), Image.NEAREST)
+    qr_x = (W - qr_size) // 2
+    qr_y = HEADER_H + 140
+
+    # QR border box
+    pad = 24
+    draw.rounded_rectangle(
+        [(qr_x - pad, qr_y - pad), (qr_x + qr_size + pad, qr_y + qr_size + pad)],
+        radius=20, fill="#ffffff", outline="#e5e7eb", width=3,
+    )
+    img.paste(qr_img, (qr_x, qr_y))
+
+    # Divider bar (brand accent)
+    bar_y = qr_y + qr_size + pad + 70
+    bar_w, bar_h = 80, 6
+    draw.rounded_rectangle(
+        [(W // 2 - bar_w // 2, bar_y), (W // 2 + bar_w // 2, bar_y + bar_h)],
+        radius=3, fill=BRAND,
+    )
+
+    # Tagline
+    tag_font = _load_font(68, bold=True)
+    tag_y = bar_y + bar_h + 60
+    for i, line in enumerate(tagline.split("\n")):
+        draw.text((W // 2, tag_y + i * 90), line.strip(), font=tag_font,
+                  fill="#111111", anchor="mm")
+
+    # Footer bar
+    draw.rectangle([(0, H - FOOTER_H), (W, H)], fill=BRAND)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+class QRPosterPNGView(View):
+    """Serve a high-res poster PNG generated server-side with Pillow."""
+
+    def get(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+
+        join_path = reverse("customer:join", kwargs={"slug": slug})
+        join_url = request.build_absolute_uri(join_path)
+
+        poster_type = request.GET.get("type", "pickup")
+        if poster_type == "queue":
+            tagline = "Scan to save your spot —\nwe'll let you know when it's your turn"
+        else:
+            tagline = "Scan to get notified\nwhen your order is ready"
+
+        png = _build_poster_png(business, join_url, tagline)
+        response = HttpResponse(png, content_type="image/png")
+        response["Content-Disposition"] = f'attachment; filename="{slug}-qr-poster.png"'
+        return response
+
+
 class QRCodeView(View):
     """Return a QR code PNG for the customer join page.
 
@@ -224,6 +335,7 @@ class QRPosterView(View):
             "join_url": join_url,
             "heading": heading,
             "tagline": tagline,
+            "poster_type": poster_type,
         })
 
 

@@ -153,10 +153,12 @@
 <body>
 
   <div class="controls">
-    <button class="ctrl-btn ctrl-primary" onclick="downloadPNG(this)">
+    <a class="ctrl-btn ctrl-primary"
+       href="{% url 'dashboard:qr_poster_png' slug=business.slug %}?type={{ poster_type }}"
+       download="{{ business.slug }}-qr-poster.png">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0-3-3m3 3 3-3"/><path d="M2 11v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1"/></svg>
       Download PNG
-    </button>
+    </a>
   </div>
 
   <div class="poster" id="poster">
@@ -183,47 +185,6 @@
     <div class="poster-footer"></div>
   </div>
 
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  <script>
-    async function downloadPNG(btn) {
-      const original = btn.innerHTML;
-      btn.textContent = 'Generating…';
-      btn.disabled = true;
-
-      const qrImg = document.querySelector('.poster-qr');
-      const originalSrc = qrImg.src;
-
-      try {
-        // Inline the QR as a data URL so html2canvas can capture it
-        const resp = await fetch(originalSrc, { credentials: 'same-origin' });
-        const blob = await resp.blob();
-        const dataUrl = await new Promise(res => {
-          const reader = new FileReader();
-          reader.onload = e => res(e.target.result);
-          reader.readAsDataURL(blob);
-        });
-        qrImg.src = dataUrl;
-        await new Promise(res => setTimeout(res, 80));
-
-        const canvas = await html2canvas(document.getElementById('poster'), {
-          scale: 3,
-          backgroundColor: '#ffffff',
-          logging: false,
-        });
-
-        const link = document.createElement('a');
-        link.download = '{{ business.slug }}-qr-poster.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch(e) {
-        console.error('PNG export failed', e);
-      } finally {
-        qrImg.src = originalSrc;
-        btn.innerHTML = original;
-        btn.disabled = false;
-      }
-    }
-  </script>
 
 </body>
 </html>
