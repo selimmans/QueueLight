@@ -1,4 +1,6 @@
 import io
+import struct
+import zlib
 
 import qrcode
 from PIL import Image, ImageColor, ImageDraw, ImageFont
@@ -172,6 +174,28 @@ class CallNextView(View):
         return redirect("dashboard:dashboard", slug=slug)
 
 
+def _png_set_dpi(data: bytes, dpi: int) -> bytes:
+    """Inject a correct pHYs chunk into PNG bytes to set DPI metadata."""
+    ppm = round(dpi / 0.0254)  # dots/inch → pixels/metre
+    chunk_data = struct.pack(">IIB", ppm, ppm, 1)  # x, y, unit=metre
+    crc = zlib.crc32(b"pHYs" + chunk_data) & 0xFFFFFFFF
+    phys = struct.pack(">I", 9) + b"pHYs" + chunk_data + struct.pack(">I", crc)
+
+    sig  = data[:8]    # PNG signature
+    ihdr = data[8:33]  # IHDR is always exactly 25 bytes (4+4+13+4)
+    rest = data[33:]
+
+    # Rebuild remaining chunks, dropping any existing pHYs
+    out, i = bytearray(), 0
+    while i < len(rest):
+        length = struct.unpack(">I", rest[i:i+4])[0]
+        if rest[i+4:i+8] != b"pHYs":
+            out += rest[i:i+12+length]
+        i += 12 + length
+
+    return sig + ihdr + phys + bytes(out)
+
+
 def _build_qr_png(url: str) -> bytes:
     img = qrcode.make(url)
     buf = io.BytesIO()
@@ -262,8 +286,8 @@ def _build_poster_png(business, join_url: str, tagline: str) -> bytes:
     draw.rectangle([(0, H - FOOTER_H), (W, H)], fill=BRAND)
 
     buf = io.BytesIO()
-    img.save(buf, format="PNG", optimize=True, dpi=(200, 200))
-    return buf.getvalue()
+    img.save(buf, format="PNG", optimize=True)
+    return _png_set_dpi(buf.getvalue(), 200)
 
 
 class QRPosterPNGView(View):
