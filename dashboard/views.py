@@ -200,6 +200,33 @@ class QRCodeView(View):
         return HttpResponse(png, content_type="image/png")
 
 
+class QRPosterView(View):
+    """Branded, printable QR poster page for staff to print/download/share."""
+
+    def get(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+
+        join_path = reverse("customer:join", kwargs={"slug": slug})
+        join_url = request.build_absolute_uri(join_path)
+
+        poster_type = request.GET.get("type", "pickup")
+        if poster_type == "queue":
+            heading = "Join the queue."
+            tagline = "Scan to save your spot —\nwe'll let you know when it's your turn"
+        else:
+            heading = "Don't miss your order."
+            tagline = "Scan to get notified\nwhen your order is ready"
+
+        return render(request, "dashboard/qr_poster.html", {
+            "business": business,
+            "join_url": join_url,
+            "heading": heading,
+            "tagline": tagline,
+        })
+
+
 class SettingsView(View):
     template_name = "dashboard/settings.html"
 

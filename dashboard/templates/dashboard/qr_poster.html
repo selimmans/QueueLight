@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Poster — {{ business.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #ebebeb;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Controls (hidden on print) ────────────── */
+    .controls {
+      display: flex;
+      gap: 0.6rem;
+      padding: 1.25rem 1rem 0.75rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .ctrl-btn {
+      flex: 1;
+      padding: 0.65rem 0.75rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: opacity .15s;
+    }
+    .ctrl-btn:active { opacity: 0.75; }
+
+    .ctrl-primary { background: #111; color: #fff; }
+    .ctrl-secondary { background: #fff; color: #111; border: 1.5px solid #d1d5db; }
+
+    /* ── Poster ──────────────────────────────── */
+    .poster {
+      width: 100%;
+      max-width: 480px;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.14);
+      margin: 0 1rem 2rem;
+    }
+
+    .poster-header {
+      background: {{ business.logo_colour }};
+      padding: 2.75rem 2rem 2.5rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .poster-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.75rem, 6vw, 2.5rem);
+      color: #fff;
+      line-height: 1.15;
+    }
+
+    .poster-body {
+      padding: 2.5rem 2rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .poster-qr-wrap {
+      padding: 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fff;
+      line-height: 0;
+    }
+
+    .poster-qr {
+      width: clamp(180px, 45vw, 240px);
+      height: clamp(180px, 45vw, 240px);
+      display: block;
+    }
+
+    .poster-divider {
+      width: 40px;
+      height: 3px;
+      border-radius: 2px;
+      background: {{ business.logo_colour }};
+      opacity: 0.35;
+    }
+
+    .poster-tagline {
+      font-size: clamp(1rem, 3.5vw, 1.25rem);
+      font-weight: 600;
+      color: #111;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .poster-url {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      text-align: center;
+      word-break: break-all;
+      letter-spacing: 0.01em;
+    }
+
+    .poster-footer {
+      height: 8px;
+      background: {{ business.logo_colour }};
+    }
+
+    /* ── Print ───────────────────────────────── */
+    @media print {
+      body { background: #fff; }
+      .controls { display: none; }
+      .poster {
+        max-width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+      }
+      .poster-qr {
+        width: 55mm;
+        height: 55mm;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <button class="ctrl-btn ctrl-primary" onclick="window.print()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6V2h8v4"/><rect x="2" y="6" width="12" height="6" rx="1"/><path d="M4 12v2h8v-2"/></svg>
+      Print / Save PDF
+    </button>
+    <button class="ctrl-btn ctrl-secondary" onclick="downloadPNG(this)">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0-3-3m3 3 3-3"/><path d="M2 11v1a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1"/></svg>
+      Download PNG
+    </button>
+  </div>
+
+  <div class="poster" id="poster">
+    <div class="poster-header">
+      <div class="poster-name">{{ heading }}</div>
+    </div>
+
+    <div class="poster-body">
+      <div class="poster-qr-wrap">
+        <img
+          src="{% url 'dashboard:qr_code' slug=business.slug %}"
+          alt="QR code"
+          class="poster-qr"
+          crossorigin="anonymous"
+        >
+      </div>
+
+      <div class="poster-divider"></div>
+
+      <p class="poster-tagline">{{ tagline|linebreaksbr }}</p>
+
+      <p class="poster-url">{{ join_url }}</p>
+    </div>
+
+    <div class="poster-footer"></div>
+  </div>
+
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script>
+    function downloadPNG(btn) {
+      const original = btn.innerHTML;
+      btn.textContent = 'Generating…';
+      btn.disabled = true;
+      html2canvas(document.getElementById('poster'), {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = '{{ business.slug }}-qr-poster.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }).catch(() => {
+        btn.innerHTML = original;
+        btn.disabled = false;
+      });
+    }
+  </script>
+
+</body>
+</html>

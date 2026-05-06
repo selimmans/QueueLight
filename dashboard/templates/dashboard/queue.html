@@ -302,7 +302,23 @@
     }
 
     .qr-section p { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
-    .qr-section a { font-size: 0.72rem; color: var(--muted); word-break: break-all; }
+    .qr-section a.qr-url { font-size: 0.72rem; color: var(--muted); word-break: break-all; }
+
+    .qr-poster-btn {
+      margin-left: auto;
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--brand);
+      text-decoration: none;
+      border: 1.5px solid var(--brand);
+      border-radius: var(--r);
+      padding: 0.35rem 0.6rem;
+      white-space: nowrap;
+      opacity: 0.85;
+      transition: opacity .15s;
+    }
+    .qr-poster-btn:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -426,8 +442,9 @@
         <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
         <div>
           <p>Share this QR to let customers join</p>
-          <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
+          <a class="qr-url" href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
         </div>
+        <a class="qr-poster-btn" href="{% url 'dashboard:qr_poster' slug=business.slug %}?type=queue" target="_blank">Print&nbsp;/ Download</a>
       </div>
 
     </div>
@@ -479,8 +496,9 @@
         <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
         <div>
           <p>Share this QR to let customers register</p>
-          <a href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
+          <a class="qr-url" href="{% url 'customer:join' slug=business.slug %}">{% url 'customer:join' slug=business.slug %}</a>
         </div>
+        <a class="qr-poster-btn" href="{% url 'dashboard:qr_poster' slug=business.slug %}" target="_blank">Print&nbsp;/ Download</a>
       </div>
     </div>
   </div>
