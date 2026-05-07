@@ -40,7 +40,12 @@ class JoinView(View):
     template_name = "customer/join.html"
 
     def _get_business(self, slug):
-        return get_object_or_404(Business, slug=slug)
+        key = f"business_obj:{slug}"
+        business = cache.get(key)
+        if business is None:
+            business = get_object_or_404(Business, slug=slug)
+            cache.set(key, business, timeout=30)
+        return business
 
     def get(self, request, slug):
         business = self._get_business(slug)
@@ -275,7 +280,12 @@ class PickupJoinView(View):
     template_name = "customer/pickup_join.html"
 
     def _get_business(self, slug):
-        return get_object_or_404(Business, slug=slug)
+        key = f"business_obj:{slug}"
+        business = cache.get(key)
+        if business is None:
+            business = get_object_or_404(Business, slug=slug)
+            cache.set(key, business, timeout=30)
+        return business
 
     def get(self, request, slug):
         business = self._get_business(slug)
