@@ -41,6 +41,16 @@ STATUS: OPEN — acceptable. Could be merged into one combined endpoint later.
 
 ---
 
+**POS API token stored plaintext** — `Business.pos_api_token` is a CharField with no at-rest encryption. Consistent with how `twilio_from_number` and other config is stored. Acceptable for early deployments. Proper encryption (e.g. django-fernet-fields) deferred until multi-tenant security requirements are clearer.
+STATUS: OPEN — deferred by design.
+
+**POS name matching is first-name-only unreliable** — `token_sort_ratio` with threshold 0.75 reliably matches full names and transposed names, but a customer entering only a first name (e.g. "Mohamed") against a POS order with a full name ("Mohamed Al Rashid") may fall below threshold (~0.61) and land in manual fallback. Staff can ask the customer to enter their full name or use the fallback flow. Raising the threshold to 0.65 would help but risks false positives.
+STATUS: OPEN — known trade-off in fuzzy matching.
+
+**POS order match re-fetches on form submit not implemented** — when a customer confirms a POS match ("Yes, that's me"), the `pos_order_items` sent in the hidden form field are trusted from the client. This is display-only data (staff see item names), not security-sensitive. A server-side re-verification on submit was considered but adds latency.
+STATUS: OPEN — intentional for v1.
+
 ## Resolved Issues
 
-_(none yet)_
+**Test cache bleed between transactions** — `PickupJoinView._get_business()` cached Business objects in-memory for 30 s. In pytest, rolled-back transactions left stale cached objects with dangling pks, causing intermittent test failures. RESOLVED by adding `clear_django_cache` autouse fixture in `conftest.py`.
+STATUS: RESOLVED.

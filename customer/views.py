@@ -275,7 +275,14 @@ class CustomerResponseView(View):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class PickupJoinView(View):
-    """Customer submits an order number to get a pickup notification."""
+    """Customer registers for a pickup notification.
+
+    Two paths:
+    - POS flow  (business.pos_type != 'none'): name-first, JS matches against
+      POS, confirmed server-side on submit.  Handles hidden fields
+      pos_order_id / pos_order_items / customer_name.
+    - Standard flow (no POS): order_number + optional name + optional phone.
+    """
 
     template_name = "customer/pickup_join.html"
 
@@ -287,69 +294,122 @@ class PickupJoinView(View):
             cache.set(key, business, timeout=30)
         return business
 
+    def _ctx(self, business, **kwargs):
+        calling_code = phonenumbers.country_code_for_region(business.country) or 1
+        pos_enabled = business.pos_type != business.POS_NONE and bool(business.pos_api_token)
+        return {"business": business, "calling_code": calling_code,
+                "pos_enabled": pos_enabled, "errors": {}, **kwargs}
+
     def get(self, request, slug):
         business = self._get_business(slug)
         if not business.is_active or not business.pickup_enabled:
             raise Http404
-        calling_code = phonenumbers.country_code_for_region(business.country) or 1
-        return render(request, self.template_name, {
-            "business": business,
-            "errors": {},
-            "calling_code": calling_code,
-        })
+        return render(request, self.template_name, self._ctx(business))
 
     def post(self, request, slug):
+        import json as _json
         business = self._get_business(slug)
         if not business.is_active or not business.pickup_enabled:
             raise Http404
 
         ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")).split(",")[0].strip()
         if _is_rate_limited(ip):
-            return render(request, self.template_name, {
-                "business": business,
-                "errors": {},
-                "global_error": "Too many requests. Please try again later.",
-            }, status=429)
+            return render(request, self.template_name,
+                          self._ctx(business, global_error="Too many requests. Please try again later."),
+                          status=429)
 
-        order_number = request.POST.get("order_number", "").strip()
-        customer_name = request.POST.get("customer_name", "").strip()
-        raw_phone = request.POST.get("phone", "").strip()
+        calling_code = phonenumbers.country_code_for_region(business.country) or 1
+        pos_enabled = business.pos_type != business.POS_NONE and bool(business.pos_api_token)
         errors = {}
 
-        if not order_number:
-            errors["order_number"] = "Please enter your order number"
-
+        raw_phone = request.POST.get("phone", "").strip()
         phone = ""
         if raw_phone:
             phone, phone_error = _parse_phone(raw_phone, business.country)
             if phone_error:
                 errors["phone"] = phone_error
 
-        calling_code = phonenumbers.country_code_for_region(business.country) or 1
+        customer_name = request.POST.get("customer_name", "").strip()
 
-        if errors:
-            return render(request, self.template_name, {
-                "business": business,
-                "errors": errors,
-                "order_number": order_number,
-                "customer_name": customer_name,
-                "phone": raw_phone,
-                "calling_code": calling_code,
-            })
+        if pos_enabled and request.POST.get("pos_order_id"):
+            # ── POS-confirmed path ───────────────────────────────────────
+            pos_order_id = request.POST.get("pos_order_id", "").strip()
+            raw_items = request.POST.get("pos_order_items", "[]")
+            try:
+                pos_order_items = [
+                    str(i) for i in _json.loads(raw_items)
+                    if isinstance(i, str)
+                ]
+            except (_json.JSONDecodeError, TypeError):
+                pos_order_items = []
 
-        pickup_intake_fields = business.pickup_intake_fields or []
-        intake_answers = {
-            q: request.POST.get(f"pickup_intake_{i}", "").strip()
-            for i, q in enumerate(pickup_intake_fields)
-        }
+            if errors:
+                return render(request, self.template_name,
+                              self._ctx(business, errors=errors, phone=raw_phone))
 
-        entry = PickupService.register(
-            business,
-            order_number=order_number,
-            customer_name=customer_name,
-            phone=phone,
-            intake_answers=intake_answers,
-        )
+            # Use pos_order_id as the display order number for staff dashboard
+            order_number = pos_order_id or f"W{slug[:4].upper()}"
+            entry = PickupService.register(
+                business,
+                order_number=order_number,
+                customer_name=customer_name,
+                phone=phone,
+            )
+            # Stamp POS data
+            entry.pos_order_id = pos_order_id
+            entry.pos_order_items = pos_order_items
+            entry.pos_match_confidence = None  # already confirmed by customer
+            entry.save(update_fields=["pos_order_id", "pos_order_items", "pos_match_confidence"])
+
+        elif pos_enabled:
+            # ── POS fallback path (no match / "that's not me") ──────────
+            import uuid as _uuid
+            if not customer_name:
+                errors["customer_name"] = "Please enter your name"
+            if errors:
+                return render(request, self.template_name,
+                              self._ctx(business, errors=errors, phone=raw_phone,
+                                        customer_name=customer_name))
+
+            order_number = f"W{_uuid.uuid4().hex[:6].upper()}"
+            pickup_intake_fields = business.pickup_intake_fields or []
+            intake_answers = {
+                q: request.POST.get(f"pickup_intake_{i}", "").strip()
+                for i, q in enumerate(pickup_intake_fields)
+            }
+            entry = PickupService.register(
+                business,
+                order_number=order_number,
+                customer_name=customer_name,
+                phone=phone,
+                intake_answers=intake_answers,
+            )
+
+        else:
+            # ── Standard path (no POS) ───────────────────────────────────
+            order_number = request.POST.get("order_number", "").strip()
+            if not order_number:
+                errors["order_number"] = "Please enter your order number"
+            if errors:
+                return render(request, self.template_name,
+                              self._ctx(business, errors=errors,
+                                        order_number=order_number,
+                                        customer_name=customer_name,
+                                        phone=raw_phone))
+
+            pickup_intake_fields = business.pickup_intake_fields or []
+            intake_answers = {
+                q: request.POST.get(f"pickup_intake_{i}", "").strip()
+                for i, q in enumerate(pickup_intake_fields)
+            }
+            entry = PickupService.register(
+                business,
+                order_number=order_number,
+                customer_name=customer_name,
+                phone=phone,
+                intake_answers=intake_answers,
+            )
+
         return redirect("customer:pickup_confirmation", slug=slug, entry_id=entry.pk)
 
 

@@ -60,6 +60,9 @@ queuelight/
 | queue_enabled      | BooleanField          | Default True. False hides queue form on join page.         |
 | pickup_enabled     | BooleanField          | Default False. True shows pickup form on join page.        |
 | pickup_notification_message | CharField  | SMS sent when order marked ready. Blank → default template.|
+| pos_type           | CharField             | "none" / "clover" / "square". Default "none".             |
+| pos_api_token      | CharField             | API token / access token for connected POS. Stored plaintext (see KNOWN_ISSUES). |
+| pos_merchant_id    | CharField             | Clover: merchant ID. Square: location ID.                 |
 
 ### businesses.StaffPhone
 
@@ -117,6 +120,9 @@ Immutable. Never update rows. Only insert.
 | registered_at  | DateTimeField         | auto_now_add                                       |
 | ready_at       | DateTimeField         | Set when staff marks Ready.                        |
 | completed_at   | DateTimeField         | Set when staff marks Picked Up.                    |
+| pos_order_id   | CharField             | POS order reference. Blank if no POS match.        |
+| pos_order_items| JSONField             | List of item name strings from POS. [] if no match.|
+| pos_match_confidence | FloatField      | Fuzzy match score 0–1. Null if manually confirmed. |
 
 ### queues.PickupEventLog
 
@@ -188,6 +194,7 @@ Terminal states: COMPLETED, ABANDONED, SKIPPED
 | POST /staff/<slug>/pickup/<id>/ready/    | dashboard.views.PickupReadyView     | Session/Super | Mark order ready, fire SMS if phone present  |
 | POST /staff/<slug>/pickup/<id>/picked-up/| dashboard.views.PickupPickedUpView  | Session/Super | Mark order picked up                         |
 | GET /api/pickup/<slug>/status/           | dashboard.views.PickupStatusAPIView | Session/Super | Pickup polling endpoint (waiting + ready)    |
+| POST /api/pickup/<slug>/match/           | dashboard.views.PickupMatchAPIView  | None (public) | Fuzzy name→POS order match. Rate-limited 10/min/IP. |
 | GET /health/                             | core.views.HealthCheckView          | None          | DB health probe                              |
 | GET /admin/                              | Django admin                        | is_staff      | Full admin panel                             |
 

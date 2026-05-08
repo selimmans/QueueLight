@@ -27,6 +27,7 @@ urlpatterns = [
 api_urlpatterns = [
     path("queue/<slug:slug>/status/", views.QueueStatusAPIView.as_view(), name="queue_status"),
     path("pickup/<slug:slug>/status/", views.PickupStatusAPIView.as_view(), name="pickup_status"),
+    path("pickup/<slug:slug>/match/", views.PickupMatchAPIView.as_view(), name="pickup_match"),
 ]
 
 platform_urlpatterns = [

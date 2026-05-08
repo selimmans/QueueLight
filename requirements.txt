@@ -13,3 +13,5 @@ python-dotenv>=1.0
 pytest-django>=4.8
 pytest>=8.0
 sentry-sdk>=2.0
+rapidfuzz>=3.0
+requests>=2.31

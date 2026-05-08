@@ -10,8 +10,10 @@ from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.utils.text import slugify
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 from businesses.models import Business, StaffPhone
 from queues.models import QueueEntry, PickupEntry
@@ -505,6 +507,32 @@ class SettingsView(View):
                         setattr(business, field, val)
                 business.save(update_fields=["logo_colour", "colour_accent", "colour_border"])
 
+        elif action == "save_pos":
+            if _require_superuser(request):
+                pos_type = request.POST.get("pos_type", "none").strip()
+                if pos_type not in (business.POS_NONE, business.POS_CLOVER, business.POS_SQUARE):
+                    pos_type = business.POS_NONE
+                business.pos_type = pos_type
+                if pos_type != business.POS_NONE:
+                    business.pos_api_token = request.POST.get("pos_api_token", "").strip()
+                    business.pos_merchant_id = request.POST.get("pos_merchant_id", "").strip()
+                else:
+                    business.pos_api_token = ""
+                    business.pos_merchant_id = ""
+                business.save(update_fields=["pos_type", "pos_api_token", "pos_merchant_id"])
+
+        elif action == "test_pos_connection":
+            if _require_superuser(request):
+                from notifications.pos_integration import POSIntegration
+                # Apply posted values temporarily (don't save)
+                pos_type = request.POST.get("pos_type", "none").strip()
+                business.pos_type = pos_type
+                business.pos_api_token = request.POST.get("pos_api_token", "").strip()
+                business.pos_merchant_id = request.POST.get("pos_merchant_id", "").strip()
+                result = POSIntegration.test_connection(business)
+                return JsonResponse(result)
+            return JsonResponse({"ok": False, "message": "Unauthorized"}, status=403)
+
         return redirect("dashboard:settings", slug=slug)
 
 
@@ -740,10 +768,70 @@ class PickupStatusAPIView(View):
                 "registered_at": e.registered_at.isoformat(),
                 "minutes_waiting": minutes_waiting,
                 "intake_answers": e.intake_answers or {},
+                "pos_order_items": e.pos_order_items or [],
             }
 
         active_orders = [_entry_dict(e) for e in entries]
         return JsonResponse({"active_orders": active_orders, "total_active": len(active_orders)})
+
+
+# ── Rate limiter for the public match endpoint (10 req/min per IP) ─────────
+_MATCH_LIMIT = 10
+_MATCH_WINDOW = 60
+
+
+def _is_match_rate_limited(ip: str) -> bool:
+    key = f"ql_match_{ip}"
+    count = cache.get(key, 0)
+    if count >= _MATCH_LIMIT:
+        return True
+    cache.set(key, count + 1, timeout=_MATCH_WINDOW)
+    return False
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class PickupMatchAPIView(View):
+    """POST /api/pickup/<slug>/match/  — public, rate-limited.
+
+    Body: {"customer_name": "Ahmed"}
+    Response: {"matched": bool, "order_id": str|null, "items": [...], "confidence": 0–1}
+
+    Called by the customer's browser on the pickup join page.
+    No staff session required — this is a customer-facing endpoint.
+    """
+
+    def post(self, request, slug):
+        from notifications.pos_integration import POSIntegration
+        import json
+
+        business = get_object_or_404(Business, slug=slug)
+
+        if not business.is_active or not business.pickup_enabled:
+            return JsonResponse({"error": "Not available"}, status=404)
+
+        if business.pos_type == business.POS_NONE:
+            return JsonResponse({"matched": False, "order_id": None, "items": [], "confidence": 0})
+
+        ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")).split(",")[0].strip()
+        if _is_match_rate_limited(ip):
+            return JsonResponse({"error": "Too many requests"}, status=429)
+
+        try:
+            body = json.loads(request.body)
+            customer_name = str(body.get("customer_name", "")).strip()
+        except (json.JSONDecodeError, AttributeError):
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        if not customer_name:
+            return JsonResponse({"error": "customer_name required"}, status=400)
+
+        result = POSIntegration.match_customer(business, customer_name)
+        return JsonResponse({
+            "matched": result["matched"],
+            "order_id": result["order_id"],
+            "items": result["order_items"],
+            "confidence": result["confidence"],
+        })
 
 
 class QueueStatusAPIView(View):

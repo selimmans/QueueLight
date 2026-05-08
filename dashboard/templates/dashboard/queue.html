@@ -239,6 +239,7 @@
     .entry-body { flex: 1; min-width: 0; cursor: default; }
     .entry-body.expandable { cursor: pointer; }
     .entry-name { font-weight: 600; color: var(--text); font-size: 0.95rem; }
+    .entry-items { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
     .entry-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
 
     .intake-details { display: none; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f3f4f6; }
@@ -471,7 +472,7 @@
               {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
             </div>
             <div class="entry-body">
-              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
+              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}{% if entry.pos_order_items %}<span class="entry-items"> · {{ entry.pos_order_items|join:", " }}</span>{% endif %}</div>
               <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
             </div>
             <div class="entry-actions">
@@ -591,6 +592,11 @@
         : `<div class="badge badge-waiting">Waiting</div>`;
       const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
       const mins = e.minutes_waiting > 0 ? ` · ${e.minutes_waiting}m ago` : "";
+      // POS order items shown inline after customer name
+      const items = e.pos_order_items || [];
+      const itemsHtml = items.length
+        ? `<span class="entry-items"> · ${items.join(", ")}</span>`
+        : "";
       const answers = e.intake_answers || {};
       const answerEntries = Object.entries(answers).filter(([,v]) => v);
       const hasAnswers = answerEntries.length > 0;
@@ -617,7 +623,7 @@
       return `<div class="entry">
         ${statusBadge}
         <div class="entry-body${expandClass}"${expandAttr}>
-          <div class="entry-name">#${e.order_number}${nameHtml}</div>
+          <div class="entry-name">#${e.order_number}${nameHtml}${itemsHtml}</div>
           <div class="entry-meta">Registered${mins}${metaExtra}</div>
           ${intakeHtml}
         </div>

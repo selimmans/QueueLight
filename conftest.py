@@ -4,6 +4,20 @@ from businesses.models import Business, StaffPhone
 from queues.models import QueueEntry
 
 
+@pytest.fixture(autouse=True)
+def clear_django_cache():
+    """Clear in-memory Django cache before every test.
+
+    Views like PickupJoinView cache Business objects by slug for 30 s.
+    Without this, a cached object from a rolled-back transaction bleeds
+    into the next test, causing stale-pk FK mismatches.
+    """
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def business(db):
     return Business.objects.create(

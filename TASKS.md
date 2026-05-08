@@ -147,6 +147,22 @@ DJANGO_TIME_ZONE=America/Toronto
 
 ---
 
+## PHASE 20 — Read-only POS integrations (Clover + Square)
+- [x] `rapidfuzz` + `requests` added to requirements.txt
+- [x] Business model: `pos_type` (none/clover/square), `pos_api_token`, `pos_merchant_id` fields + migration
+- [x] PickupEntry model: `pos_order_id`, `pos_order_items`, `pos_match_confidence` fields + migration
+- [x] `notifications/pos_integration.py`: `POSIntegration`, `CloverIntegration`, `SquareIntegration` — read-only, never writes to POS
+- [x] `POST /api/pickup/<slug>/match/` — public, rate-limited (10/min/IP), fuzzy name matching via rapidfuzz `token_sort_ratio`, threshold 0.75
+- [x] Pickup join page redesigned for POS flow: name-first, JS match call, confirmation card ("Is this your order? [items]"), "That's not me" fallback, localStorage prefill for returning customers
+- [x] Standard (non-POS) pickup flow unchanged
+- [x] Staff dashboard pickup rows show POS order items inline (both SSR initial and polled JS rendering)
+- [x] `PickupStatusAPIView` response includes `pos_order_items`
+- [x] Settings page: POS Integration section (admin only, pickup_enabled only) — POS type selector, merchant ID + token fields per provider, "Test connection" button via async JSON call
+- [x] `SettingsView`: `save_pos` and `test_pos_connection` actions
+- [x] 19 new tests (Clover, Square, POSIntegration.match_customer, /api/pickup/<slug>/match/)
+- [x] `conftest.py` autouse `clear_django_cache` fixture (fixes pre-existing cache bleed between tests)
+- [x] 168 tests passing
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings

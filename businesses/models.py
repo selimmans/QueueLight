@@ -56,6 +56,18 @@ class Business(models.Model):
         default="",
         help_text="Placeholders: {business_name}, {order_number}, {customer_name}. Leave blank to use default.",
     )
+    POS_NONE = "none"
+    POS_CLOVER = "clover"
+    POS_SQUARE = "square"
+    POS_CHOICES = [(POS_NONE, "None"), (POS_CLOVER, "Clover"), (POS_SQUARE, "Square")]
+
+    pos_type = models.CharField(max_length=10, choices=POS_CHOICES, default=POS_NONE)
+    # API token / access token for the connected POS system.
+    # NOTE: stored plaintext — encryption at rest deferred (see KNOWN_ISSUES).
+    pos_api_token = models.CharField(max_length=512, blank=True)
+    # Clover: merchant ID.  Square: location ID.
+    pos_merchant_id = models.CharField(max_length=255, blank=True)
+
     is_active = models.BooleanField(default=False)
     is_closing = models.BooleanField(default=False)
     avg_service_minutes = models.PositiveIntegerField(null=True, blank=True)

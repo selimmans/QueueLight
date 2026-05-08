@@ -73,6 +73,10 @@ class PickupEntry(models.Model):
     phone = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.WAITING)
     intake_answers = models.JSONField(default=dict, blank=True)
+    # POS integration — blank when no POS connected or no match found
+    pos_order_id = models.CharField(max_length=255, blank=True)
+    pos_order_items = models.JSONField(default=list, blank=True)
+    pos_match_confidence = models.FloatField(null=True, blank=True)
     registered_at = models.DateTimeField(auto_now_add=True)
     ready_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

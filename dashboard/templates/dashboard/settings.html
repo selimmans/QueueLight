@@ -373,6 +373,69 @@
     </form>
     {% endif %}{# end is_admin branding #}
 
+    <!-- ── POS Integration (admin only) ──────────────── -->
+    {% if is_admin and business.pickup_enabled %}
+    <form method="post" id="pos-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_pos">
+
+      <div class="section">
+        <h2 style="margin-bottom:0.25rem">POS Integration</h2>
+        <p class="hint" style="margin-bottom:1rem">Read-only. We only fetch order names to match customers — we never write to your POS or process payments.</p>
+
+        <div class="field">
+          <label for="pos_type">POS system</label>
+          <select id="pos_type" name="pos_type" onchange="updatePosFields()" style="width:100%;padding:0.65rem 0.85rem;border:1.5px solid #e5e7eb;border-radius:4px;font-size:0.95rem;background:#fff;">
+            <option value="none"  {% if business.pos_type == "none"   %}selected{% endif %}>None</option>
+            <option value="clover"{% if business.pos_type == "clover" %}selected{% endif %}>Clover</option>
+            <option value="square"{% if business.pos_type == "square" %}selected{% endif %}>Square</option>
+          </select>
+        </div>
+
+        <div id="pos-clover-fields" style="display:none">
+          <div class="field">
+            <label for="pos_merchant_id_clover">Merchant ID</label>
+            <div class="hint">Find this in your Clover dashboard under Account &amp; Setup.</div>
+            <input type="text" id="pos_merchant_id_clover" name="pos_merchant_id"
+                   value="{{ business.pos_merchant_id }}" autocomplete="off" placeholder="XXXXXXXXXXXXXXXX">
+          </div>
+          <div class="field">
+            <label for="pos_api_token_clover">API Token</label>
+            <div class="hint">Generate under Account &amp; Setup → API Tokens in your Clover dashboard.</div>
+            <input type="text" id="pos_api_token_clover" name="pos_api_token"
+                   value="{{ business.pos_api_token }}" autocomplete="off" placeholder="Paste token here">
+          </div>
+        </div>
+
+        <div id="pos-square-fields" style="display:none">
+          <div class="field">
+            <label for="pos_merchant_id_square">Location ID</label>
+            <div class="hint">Find this in your Square Developer dashboard → Locations.</div>
+            <input type="text" id="pos_merchant_id_square" name="pos_merchant_id"
+                   value="{{ business.pos_merchant_id }}" autocomplete="off" placeholder="LXXXXXXXXXXXXXXXXX">
+          </div>
+          <div class="field">
+            <label for="pos_api_token_square">Access Token</label>
+            <div class="hint">Find under Square Developer dashboard → Your Application → Credentials.</div>
+            <input type="text" id="pos_api_token_square" name="pos_api_token"
+                   value="{{ business.pos_api_token }}" autocomplete="off" placeholder="EAAAl...">
+          </div>
+        </div>
+
+        <div id="pos-save-row" style="display:{% if business.pos_type != 'none' %}flex{% else %}none{% endif %};gap:0.6rem;align-items:center;flex-wrap:wrap;">
+          <button class="save-btn" type="submit" style="margin:0">Save</button>
+          <button class="save-btn" type="button" id="btn-test-pos"
+                  style="margin:0;background:#fff;color:#111;border:1.5px solid #e5e7eb;"
+                  onclick="testPosConnection()">Test connection</button>
+          <span id="pos-test-result" style="font-size:0.82rem;color:#6b7280;"></span>
+        </div>
+        {% if business.pos_type == "none" %}
+        <button class="save-btn" type="submit" id="pos-save-btn-none">Save</button>
+        {% endif %}
+      </div>
+    </form>
+    {% endif %}{# end POS integration #}
+
     <!-- ── Queue settings (only when queue enabled) ──── -->
     {% if business.queue_enabled %}
     <form method="post">
@@ -668,6 +731,52 @@
     function confirmPickupClear() {
       if (confirm("Cancel all waiting and ready pickup orders? This cannot be undone.")) {
         document.getElementById("pickupClearForm").submit();
+      }
+    }
+
+    // ── POS Integration ───────────────────────────────────────────────────
+    function updatePosFields() {
+      const val = document.getElementById("pos_type")?.value;
+      if (!val) return;
+      document.getElementById("pos-clover-fields").style.display = val === "clover" ? "block" : "none";
+      document.getElementById("pos-square-fields").style.display = val === "square" ? "block" : "none";
+      const saveRow = document.getElementById("pos-save-row");
+      if (saveRow) saveRow.style.display = val !== "none" ? "flex" : "none";
+      const noneBtn = document.getElementById("pos-save-btn-none");
+      if (noneBtn) noneBtn.style.display = val === "none" ? "inline-block" : "none";
+      // Sync duplicate name fields so only active one submits
+      if (val === "clover") {
+        document.getElementById("pos_merchant_id_clover").name = "pos_merchant_id";
+        document.getElementById("pos_api_token_clover").name   = "pos_api_token";
+        document.getElementById("pos_merchant_id_square").name = "_pos_merchant_id_sq";
+        document.getElementById("pos_api_token_square").name   = "_pos_api_token_sq";
+      } else if (val === "square") {
+        document.getElementById("pos_merchant_id_square").name = "pos_merchant_id";
+        document.getElementById("pos_api_token_square").name   = "pos_api_token";
+        document.getElementById("pos_merchant_id_clover").name = "_pos_merchant_id_cl";
+        document.getElementById("pos_api_token_clover").name   = "_pos_api_token_cl";
+      }
+    }
+    // Run on load to show correct fields for saved pos_type
+    document.addEventListener("DOMContentLoaded", updatePosFields);
+
+    async function testPosConnection() {
+      const btn = document.getElementById("btn-test-pos");
+      const result = document.getElementById("pos-test-result");
+      btn.disabled = true;
+      result.textContent = "Testing…";
+      try {
+        const fd = new FormData(document.getElementById("pos-form"));
+        fd.set("action", "test_pos_connection");
+        const resp = await fetch(window.location.href, { method: "POST", body: fd });
+        const data = await resp.json();
+        result.textContent = data.message || (data.ok ? "Connected" : "Failed");
+        result.style.color = data.ok ? "#059669" : "#dc2626";
+      } catch {
+        result.textContent = "Request failed";
+        result.style.color = "#dc2626";
+      } finally {
+        btn.disabled = false;
       }
     }
   </script>

@@ -8,7 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --brand: {{ business.logo_colour }}; --accent: {{ business.colour_accent }}; --border: {{ business.colour_border }}; --r: 6px; --bg: #f4f4f5; --surface: #fff; --text: #18181b; --text-muted: #71717a; }
+    :root {
+      --brand: {{ business.logo_colour }};
+      --accent: {{ business.colour_accent }};
+      --border: {{ business.colour_border }};
+      --r: 6px; --bg: #f4f4f5; --surface: #fff;
+      --text: #18181b; --text-muted: #71717a;
+    }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); min-height: 100dvh; display: flex; flex-direction: column; }
     .header { background: var(--brand); padding: 2.25rem 1.5rem 2rem; text-align: center; }
     .header-name { font-family: "DM Serif Display", serif; font-size: 2rem; color: #fff; line-height: 1.1; margin-bottom: 0.35rem; }
@@ -18,7 +24,7 @@
     .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
     .field { margin-bottom: 1rem; }
     label { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
-    .optional-hint { font-size: 0.75rem; color: #a1a1aa; }
+    .optional-hint { font-size: 0.75rem; color: #a1a1aa; font-weight: 400; letter-spacing: 0; text-transform: none; }
     input[type="text"], input[type="tel"] { width: 100%; padding: 0.7rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 1rem; color: var(--text); background: var(--surface); -webkit-appearance: none; transition: border-color .15s; }
     input:focus { outline: none; border-color: var(--accent); }
     input.error { border-color: #ef4444; }
@@ -29,8 +35,31 @@
     .phone-prefix { padding: 0.7rem 0.75rem 0.7rem 0.85rem; font-size: 1rem; color: var(--text-muted); background: var(--bg); border-right: 1.5px solid var(--border); white-space: nowrap; user-select: none; }
     .phone-wrap input[type="tel"] { border: none; border-radius: 0; background: transparent; flex: 1; }
     .phone-wrap input[type="tel"]:focus { border-color: transparent; }
-    .submit-btn { display: block; width: 100%; padding: 0.9rem; background: var(--brand); color: #fff; font-size: 1rem; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; margin-top: 1.1rem; letter-spacing: .01em; }
+    .submit-btn { display: block; width: 100%; padding: 0.9rem; background: var(--brand); color: #fff; font-size: 1rem; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; margin-top: 1.1rem; letter-spacing: .01em; transition: opacity .15s; }
     .submit-btn:active { opacity: 0.85; }
+    .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* POS match card */
+    .match-card { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-top: 0.75rem; }
+    .match-card.visible { display: block; }
+    .match-title { font-weight: 700; font-size: 1rem; color: var(--text); margin-bottom: 0.6rem; }
+    .match-items { list-style: none; margin: 0 0 1rem; padding: 0; }
+    .match-items li { font-size: 0.9rem; color: var(--text-muted); padding: 0.3rem 0; border-bottom: 1px solid #f4f4f5; }
+    .match-items li:last-child { border-bottom: none; }
+    .match-items li::before { content: "·  "; color: var(--brand); font-weight: 700; }
+    .match-actions { display: flex; gap: 0.6rem; }
+    .btn-confirm { flex: 2; padding: 0.75rem; background: var(--brand); color: #fff; font-size: 0.9rem; font-weight: 600; border: none; border-radius: var(--r); cursor: pointer; }
+    .btn-notme { flex: 1; padding: 0.75rem; background: transparent; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; border: 1.5px solid var(--border); border-radius: var(--r); cursor: pointer; }
+    .btn-confirm:active, .btn-notme:active { opacity: 0.75; }
+
+    /* Phone step (shown after POS confirm) */
+    .phone-step { display: none; margin-top: 0.75rem; }
+    .phone-step.visible { display: block; }
+    .step-hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.9rem; }
+
+    /* Searching spinner */
+    .searching { display: none; font-size: 0.82rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .searching.visible { display: block; }
   </style>
 </head>
 <body>
@@ -44,6 +73,88 @@
       <div class="global-error">{{ global_error }}</div>
     {% endif %}
 
+    {% if pos_enabled %}
+    {# ─── POS FLOW: name-first, then JS match ────────────────────────── #}
+    <div class="form-card" id="name-card">
+      <div class="field">
+        <label for="id_name_pos">What name did you give at the counter?</label>
+        <input type="text" id="id_name_pos" autocomplete="given-name"
+               value="{{ prefill_name|default:'' }}"
+               placeholder="Your name">
+        <p class="searching" id="searching-msg">Looking up your order…</p>
+      </div>
+      <button class="submit-btn" type="button" id="btn-find">Find my order →</button>
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;text-align:center;">
+        We'll match your name to your order
+      </p>
+    </div>
+
+    {# Match confirmation card #}
+    <div class="match-card" id="match-card">
+      <p class="match-title">Is this your order?</p>
+      <ul class="match-items" id="match-items"></ul>
+      <div class="match-actions">
+        <button class="btn-confirm" id="btn-yes">Yes, that's me</button>
+        <button class="btn-notme" id="btn-notme">That's not me</button>
+      </div>
+    </div>
+
+    {# Phone step after POS confirm #}
+    <div class="phone-step" id="phone-step">
+      <div class="form-card">
+        <form method="post" id="pos-form">
+          {% csrf_token %}
+          <input type="hidden" name="pos_order_id" id="hidden_pos_order_id">
+          <input type="hidden" name="pos_order_items" id="hidden_pos_order_items">
+          <input type="hidden" name="customer_name" id="hidden_customer_name">
+          <div class="field">
+            <label>Get a text when it's ready <span class="optional-hint">(optional)</span></label>
+            <div class="phone-wrap {% if errors.phone %}error{% endif %}">
+              <span class="phone-prefix">+{{ calling_code }}</span>
+              <input type="tel" name="phone" id="id_phone_pos"
+                     value="{{ phone|default:'' }}"
+                     autocomplete="tel">
+            </div>
+            {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+          </div>
+          <button class="submit-btn" type="submit">Notify me when ready →</button>
+        </form>
+      </div>
+    </div>
+
+    {# Fallback form (no POS match or "that's not me") — initially hidden #}
+    <div id="fallback-section" style="display:none;margin-top:0.75rem;">
+      <div class="form-card">
+        <form method="post" id="fallback-form">
+          {% csrf_token %}
+          <div class="field">
+            <label for="id_fallback_name">Your name</label>
+            <input type="text" id="id_fallback_name" name="customer_name"
+                   autocomplete="given-name" value="{{ customer_name|default:'' }}">
+          </div>
+          <div class="field">
+            <label>Get a text when it's ready <span class="optional-hint">(optional)</span></label>
+            <div class="phone-wrap {% if errors.phone %}error{% endif %}">
+              <span class="phone-prefix">+{{ calling_code }}</span>
+              <input type="tel" name="phone" id="id_fallback_phone"
+                     value="{{ phone|default:'' }}"
+                     autocomplete="tel">
+            </div>
+            {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+          </div>
+          {% for question in business.pickup_intake_fields %}
+          <div class="field">
+            <label>{{ question }}</label>
+            <input type="text" name="pickup_intake_{{ forloop.counter0 }}" autocomplete="off">
+          </div>
+          {% endfor %}
+          <button class="submit-btn" type="submit">Notify me when ready →</button>
+        </form>
+      </div>
+    </div>
+
+    {% else %}
+    {# ─── STANDARD FLOW (no POS) ─────────────────────────────────────── #}
     <div class="form-card">
       <form method="post">
         {% csrf_token %}
@@ -80,15 +191,131 @@
           <label for="pickup_intake_{{ forloop.counter0 }}">{{ question }}</label>
           <input type="text" id="pickup_intake_{{ forloop.counter0 }}"
                  name="pickup_intake_{{ forloop.counter0 }}"
-                 value="{{ request.POST|default_if_none:'' }}"
                  autocomplete="off">
         </div>
         {% endfor %}
 
-        <button class="submit-btn" type="submit">Notify me when ready &rarr;</button>
+        <button class="submit-btn" type="submit">Notify me when ready →</button>
       </form>
     </div>
-
+    {% endif %}
   </div>
+
+  {% if pos_enabled %}
+  <script>
+    const MATCH_URL = "/api/pickup/{{ business.slug }}/match/";
+    const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "";
+
+    // ── localStorage prefill ────────────────────────────────────────────
+    const LS_KEY = "ql_customer_{{ business.slug }}";
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } })();
+
+    const nameInput = document.getElementById("id_name_pos");
+    if (saved.name && !nameInput.value) {
+      nameInput.value = saved.name;
+    }
+
+    // ── State ───────────────────────────────────────────────────────────
+    let matchedOrderId = null;
+    let matchedItems   = [];
+
+    // ── Elements ────────────────────────────────────────────────────────
+    const searchingMsg   = document.getElementById("searching-msg");
+    const matchCard      = document.getElementById("match-card");
+    const matchItemsList = document.getElementById("match-items");
+    const phoneStep      = document.getElementById("phone-step");
+    const fallbackSection = document.getElementById("fallback-section");
+    const hiddenOrderId  = document.getElementById("hidden_pos_order_id");
+    const hiddenItems    = document.getElementById("hidden_pos_order_items");
+    const hiddenName     = document.getElementById("hidden_customer_name");
+    const fallbackName   = document.getElementById("id_fallback_name");
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+    function showSearching(on) {
+      searchingMsg.classList.toggle("visible", on);
+      document.getElementById("btn-find").disabled = on;
+    }
+
+    function showMatch(items) {
+      matchItemsList.innerHTML = items.length
+        ? items.map(i => `<li>${escHtml(i)}</li>`).join("")
+        : "<li>Order found</li>";
+      matchCard.classList.add("visible");
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function showFallback(prefillName) {
+      matchCard.classList.remove("visible");
+      phoneStep.classList.remove("visible");
+      fallbackSection.style.display = "block";
+      if (prefillName && fallbackName) fallbackName.value = prefillName;
+      fallbackSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ── "Find my order" button ───────────────────────────────────────────
+    document.getElementById("btn-find").addEventListener("click", async () => {
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.focus(); return; }
+
+      showSearching(true);
+      matchCard.classList.remove("visible");
+      phoneStep.classList.remove("visible");
+      fallbackSection.style.display = "none";
+
+      try {
+        const resp = await fetch(MATCH_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+          body: JSON.stringify({ customer_name: name }),
+        });
+        const data = await resp.json();
+
+        if (data.matched) {
+          matchedOrderId = data.order_id;
+          matchedItems   = data.items || [];
+          showMatch(matchedItems);
+        } else {
+          showFallback(name);
+        }
+      } catch {
+        showFallback(name);
+      } finally {
+        showSearching(false);
+      }
+    });
+
+    // Also trigger on Enter key in name field
+    nameInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); document.getElementById("btn-find").click(); }
+    });
+
+    // ── "Yes, that's me" ────────────────────────────────────────────────
+    document.getElementById("btn-yes").addEventListener("click", () => {
+      const name = nameInput.value.trim();
+      hiddenOrderId.value = matchedOrderId || "";
+      hiddenItems.value   = JSON.stringify(matchedItems);
+      hiddenName.value    = name;
+      matchCard.classList.remove("visible");
+      phoneStep.classList.add("visible");
+      // Save to localStorage for returning customers
+      try { localStorage.setItem(LS_KEY, JSON.stringify({ name })); } catch {}
+      phoneStep.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    // ── "That's not me" ─────────────────────────────────────────────────
+    document.getElementById("btn-notme").addEventListener("click", () => {
+      showFallback(nameInput.value.trim());
+    });
+
+    // ── Auto-search if name was prefilled from localStorage ─────────────
+    if (saved.name && nameInput.value) {
+      // Small delay so the page settles first
+      setTimeout(() => document.getElementById("btn-find").click(), 300);
+    }
+  </script>
+  {% endif %}
 </body>
 </html>
