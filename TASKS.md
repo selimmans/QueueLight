@@ -163,6 +163,18 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] `conftest.py` autouse `clear_django_cache` fixture (fixes pre-existing cache bleed between tests)
 - [x] 168 tests passing
 
+## PHASE 21 — Extended POS integrations + multi-signal order matching
+
+- [x] Business model: added `POS_TOAST`, `POS_LIGHTSPEED` to `pos_type` choices; added `toast_client_id`, `toast_client_secret` CharField; added `default_identifier` CharField (name/order_number/phone) + migration
+- [x] `ToastIntegration`: OAuth2 client credentials flow, 50-min in-process token cache (`_toast_token_cache`), fetches `ordersBulk` endpoint, extracts name from `checks[0].customer.firstName+lastName`
+- [x] `LightspeedIntegration`: API key Bearer auth, `Sale.json` endpoint, extracts `Sale.name` and `SaleLines.SaleLine[].Item.description` (handles single-item dict vs list)
+- [x] `POSIntegration` dispatcher updated to route Toast + Lightspeed
+- [x] `POSIntegration.match_customer()` upgraded: now accepts `customer_name`, `phone`, `order_number`; priority: phone exact → order number exact → name fuzzy; new response shape: `{matched, multiple, orders: [{order_id, order_reference, items, confidence}], + legacy fields}`
+- [x] `POST /api/pickup/<slug>/match/` updated: accepts any of name/phone/order_number; returns new shape including `orders[]` and `multiple`; legacy `order_id`/`items`/`confidence` retained for backward compat
+- [x] Pickup join page: primary field driven by `business.default_identifier`; toggle links to switch to any other identifier; all three fields sent on search; localStorage saves name+phone+order on confirm; auto-search on return visit uses active primary field
+- [x] Settings page: Toast (GUID + Client ID + Client Secret) and Lightspeed (Account ID + API Key) field sections in POS Integration; `default_identifier` selector shown when POS is active
+- [x] 14 new tests (Toast, Lightspeed, phone/order_number matching, new API response shape); 182 tests passing
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings

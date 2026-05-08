@@ -297,8 +297,17 @@ class PickupJoinView(View):
     def _ctx(self, business, **kwargs):
         calling_code = phonenumbers.country_code_for_region(business.country) or 1
         pos_enabled = business.pos_type != business.POS_NONE and bool(business.pos_api_token)
-        return {"business": business, "calling_code": calling_code,
-                "pos_enabled": pos_enabled, "errors": {}, **kwargs}
+        # Toast uses toast_client_id/secret instead of pos_api_token
+        if business.pos_type == business.POS_TOAST:
+            pos_enabled = business.pos_type != business.POS_NONE and bool(business.toast_client_id)
+        return {
+            "business": business,
+            "calling_code": calling_code,
+            "pos_enabled": pos_enabled,
+            "default_identifier": business.default_identifier,
+            "errors": {},
+            **kwargs,
+        }
 
     def get(self, request, slug):
         business = self._get_business(slug)

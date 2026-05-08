@@ -39,6 +39,10 @@
     .submit-btn:active { opacity: 0.85; }
     .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
+    /* Toggle link for switching identifier type */
+    .id-toggle { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem; text-align: center; }
+    .id-toggle button { background: none; border: none; color: var(--brand); font-size: 0.78rem; cursor: pointer; text-decoration: underline; padding: 0; }
+
     /* POS match card */
     .match-card { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-top: 0.75rem; }
     .match-card.visible { display: block; }
@@ -74,19 +78,52 @@
     {% endif %}
 
     {% if pos_enabled %}
-    {# ─── POS FLOW: name-first, then JS match ────────────────────────── #}
+    {# ─── POS FLOW: identifier-first, then JS match ──────────────────── #}
     <div class="form-card" id="name-card">
-      <div class="field">
+
+      {# Primary: Name #}
+      <div class="field" id="field-name" {% if default_identifier != "name" %}style="display:none"{% endif %}>
         <label for="id_name_pos">What name did you give at the counter?</label>
         <input type="text" id="id_name_pos" autocomplete="given-name"
                value="{{ prefill_name|default:'' }}"
                placeholder="Your name">
-        <p class="searching" id="searching-msg">Looking up your order…</p>
       </div>
+
+      {# Primary: Order number #}
+      <div class="field" id="field-order" {% if default_identifier != "order_number" %}style="display:none"{% endif %}>
+        <label for="id_order_pos">Order number</label>
+        <input type="text" id="id_order_pos" autocomplete="off"
+               value="{{ prefill_order|default:'' }}"
+               placeholder="e.g. 42">
+      </div>
+
+      {# Primary: Phone #}
+      <div class="field" id="field-phone-search" {% if default_identifier != "phone" %}style="display:none"{% endif %}>
+        <label for="id_phone_search">Phone number you ordered with</label>
+        <div class="phone-wrap">
+          <span class="phone-prefix">+{{ calling_code }}</span>
+          <input type="tel" id="id_phone_search" autocomplete="tel"
+                 value="{{ prefill_phone|default:'' }}">
+        </div>
+      </div>
+
+      <p class="searching" id="searching-msg">Looking up your order…</p>
       <button class="submit-btn" type="button" id="btn-find">Find my order →</button>
-      <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;text-align:center;">
-        We'll match your name to your order
-      </p>
+
+      {# Toggle links to switch identifier #}
+      <div class="id-toggle">
+        {% if default_identifier != "name" %}
+        <button type="button" onclick="switchIdentifier('name')">Use name instead</button>
+        {% endif %}
+        {% if default_identifier != "order_number" %}
+        &nbsp;·&nbsp;
+        <button type="button" onclick="switchIdentifier('order_number')">Use order number</button>
+        {% endif %}
+        {% if default_identifier != "phone" %}
+        &nbsp;·&nbsp;
+        <button type="button" onclick="switchIdentifier('phone')">Use phone number</button>
+        {% endif %}
+      </div>
     </div>
 
     {# Match confirmation card #}
@@ -205,14 +242,31 @@
   <script>
     const MATCH_URL = "/api/pickup/{{ business.slug }}/match/";
     const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "";
+    const DEFAULT_ID = "{{ default_identifier }}";
 
     // ── localStorage prefill ────────────────────────────────────────────
     const LS_KEY = "ql_customer_{{ business.slug }}";
     const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } })();
 
-    const nameInput = document.getElementById("id_name_pos");
-    if (saved.name && !nameInput.value) {
-      nameInput.value = saved.name;
+    const nameInput  = document.getElementById("id_name_pos");
+    const orderInput = document.getElementById("id_order_pos");
+    const phoneSearchInput = document.getElementById("id_phone_search");
+
+    if (saved.name  && nameInput  && !nameInput.value)  nameInput.value  = saved.name;
+    if (saved.order && orderInput && !orderInput.value) orderInput.value = saved.order;
+    if (saved.phone && phoneSearchInput && !phoneSearchInput.value) phoneSearchInput.value = saved.phone;
+
+    // ── Identifier switcher ─────────────────────────────────────────────
+    let activeIdentifier = DEFAULT_ID;
+
+    function switchIdentifier(type) {
+      activeIdentifier = type;
+      document.getElementById("field-name").style.display        = type === "name"         ? "block" : "none";
+      document.getElementById("field-order").style.display       = type === "order_number" ? "block" : "none";
+      document.getElementById("field-phone-search").style.display= type === "phone"        ? "block" : "none";
+      // Focus the visible input
+      const map = { name: nameInput, order_number: orderInput, phone: phoneSearchInput };
+      if (map[type]) map[type].focus();
     }
 
     // ── State ───────────────────────────────────────────────────────────
@@ -220,15 +274,15 @@
     let matchedItems   = [];
 
     // ── Elements ────────────────────────────────────────────────────────
-    const searchingMsg   = document.getElementById("searching-msg");
-    const matchCard      = document.getElementById("match-card");
-    const matchItemsList = document.getElementById("match-items");
-    const phoneStep      = document.getElementById("phone-step");
+    const searchingMsg    = document.getElementById("searching-msg");
+    const matchCard       = document.getElementById("match-card");
+    const matchItemsList  = document.getElementById("match-items");
+    const phoneStep       = document.getElementById("phone-step");
     const fallbackSection = document.getElementById("fallback-section");
-    const hiddenOrderId  = document.getElementById("hidden_pos_order_id");
-    const hiddenItems    = document.getElementById("hidden_pos_order_items");
-    const hiddenName     = document.getElementById("hidden_customer_name");
-    const fallbackName   = document.getElementById("id_fallback_name");
+    const hiddenOrderId   = document.getElementById("hidden_pos_order_id");
+    const hiddenItems     = document.getElementById("hidden_pos_order_items");
+    const hiddenName      = document.getElementById("hidden_customer_name");
+    const fallbackName    = document.getElementById("id_fallback_name");
 
     // ── Helpers ─────────────────────────────────────────────────────────
     function showSearching(on) {
@@ -244,21 +298,38 @@
     }
 
     function escHtml(s) {
-      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     }
 
-    function showFallback(prefillName) {
+    function showFallback(prefillNameVal) {
       matchCard.classList.remove("visible");
       phoneStep.classList.remove("visible");
       fallbackSection.style.display = "block";
-      if (prefillName && fallbackName) fallbackName.value = prefillName;
+      if (prefillNameVal && fallbackName) fallbackName.value = prefillNameVal;
       fallbackSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ── Build search payload from all filled inputs ──────────────────────
+    function buildPayload() {
+      const payload = {};
+      const name  = nameInput?.value.trim() || "";
+      const order = orderInput?.value.trim() || "";
+      const phone = phoneSearchInput?.value.trim() || "";
+      if (name)  payload.customer_name = name;
+      if (order) payload.order_number  = order;
+      if (phone) payload.phone         = phone;
+      return payload;
     }
 
     // ── "Find my order" button ───────────────────────────────────────────
     document.getElementById("btn-find").addEventListener("click", async () => {
-      const name = nameInput.value.trim();
-      if (!name) { nameInput.focus(); return; }
+      const payload = buildPayload();
+      if (!Object.keys(payload).length) {
+        // Focus whichever primary field is visible
+        const map = { name: nameInput, order_number: orderInput, phone: phoneSearchInput };
+        map[activeIdentifier]?.focus();
+        return;
+      }
 
       showSearching(true);
       matchCard.classList.remove("visible");
@@ -269,50 +340,64 @@
         const resp = await fetch(MATCH_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
-          body: JSON.stringify({ customer_name: name }),
+          body: JSON.stringify(payload),
         });
         const data = await resp.json();
 
         if (data.matched) {
-          matchedOrderId = data.order_id;
-          matchedItems   = data.items || [];
+          // Use first/best match
+          const firstOrder = (data.orders && data.orders.length) ? data.orders[0] : null;
+          matchedOrderId = firstOrder ? firstOrder.order_id : data.order_id;
+          matchedItems   = firstOrder ? (firstOrder.items || []) : (data.items || []);
           showMatch(matchedItems);
         } else {
-          showFallback(name);
+          showFallback(payload.customer_name || "");
         }
       } catch {
-        showFallback(name);
+        showFallback(payload.customer_name || "");
       } finally {
         showSearching(false);
       }
     });
 
-    // Also trigger on Enter key in name field
-    nameInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") { e.preventDefault(); document.getElementById("btn-find").click(); }
+    // Trigger on Enter in any search field
+    [nameInput, orderInput, phoneSearchInput].forEach(el => {
+      if (el) el.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); document.getElementById("btn-find").click(); }
+      });
     });
 
     // ── "Yes, that's me" ────────────────────────────────────────────────
     document.getElementById("btn-yes").addEventListener("click", () => {
-      const name = nameInput.value.trim();
+      const name = nameInput?.value.trim() || "";
       hiddenOrderId.value = matchedOrderId || "";
       hiddenItems.value   = JSON.stringify(matchedItems);
       hiddenName.value    = name;
       matchCard.classList.remove("visible");
       phoneStep.classList.add("visible");
-      // Save to localStorage for returning customers
-      try { localStorage.setItem(LS_KEY, JSON.stringify({ name })); } catch {}
+      // Save all three identifiers to localStorage for returning customers
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          name:  nameInput?.value.trim()  || saved.name  || "",
+          order: orderInput?.value.trim() || saved.order || "",
+          phone: phoneSearchInput?.value.trim() || saved.phone || "",
+        }));
+      } catch {}
       phoneStep.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
     // ── "That's not me" ─────────────────────────────────────────────────
     document.getElementById("btn-notme").addEventListener("click", () => {
-      showFallback(nameInput.value.trim());
+      showFallback(nameInput?.value.trim() || "");
     });
 
-    // ── Auto-search if name was prefilled from localStorage ─────────────
-    if (saved.name && nameInput.value) {
-      // Small delay so the page settles first
+    // ── Auto-search if any identifier was prefilled from localStorage ────
+    const hasPrefill = (
+      (nameInput?.value  && DEFAULT_ID === "name") ||
+      (orderInput?.value && DEFAULT_ID === "order_number") ||
+      (phoneSearchInput?.value && DEFAULT_ID === "phone")
+    );
+    if (hasPrefill) {
       setTimeout(() => document.getElementById("btn-find").click(), 300);
     }
   </script>

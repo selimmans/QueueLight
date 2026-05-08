@@ -1,4 +1,4 @@
-"""Tests for notifications.pos_integration — POSIntegration, Clover, Square."""
+"""Tests for notifications.pos_integration — POSIntegration, Clover, Square, Toast, Lightspeed."""
 import json
 from unittest.mock import MagicMock, patch
 
@@ -6,8 +6,10 @@ import pytest
 
 from notifications.pos_integration import (
     CloverIntegration,
+    LightspeedIntegration,
     POSIntegration,
     SquareIntegration,
+    ToastIntegration,
 )
 
 
@@ -15,14 +17,19 @@ from notifications.pos_integration import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_business(pos_type="clover", token="tok", merchant_id="MERCH"):
+def _make_business(pos_type="clover", token="tok", merchant_id="MERCH",
+                   toast_client_id="", toast_client_secret=""):
     b = MagicMock()
     b.pos_type = pos_type
     b.pos_api_token = token
     b.pos_merchant_id = merchant_id
+    b.toast_client_id = toast_client_id
+    b.toast_client_secret = toast_client_secret
     b.POS_NONE = "none"
     b.POS_CLOVER = "clover"
     b.POS_SQUARE = "square"
+    b.POS_TOAST = "toast"
+    b.POS_LIGHTSPEED = "lightspeed"
     b.slug = "test-biz"
     return b
 
@@ -177,71 +184,131 @@ ORDERS = [
 ]
 
 
+ORDERS_WITH_PHONE = [
+    {"id": "o1", "customer_name": "Ahmed",             "items": ["Pistachio Latte", "Muffin"], "created_at": None, "phone": "+14375550001", "order_reference": "101"},
+    {"id": "o2", "customer_name": "Sara",              "items": ["Cappuccino"],                "created_at": None, "phone": "+14375550002", "order_reference": "102"},
+    {"id": "o3", "customer_name": "Mohamed Al Rashid", "items": ["Espresso"],                 "created_at": None, "phone": "",              "order_reference": "103"},
+]
+
+
 class TestPOSIntegrationMatchCustomer:
-    def _match(self, name, orders=None):
+    def _match(self, name="", phone="", order_number="", orders=None):
         biz = _make_business()
         use = ORDERS if orders is None else orders
         with patch.object(POSIntegration, "get_recent_orders", return_value=use):
-            return POSIntegration.match_customer(biz, name)
+            return POSIntegration.match_customer(
+                biz, customer_name=name, phone=phone, order_number=order_number
+            )
 
     def test_exact_match(self):
-        result = self._match("Ahmed")
+        result = self._match(name="Ahmed")
         assert result["matched"] is True
         assert result["order_id"] == "o1"
         assert "Pistachio Latte" in result["order_items"]
         assert result["confidence"] >= 0.75
 
     def test_case_insensitive(self):
-        result = self._match("ahmed")
+        result = self._match(name="ahmed")
         assert result["matched"] is True
         assert result["order_id"] == "o1"
 
     def test_full_name_match(self):
         # Full name match (all tokens present) should hit threshold
-        result = self._match("Mohamed Al Rashid")
+        result = self._match(name="Mohamed Al Rashid")
         assert result["matched"] is True
         assert result["order_id"] == "o3"
 
     def test_reversed_name_match(self):
         # token_sort_ratio handles name order reversal
-        result = self._match("Al Rashid Mohamed")
+        result = self._match(name="Al Rashid Mohamed")
         assert result["matched"] is True
         assert result["order_id"] == "o3"
 
     def test_low_confidence_no_match(self):
-        result = self._match("Xyz Zzz Qqq")
+        result = self._match(name="Xyz Zzz Qqq")
         assert result["matched"] is False
         assert result["order_id"] is None
 
     def test_empty_name_returns_no_match(self):
-        result = self._match("")
+        result = self._match(name="")
         assert result["matched"] is False
 
     def test_no_orders_returns_no_match(self):
-        result = self._match("Ahmed", orders=[])
+        result = self._match(name="Ahmed", orders=[])
         assert result["matched"] is False
 
     def test_returns_none_pos_type(self):
         biz = _make_business(pos_type="none")
-        biz.POS_NONE = "none"
-        biz.POS_CLOVER = "clover"
-        biz.POS_SQUARE = "square"
-        with patch.object(POSIntegration, "get_recent_orders", return_value=[]) as mock_get:
-            result = POSIntegration.match_customer(biz, "Ahmed")
+        with patch.object(POSIntegration, "get_recent_orders", return_value=[]):
+            result = POSIntegration.match_customer(biz, customer_name="Ahmed")
         assert result["matched"] is False
+
+    def test_phone_exact_match(self):
+        result = self._match(phone="+14375550001", orders=ORDERS_WITH_PHONE)
+        assert result["matched"] is True
+        assert result["order_id"] == "o1"
+        assert result["confidence"] == 1.0
+
+    def test_phone_beats_name(self):
+        # Phone match should win over any name fuzzy match
+        result = self._match(name="Sara", phone="+14375550001", orders=ORDERS_WITH_PHONE)
+        assert result["matched"] is True
+        assert result["order_id"] == "o1"  # phone match for Ahmed, not name match for Sara
+
+    def test_order_number_exact_match(self):
+        result = self._match(order_number="102", orders=ORDERS_WITH_PHONE)
+        assert result["matched"] is True
+        assert result["order_id"] == "o2"
+        assert result["confidence"] == 1.0
+
+    def test_order_number_with_hash_prefix(self):
+        result = self._match(order_number="#101", orders=ORDERS_WITH_PHONE)
+        assert result["matched"] is True
+        assert result["order_id"] == "o1"
+
+    def test_no_match_returns_multiple_false(self):
+        result = self._match(name="Nobody Here")
+        assert result["matched"] is False
+        assert result.get("multiple") is False
+
+    def test_response_has_orders_list(self):
+        result = self._match(name="Ahmed")
+        assert result["matched"] is True
+        assert isinstance(result["orders"], list)
+        assert len(result["orders"]) >= 1
+        first = result["orders"][0]
+        assert "order_id" in first
+        assert "items" in first
+        assert "confidence" in first
 
 
 # ---------------------------------------------------------------------------
 # /api/pickup/<slug>/match/ endpoint
 # ---------------------------------------------------------------------------
 
+_FULL_MATCH_RETURN = {
+    "matched": True,
+    "multiple": False,
+    "orders": [{"order_id": "ORD-1", "order_reference": "42", "items": ["Latte"], "confidence": 0.95}],
+    "order_id": "ORD-1",
+    "order_items": ["Latte"],
+    "confidence": 0.95,
+}
+
+_NO_MATCH_RETURN = {
+    "matched": False,
+    "multiple": False,
+    "orders": [],
+    "order_id": None,
+    "order_items": [],
+    "confidence": 0.3,
+}
+
+
 @pytest.mark.django_db
 class TestPickupMatchAPIView:
-    def test_returns_match(self, client, pickup_business):
-        with patch.object(POSIntegration, "match_customer", return_value={
-            "matched": True, "order_id": "ORD-1",
-            "order_items": ["Latte"], "confidence": 0.95,
-        }):
+    def test_returns_match_by_name(self, client, pickup_business):
+        with patch.object(POSIntegration, "match_customer", return_value=_FULL_MATCH_RETURN):
             resp = client.post(
                 f"/api/pickup/{pickup_business.slug}/match/",
                 data=json.dumps({"customer_name": "Ahmed"}),
@@ -252,21 +319,42 @@ class TestPickupMatchAPIView:
         assert data["matched"] is True
         assert data["order_id"] == "ORD-1"
         assert data["items"] == ["Latte"]
+        assert "orders" in data
+        assert data["orders"][0]["order_reference"] == "42"
+
+    def test_returns_match_by_phone(self, client, pickup_business):
+        with patch.object(POSIntegration, "match_customer", return_value=_FULL_MATCH_RETURN):
+            resp = client.post(
+                f"/api/pickup/{pickup_business.slug}/match/",
+                data=json.dumps({"phone": "+14375550001"}),
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp.json()["matched"] is True
+
+    def test_returns_match_by_order_number(self, client, pickup_business):
+        with patch.object(POSIntegration, "match_customer", return_value=_FULL_MATCH_RETURN):
+            resp = client.post(
+                f"/api/pickup/{pickup_business.slug}/match/",
+                data=json.dumps({"order_number": "42"}),
+                content_type="application/json",
+            )
+        assert resp.status_code == 200
+        assert resp.json()["matched"] is True
 
     def test_returns_no_match(self, client, pickup_business):
-        with patch.object(POSIntegration, "match_customer", return_value={
-            "matched": False, "order_id": None,
-            "order_items": [], "confidence": 0.3,
-        }):
+        with patch.object(POSIntegration, "match_customer", return_value=_NO_MATCH_RETURN):
             resp = client.post(
                 f"/api/pickup/{pickup_business.slug}/match/",
                 data=json.dumps({"customer_name": "Unknown"}),
                 content_type="application/json",
             )
         assert resp.status_code == 200
-        assert resp.json()["matched"] is False
+        data = resp.json()
+        assert data["matched"] is False
+        assert data["orders"] == []
 
-    def test_missing_name_returns_400(self, client, pickup_business):
+    def test_missing_all_identifiers_returns_400(self, client, pickup_business):
         resp = client.post(
             f"/api/pickup/{pickup_business.slug}/match/",
             data=json.dumps({}),
@@ -291,7 +379,9 @@ class TestPickupMatchAPIView:
             content_type="application/json",
         )
         assert resp.status_code == 200
-        assert resp.json()["matched"] is False
+        data = resp.json()
+        assert data["matched"] is False
+        assert data["orders"] == []
 
 
 @pytest.fixture
@@ -306,3 +396,168 @@ def pickup_business(db):
         pos_api_token="test-token",
         pos_merchant_id="MERCH123",
     )
+
+
+# ---------------------------------------------------------------------------
+# ToastIntegration
+# ---------------------------------------------------------------------------
+
+TOAST_RESPONSE = [
+    {
+        "guid": "toast-order-1",
+        "checks": [
+            {
+                "customer": {"firstName": "Ahmed", "lastName": "Al Rashid"},
+                "selections": [
+                    {"displayName": "Pistachio Latte"},
+                    {"displayName": "Blueberry Muffin"},
+                ],
+            }
+        ],
+    },
+    {
+        "guid": "toast-order-2",
+        "checks": [
+            {
+                "customer": {"firstName": "Sara", "lastName": ""},
+                "selections": [{"displayName": "Cappuccino"}],
+            }
+        ],
+    },
+    # No customer name — should be excluded
+    {"guid": "toast-order-3", "checks": [{"customer": {}, "selections": []}]},
+]
+
+
+class TestToastIntegration:
+    def _make_toast_biz(self):
+        return _make_business(
+            pos_type="toast",
+            token="",
+            merchant_id="REST-GUID-123",
+            toast_client_id="client-id",
+            toast_client_secret="client-secret",
+        )
+
+    def test_returns_normalised_orders(self):
+        biz = self._make_toast_biz()
+        auth_resp = MagicMock()
+        auth_resp.status_code = 200
+        auth_resp.json.return_value = {"token": {"accessToken": "tok-abc"}}
+        orders_resp = MagicMock()
+        orders_resp.status_code = 200
+        orders_resp.json.return_value = TOAST_RESPONSE
+
+        with patch("requests.post", side_effect=[auth_resp, orders_resp]):
+            with patch("requests.get", return_value=orders_resp):
+                orders = ToastIntegration.get_orders(biz)
+
+        assert len(orders) == 2
+        assert orders[0]["customer_name"] == "Ahmed Al Rashid"
+        assert "Pistachio Latte" in orders[0]["items"]
+        assert orders[1]["customer_name"] == "Sara"
+
+    def test_returns_empty_on_auth_failure(self):
+        biz = self._make_toast_biz()
+        auth_resp = MagicMock()
+        auth_resp.status_code = 401
+
+        with patch("requests.post", return_value=auth_resp):
+            orders = ToastIntegration.get_orders(biz)
+
+        assert orders == []
+
+    def test_returns_empty_on_orders_api_error(self):
+        biz = self._make_toast_biz()
+        auth_resp = MagicMock()
+        auth_resp.status_code = 200
+        auth_resp.json.return_value = {"token": {"accessToken": "tok-abc"}}
+        orders_resp = MagicMock()
+        orders_resp.status_code = 403
+        orders_resp.json.return_value = []
+
+        with patch("requests.post", return_value=auth_resp):
+            with patch("requests.get", return_value=orders_resp):
+                orders = ToastIntegration.get_orders(biz)
+
+        assert orders == []
+
+
+# ---------------------------------------------------------------------------
+# LightspeedIntegration
+# ---------------------------------------------------------------------------
+
+LIGHTSPEED_RESPONSE = {
+    "Sale": [
+        {
+            "saleID": "LS-001",
+            "name": "Ahmed",
+            "timeStamp": "2024-01-01T12:00:00+00:00",
+            "SaleLines": {
+                "SaleLine": [
+                    {"Item": {"description": "Flat White"}},
+                    {"Item": {"description": "Croissant"}},
+                ]
+            },
+        },
+        {
+            "saleID": "LS-002",
+            "name": "Sara",
+            "timeStamp": "2024-01-01T12:05:00+00:00",
+            "SaleLines": {"SaleLine": [{"Item": {"description": "Green Tea"}}]},
+        },
+        # No name — should be excluded
+        {"saleID": "LS-003", "name": "", "timeStamp": "2024-01-01T12:10:00+00:00", "SaleLines": {}},
+    ]
+}
+
+
+class TestLightspeedIntegration:
+    def _make_ls_biz(self):
+        return _make_business(pos_type="lightspeed", token="ls-api-key", merchant_id="987654")
+
+    def test_returns_normalised_orders(self):
+        biz = self._make_ls_biz()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = LIGHTSPEED_RESPONSE
+
+        with patch("requests.get", return_value=mock_resp):
+            orders = LightspeedIntegration.get_orders(biz)
+
+        assert len(orders) == 2
+        assert orders[0]["id"] == "LS-001"
+        assert orders[0]["customer_name"] == "Ahmed"
+        assert "Flat White" in orders[0]["items"]
+        assert orders[1]["customer_name"] == "Sara"
+
+    def test_single_sale_line_as_dict(self):
+        """When the API returns a single SaleLine as a dict instead of a list."""
+        biz = self._make_ls_biz()
+        data = {
+            "Sale": [{
+                "saleID": "LS-010",
+                "name": "Bob",
+                "timeStamp": "2024-01-01T12:00:00+00:00",
+                "SaleLines": {"SaleLine": {"Item": {"description": "Espresso"}}},
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = data
+
+        with patch("requests.get", return_value=mock_resp):
+            orders = LightspeedIntegration.get_orders(biz)
+
+        assert len(orders) == 1
+        assert "Espresso" in orders[0]["items"]
+
+    def test_returns_empty_on_api_error(self):
+        biz = self._make_ls_biz()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 401
+
+        with patch("requests.get", return_value=mock_resp):
+            orders = LightspeedIntegration.get_orders(biz)
+
+        assert orders == []

@@ -60,9 +60,12 @@ queuelight/
 | queue_enabled      | BooleanField          | Default True. False hides queue form on join page.         |
 | pickup_enabled     | BooleanField          | Default False. True shows pickup form on join page.        |
 | pickup_notification_message | CharField  | SMS sent when order marked ready. Blank → default template.|
-| pos_type           | CharField             | "none" / "clover" / "square". Default "none".             |
+| pos_type           | CharField             | "none" / "clover" / "square" / "toast" / "lightspeed". Default "none". |
 | pos_api_token      | CharField             | API token / access token for connected POS. Stored plaintext (see KNOWN_ISSUES). |
-| pos_merchant_id    | CharField             | Clover: merchant ID. Square: location ID.                 |
+| pos_merchant_id    | CharField             | Clover: merchant ID. Square: location ID. Lightspeed: account ID. Toast: restaurant GUID. |
+| toast_client_id    | CharField             | Toast OAuth2 client ID.                                   |
+| toast_client_secret| CharField             | Toast OAuth2 client secret. Stored plaintext.             |
+| default_identifier | CharField             | "name" / "order_number" / "phone". Primary field on pickup join page. Default "name". |
 
 ### businesses.StaffPhone
 

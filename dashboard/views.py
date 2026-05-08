@@ -509,17 +509,38 @@ class SettingsView(View):
 
         elif action == "save_pos":
             if _require_superuser(request):
+                _valid_pos = {
+                    business.POS_NONE, business.POS_CLOVER, business.POS_SQUARE,
+                    business.POS_TOAST, business.POS_LIGHTSPEED,
+                }
                 pos_type = request.POST.get("pos_type", "none").strip()
-                if pos_type not in (business.POS_NONE, business.POS_CLOVER, business.POS_SQUARE):
+                if pos_type not in _valid_pos:
                     pos_type = business.POS_NONE
                 business.pos_type = pos_type
-                if pos_type != business.POS_NONE:
+                if pos_type == business.POS_TOAST:
+                    business.toast_client_id = request.POST.get("toast_client_id", "").strip()
+                    business.toast_client_secret = request.POST.get("toast_client_secret", "").strip()
+                    business.pos_merchant_id = request.POST.get("pos_merchant_id", "").strip()
+                    business.pos_api_token = ""
+                elif pos_type != business.POS_NONE:
                     business.pos_api_token = request.POST.get("pos_api_token", "").strip()
                     business.pos_merchant_id = request.POST.get("pos_merchant_id", "").strip()
                 else:
                     business.pos_api_token = ""
                     business.pos_merchant_id = ""
-                business.save(update_fields=["pos_type", "pos_api_token", "pos_merchant_id"])
+                _valid_id = {
+                    business.IDENTIFIER_NAME,
+                    business.IDENTIFIER_ORDER_NUMBER,
+                    business.IDENTIFIER_PHONE,
+                }
+                default_identifier = request.POST.get("default_identifier", "").strip()
+                if default_identifier in _valid_id:
+                    business.default_identifier = default_identifier
+                business.save(update_fields=[
+                    "pos_type", "pos_api_token", "pos_merchant_id",
+                    "toast_client_id", "toast_client_secret",
+                    "default_identifier",
+                ])
 
         elif action == "test_pos_connection":
             if _require_superuser(request):
@@ -529,6 +550,8 @@ class SettingsView(View):
                 business.pos_type = pos_type
                 business.pos_api_token = request.POST.get("pos_api_token", "").strip()
                 business.pos_merchant_id = request.POST.get("pos_merchant_id", "").strip()
+                business.toast_client_id = request.POST.get("toast_client_id", "").strip()
+                business.toast_client_secret = request.POST.get("toast_client_secret", "").strip()
                 result = POSIntegration.test_connection(business)
                 return JsonResponse(result)
             return JsonResponse({"ok": False, "message": "Unauthorized"}, status=403)
@@ -793,8 +816,19 @@ def _is_match_rate_limited(ip: str) -> bool:
 class PickupMatchAPIView(View):
     """POST /api/pickup/<slug>/match/  — public, rate-limited.
 
-    Body: {"customer_name": "Ahmed"}
-    Response: {"matched": bool, "order_id": str|null, "items": [...], "confidence": 0–1}
+    Body (all optional, at least one required):
+        {
+            "customer_name": "Ahmed",
+            "phone": "+14375550100",
+            "order_number": "42"
+        }
+
+    Response:
+        {
+            "matched": bool,
+            "multiple": bool,
+            "orders": [{"order_id", "order_reference", "items", "confidence"}, ...]
+        }
 
     Called by the customer's browser on the pickup join page.
     No staff session required — this is a customer-facing endpoint.
@@ -810,7 +844,7 @@ class PickupMatchAPIView(View):
             return JsonResponse({"error": "Not available"}, status=404)
 
         if business.pos_type == business.POS_NONE:
-            return JsonResponse({"matched": False, "order_id": None, "items": [], "confidence": 0})
+            return JsonResponse({"matched": False, "multiple": False, "orders": []})
 
         ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")).split(",")[0].strip()
         if _is_match_rate_limited(ip):
@@ -818,19 +852,30 @@ class PickupMatchAPIView(View):
 
         try:
             body = json.loads(request.body)
-            customer_name = str(body.get("customer_name", "")).strip()
         except (json.JSONDecodeError, AttributeError):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-        if not customer_name:
-            return JsonResponse({"error": "customer_name required"}, status=400)
+        customer_name = str(body.get("customer_name", "")).strip()
+        phone = str(body.get("phone", "")).strip()
+        order_number = str(body.get("order_number", "")).strip()
 
-        result = POSIntegration.match_customer(business, customer_name)
+        if not any([customer_name, phone, order_number]):
+            return JsonResponse({"error": "At least one of customer_name, phone, or order_number is required"}, status=400)
+
+        result = POSIntegration.match_customer(
+            business,
+            customer_name=customer_name,
+            phone=phone,
+            order_number=order_number,
+        )
         return JsonResponse({
             "matched": result["matched"],
-            "order_id": result["order_id"],
-            "items": result["order_items"],
-            "confidence": result["confidence"],
+            "multiple": result.get("multiple", False),
+            "orders": result.get("orders", []),
+            # Legacy fields kept for backward compatibility
+            "order_id": result.get("order_id"),
+            "items": result.get("order_items", []),
+            "confidence": result.get("confidence", 0.0),
         })
 
 

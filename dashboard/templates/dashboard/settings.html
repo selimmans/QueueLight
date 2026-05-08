@@ -386,9 +386,11 @@
         <div class="field">
           <label for="pos_type">POS system</label>
           <select id="pos_type" name="pos_type" onchange="updatePosFields()" style="width:100%;padding:0.65rem 0.85rem;border:1.5px solid #e5e7eb;border-radius:4px;font-size:0.95rem;background:#fff;">
-            <option value="none"  {% if business.pos_type == "none"   %}selected{% endif %}>None</option>
-            <option value="clover"{% if business.pos_type == "clover" %}selected{% endif %}>Clover</option>
-            <option value="square"{% if business.pos_type == "square" %}selected{% endif %}>Square</option>
+            <option value="none"      {% if business.pos_type == "none"       %}selected{% endif %}>None</option>
+            <option value="clover"    {% if business.pos_type == "clover"     %}selected{% endif %}>Clover</option>
+            <option value="square"    {% if business.pos_type == "square"     %}selected{% endif %}>Square</option>
+            <option value="toast"     {% if business.pos_type == "toast"      %}selected{% endif %}>Toast</option>
+            <option value="lightspeed"{% if business.pos_type == "lightspeed" %}selected{% endif %}>Lightspeed</option>
           </select>
         </div>
 
@@ -419,6 +421,54 @@
             <div class="hint">Find under Square Developer dashboard → Your Application → Credentials.</div>
             <input type="text" id="pos_api_token_square" name="pos_api_token"
                    value="{{ business.pos_api_token }}" autocomplete="off" placeholder="EAAAl...">
+          </div>
+        </div>
+
+        <div id="pos-toast-fields" style="display:none">
+          <div class="field">
+            <label for="pos_merchant_id_toast">Restaurant GUID</label>
+            <div class="hint">Your Toast restaurant GUID — find it in Toast Web under Restaurant Info.</div>
+            <input type="text" id="pos_merchant_id_toast" name="pos_merchant_id"
+                   value="{{ business.pos_merchant_id }}" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </div>
+          <div class="field">
+            <label for="toast_client_id">Client ID</label>
+            <div class="hint">OAuth2 client ID from Toast Developer → API Access.</div>
+            <input type="text" id="toast_client_id" name="toast_client_id"
+                   value="{{ business.toast_client_id }}" autocomplete="off" placeholder="Paste Client ID">
+          </div>
+          <div class="field">
+            <label for="toast_client_secret">Client Secret</label>
+            <div class="hint">OAuth2 client secret from Toast Developer → API Access.</div>
+            <input type="text" id="toast_client_secret" name="toast_client_secret"
+                   value="{{ business.toast_client_secret }}" autocomplete="off" placeholder="Paste Client Secret">
+          </div>
+        </div>
+
+        <div id="pos-lightspeed-fields" style="display:none">
+          <div class="field">
+            <label for="pos_merchant_id_lightspeed">Account ID</label>
+            <div class="hint">Your Lightspeed account ID (the number in your dashboard URL).</div>
+            <input type="text" id="pos_merchant_id_lightspeed" name="pos_merchant_id"
+                   value="{{ business.pos_merchant_id }}" autocomplete="off" placeholder="123456">
+          </div>
+          <div class="field">
+            <label for="pos_api_token_lightspeed">API Key</label>
+            <div class="hint">Generate under Lightspeed → Account → API Access.</div>
+            <input type="text" id="pos_api_token_lightspeed" name="pos_api_token"
+                   value="{{ business.pos_api_token }}" autocomplete="off" placeholder="Paste API key">
+          </div>
+        </div>
+
+        <div id="pos-identifier-field" style="display:{% if business.pos_type != 'none' %}block{% else %}none{% endif %}">
+          <div class="field">
+            <label for="default_identifier">Customer asked for</label>
+            <div class="hint">The primary field shown to customers on the pickup join page.</div>
+            <select id="default_identifier" name="default_identifier">
+              <option value="name"         {% if business.default_identifier == "name"         %}selected{% endif %}>Name</option>
+              <option value="order_number" {% if business.default_identifier == "order_number" %}selected{% endif %}>Order number</option>
+              <option value="phone"        {% if business.default_identifier == "phone"        %}selected{% endif %}>Phone number</option>
+            </select>
           </div>
         </div>
 
@@ -738,24 +788,41 @@
     function updatePosFields() {
       const val = document.getElementById("pos_type")?.value;
       if (!val) return;
-      document.getElementById("pos-clover-fields").style.display = val === "clover" ? "block" : "none";
-      document.getElementById("pos-square-fields").style.display = val === "square" ? "block" : "none";
+
+      const sections = { clover: "pos-clover-fields", square: "pos-square-fields", toast: "pos-toast-fields", lightspeed: "pos-lightspeed-fields" };
+      Object.entries(sections).forEach(([k, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (val === k) ? "block" : "none";
+      });
+
       const saveRow = document.getElementById("pos-save-row");
       if (saveRow) saveRow.style.display = val !== "none" ? "flex" : "none";
       const noneBtn = document.getElementById("pos-save-btn-none");
       if (noneBtn) noneBtn.style.display = val === "none" ? "inline-block" : "none";
-      // Sync duplicate name fields so only active one submits
-      if (val === "clover") {
-        document.getElementById("pos_merchant_id_clover").name = "pos_merchant_id";
-        document.getElementById("pos_api_token_clover").name   = "pos_api_token";
-        document.getElementById("pos_merchant_id_square").name = "_pos_merchant_id_sq";
-        document.getElementById("pos_api_token_square").name   = "_pos_api_token_sq";
-      } else if (val === "square") {
-        document.getElementById("pos_merchant_id_square").name = "pos_merchant_id";
-        document.getElementById("pos_api_token_square").name   = "pos_api_token";
-        document.getElementById("pos_merchant_id_clover").name = "_pos_merchant_id_cl";
-        document.getElementById("pos_api_token_clover").name   = "_pos_api_token_cl";
-      }
+      const identField = document.getElementById("pos-identifier-field");
+      if (identField) identField.style.display = val !== "none" ? "block" : "none";
+
+      // Rename inactive duplicate fields so only the active section submits.
+      // Fields with fixed names (toast_client_id, toast_client_secret) don't need renaming.
+      const merchantFields = {
+        clover: "pos_merchant_id_clover",
+        square: "pos_merchant_id_square",
+        toast: "pos_merchant_id_toast",
+        lightspeed: "pos_merchant_id_lightspeed",
+      };
+      const tokenFields = {
+        clover: "pos_api_token_clover",
+        square: "pos_api_token_square",
+        lightspeed: "pos_api_token_lightspeed",
+      };
+      Object.entries(merchantFields).forEach(([k, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.name = (val === k) ? "pos_merchant_id" : `_${id}`;
+      });
+      Object.entries(tokenFields).forEach(([k, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.name = (val === k) ? "pos_api_token" : `_${id}`;
+      });
     }
     // Run on load to show correct fields for saved pos_type
     document.addEventListener("DOMContentLoaded", updatePosFields);

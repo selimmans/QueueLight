@@ -59,14 +59,42 @@ class Business(models.Model):
     POS_NONE = "none"
     POS_CLOVER = "clover"
     POS_SQUARE = "square"
-    POS_CHOICES = [(POS_NONE, "None"), (POS_CLOVER, "Clover"), (POS_SQUARE, "Square")]
+    POS_TOAST = "toast"
+    POS_LIGHTSPEED = "lightspeed"
+    POS_CHOICES = [
+        (POS_NONE, "None"),
+        (POS_CLOVER, "Clover"),
+        (POS_SQUARE, "Square"),
+        (POS_TOAST, "Toast"),
+        (POS_LIGHTSPEED, "Lightspeed"),
+    ]
 
-    pos_type = models.CharField(max_length=10, choices=POS_CHOICES, default=POS_NONE)
+    IDENTIFIER_NAME = "name"
+    IDENTIFIER_ORDER_NUMBER = "order_number"
+    IDENTIFIER_PHONE = "phone"
+    IDENTIFIER_CHOICES = [
+        (IDENTIFIER_NAME, "Name"),
+        (IDENTIFIER_ORDER_NUMBER, "Order number"),
+        (IDENTIFIER_PHONE, "Phone number"),
+    ]
+
+    pos_type = models.CharField(max_length=20, choices=POS_CHOICES, default=POS_NONE)
     # API token / access token for the connected POS system.
     # NOTE: stored plaintext — encryption at rest deferred (see KNOWN_ISSUES).
     pos_api_token = models.CharField(max_length=512, blank=True)
-    # Clover: merchant ID.  Square: location ID.
+    # Clover: merchant ID.  Square: location ID.  Lightspeed: account ID.
     pos_merchant_id = models.CharField(max_length=255, blank=True)
+    # Toast OAuth2 client credentials (client_id + client_secret).
+    toast_client_id = models.CharField(max_length=255, blank=True)
+    toast_client_secret = models.CharField(max_length=512, blank=True)
+
+    # Which identifier the customer is asked for first on the pickup join page.
+    default_identifier = models.CharField(
+        max_length=20,
+        choices=IDENTIFIER_CHOICES,
+        default=IDENTIFIER_NAME,
+        help_text="Primary field shown to customers when registering a pickup order.",
+    )
 
     is_active = models.BooleanField(default=False)
     is_closing = models.BooleanField(default=False)
