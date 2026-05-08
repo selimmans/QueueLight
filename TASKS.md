@@ -186,6 +186,15 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] 25 new tests (field config saves, active entry blocks, non-admin blocked, rendering, validation, no-phone entry + confirmation); 208 tests passing
 - [x] Reference presets (Retail / Clinic / Order-number counter) documented in ARCHITECTURE.md
 
+## PHASE 22b — Phone always required on pickup join form
+
+- [x] Phone removed from join field config — not configurable, always required
+- [x] Settings UI: phone row now shows "Always required" static text (no toggle)
+- [x] `save_join_fields` action: `field_phone_required` no longer saved
+- [x] All three pickup join form paths (standard, POS-confirmed, POS-fallback): phone `required` attribute enforced in HTML + server-side validation
+- [x] Fixes known issue: POS flow phone step lacked `required` attribute
+- [x] Tests updated: `test_pickup_views.py` and `test_join_field_config.py` rewritten for required phone; 206 tests passing
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings

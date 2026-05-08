@@ -51,7 +51,7 @@ STATUS: OPEN — known trade-off in fuzzy matching.
 STATUS: OPEN — intentional for v1.
 
 **Join page field config not enforced in POS flow phone step** — `field_phone_required` is enforced in the POS-confirmed path but the POS flow's phone step UI does not show the "required" attribute on the phone input when `field_phone_required=True`. The server-side validation does block submission, but the browser won't highlight the field before submission.
-STATUS: OPEN — low priority. Server-side guard is correct; UI polish deferred.
+STATUS: RESOLVED (Phase 22b) — phone is now always required on all pickup join form paths; `field_phone_required` removed entirely. All phone inputs carry the `required` attribute.
 
 ---
 
