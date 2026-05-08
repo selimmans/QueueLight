@@ -305,6 +305,12 @@ class PickupJoinView(View):
             "calling_code": calling_code,
             "pos_enabled": pos_enabled,
             "default_identifier": business.default_identifier,
+            # Field configuration for the join form
+            "field_name_enabled": business.field_name_enabled,
+            "field_name_required": business.field_name_required,
+            "field_order_number_enabled": business.field_order_number_enabled,
+            "field_order_number_required": business.field_order_number_required,
+            "field_phone_required": business.field_phone_required,
             "errors": {},
             **kwargs,
         }
@@ -352,6 +358,8 @@ class PickupJoinView(View):
             except (_json.JSONDecodeError, TypeError):
                 pos_order_items = []
 
+            if business.field_phone_required and not phone:
+                errors["phone"] = "Please enter your phone number"
             if errors:
                 return render(request, self.template_name,
                               self._ctx(business, errors=errors, phone=raw_phone))
@@ -396,15 +404,31 @@ class PickupJoinView(View):
 
         else:
             # ── Standard path (no POS) ───────────────────────────────────
+            import uuid as _uuid
+
             order_number = request.POST.get("order_number", "").strip()
-            if not order_number:
-                errors["order_number"] = "Please enter your order number"
+            customer_name = request.POST.get("customer_name", "").strip()
+
+            # Apply field config validations
+            if business.field_order_number_enabled and business.field_order_number_required:
+                if not order_number:
+                    errors["order_number"] = "Please enter your order number"
+            if business.field_name_enabled and business.field_name_required:
+                if not customer_name:
+                    errors["customer_name"] = "Please enter your name"
+            if business.field_phone_required and not phone:
+                errors["phone"] = "Please enter your phone number"
+
             if errors:
                 return render(request, self.template_name,
                               self._ctx(business, errors=errors,
                                         order_number=order_number,
                                         customer_name=customer_name,
                                         phone=raw_phone))
+
+            # Auto-generate order number when field is disabled or optional + empty
+            if not order_number:
+                order_number = f"W{_uuid.uuid4().hex[:6].upper()}"
 
             pickup_intake_fields = business.pickup_intake_fields or []
             intake_answers = {

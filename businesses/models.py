@@ -78,6 +78,35 @@ class Business(models.Model):
         (IDENTIFIER_PHONE, "Phone number"),
     ]
 
+    # ── Join page field configuration (pickup form) ─────────────────────
+    # Name field
+    field_name_enabled = models.BooleanField(
+        default=True,
+        help_text="Show the customer name field on the pickup join form.",
+    )
+    field_name_required = models.BooleanField(
+        default=True,
+        help_text="Require a name before the form can be submitted.",
+    )
+    # Order number field
+    field_order_number_enabled = models.BooleanField(
+        default=False,
+        help_text="Show an order number field on the pickup join form.",
+    )
+    field_order_number_required = models.BooleanField(
+        default=False,
+        help_text="Require an order number before the form can be submitted.",
+    )
+    # Phone field — always shown, only required/optional is configurable
+    field_phone_enabled = models.BooleanField(
+        default=True,
+        help_text="Phone number is always shown (needed for SMS notifications).",
+    )
+    field_phone_required = models.BooleanField(
+        default=False,
+        help_text="Require a phone number before the form can be submitted.",
+    )
+
     pos_type = models.CharField(max_length=20, choices=POS_CHOICES, default=POS_NONE)
     # API token / access token for the connected POS system.
     # NOTE: stored plaintext — encryption at rest deferred (see KNOWN_ISSUES).

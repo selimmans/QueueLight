@@ -175,6 +175,17 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] Settings page: Toast (GUID + Client ID + Client Secret) and Lightspeed (Account ID + API Key) field sections in POS Integration; `default_identifier` selector shown when POS is active
 - [x] 14 new tests (Toast, Lightspeed, phone/order_number matching, new API response shape); 182 tests passing
 
+## PHASE 22 — Admin-only join page field configuration
+
+- [x] Business model: 6 new BooleanFields — `field_name_enabled` (True), `field_name_required` (True), `field_order_number_enabled` (False), `field_order_number_required` (False), `field_phone_enabled` (True, no UI toggle), `field_phone_required` (False) + migration `0014`
+- [x] Settings page: new "Join page fields" section (admin + pickup_enabled only) — Show/Hide and Required/Optional toggles per field; phone row is Required/Optional only (always shown)
+- [x] `save_join_fields` POST action in `SettingsView` — blocked if active (waiting/ready) pickup entries exist; non-superuser ignored
+- [x] Pickup join template: fields rendered/hidden/required per config; optional phone shows helper hint "Add your number to get a text..."
+- [x] Standard POST validation: respects `field_*_required` — blocks submission with error, auto-generates order_number when disabled/optional+empty
+- [x] Pickup confirmation page: no-phone message updated to "We'll call your name when your order is ready."
+- [x] 25 new tests (field config saves, active entry blocks, non-admin blocked, rendering, validation, no-phone entry + confirmation); 208 tests passing
+- [x] Reference presets (Retail / Clinic / Order-number counter) documented in ARCHITECTURE.md
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings

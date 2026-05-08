@@ -444,6 +444,29 @@ class SettingsView(View):
             business.pickup_intake_fields = pickup_questions
             business.save(update_fields=["pickup_notification_message", "pickup_intake_fields"])
 
+        elif action == "save_join_fields":
+            if _require_superuser(request):
+                # Block change if there are active pickup entries
+                active_pickups = PickupEntry.objects.filter(
+                    business=business,
+                    status__in=["waiting", "ready"],
+                ).exists()
+                if active_pickups:
+                    return self._render(
+                        request, business,
+                        error="Cannot change join page fields while there are active pickup orders."
+                    )
+                business.field_name_enabled = request.POST.get("field_name_enabled") == "1"
+                business.field_name_required = request.POST.get("field_name_required") == "1"
+                business.field_order_number_enabled = request.POST.get("field_order_number_enabled") == "1"
+                business.field_order_number_required = request.POST.get("field_order_number_required") == "1"
+                business.field_phone_required = request.POST.get("field_phone_required") == "1"
+                business.save(update_fields=[
+                    "field_name_enabled", "field_name_required",
+                    "field_order_number_enabled", "field_order_number_required",
+                    "field_phone_required",
+                ])
+
         elif action == "toggle_queue":
             enable = request.POST.get("queue_enabled") == "1"
             if not enable:

@@ -50,6 +50,11 @@ STATUS: OPEN — known trade-off in fuzzy matching.
 **POS order match re-fetches on form submit not implemented** — when a customer confirms a POS match ("Yes, that's me"), the `pos_order_items` sent in the hidden form field are trusted from the client. This is display-only data (staff see item names), not security-sensitive. A server-side re-verification on submit was considered but adds latency.
 STATUS: OPEN — intentional for v1.
 
+**Join page field config not enforced in POS flow phone step** — `field_phone_required` is enforced in the POS-confirmed path but the POS flow's phone step UI does not show the "required" attribute on the phone input when `field_phone_required=True`. The server-side validation does block submission, but the browser won't highlight the field before submission.
+STATUS: OPEN — low priority. Server-side guard is correct; UI polish deferred.
+
+---
+
 ## Resolved Issues
 
 **Test cache bleed between transactions** — `PickupJoinView._get_business()` cached Business objects in-memory for 30 s. In pytest, rolled-back transactions left stale cached objects with dangling pks, causing intermittent test failures. RESOLVED by adding `clear_django_cache` autouse fixture in `conftest.py`.

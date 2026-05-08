@@ -193,34 +193,56 @@
     {% else %}
     {# ─── STANDARD FLOW (no POS) ─────────────────────────────────────── #}
     <div class="form-card">
-      <form method="post">
+      <form method="post" id="std-form">
         {% csrf_token %}
 
+        {% if field_order_number_enabled %}
         <div class="field">
-          <label for="id_order_number">Order number</label>
+          <label for="id_order_number">
+            Order number
+            {% if not field_order_number_required %}<span class="optional-hint">(optional)</span>{% endif %}
+          </label>
           <input type="text" id="id_order_number" name="order_number"
                  value="{{ order_number|default:'' }}"
-                 autocomplete="off" required
+                 autocomplete="off"
+                 {% if field_order_number_required %}required{% endif %}
                  class="{% if errors.order_number %}error{% endif %}">
           {% if errors.order_number %}<div class="field-error">{{ errors.order_number }}</div>{% endif %}
         </div>
+        {% endif %}
 
+        {% if field_name_enabled %}
         <div class="field">
-          <label for="id_customer_name">Your name <span class="optional-hint">(optional)</span></label>
+          <label for="id_customer_name">
+            Your name
+            {% if not field_name_required %}<span class="optional-hint">(optional)</span>{% endif %}
+          </label>
           <input type="text" id="id_customer_name" name="customer_name"
                  value="{{ customer_name|default:'' }}"
-                 autocomplete="given-name">
+                 autocomplete="given-name"
+                 {% if field_name_required %}required{% endif %}
+                 class="{% if errors.customer_name %}error{% endif %}">
+          {% if errors.customer_name %}<div class="field-error">{{ errors.customer_name }}</div>{% endif %}
         </div>
+        {% endif %}
 
         <div class="field">
-          <label for="id_phone">Get a text when ready <span class="optional-hint">(optional)</span></label>
+          <label for="id_phone">
+            {% if field_phone_required %}Phone number{% else %}Get a text when ready <span class="optional-hint">(optional)</span>{% endif %}
+          </label>
           <div class="phone-wrap {% if errors.phone %}error{% endif %}">
             <span class="phone-prefix">+{{ calling_code }}</span>
             <input type="tel" id="id_phone" name="phone"
                    value="{{ phone|default:'' }}"
-                   autocomplete="tel">
+                   autocomplete="tel"
+                   {% if field_phone_required %}required{% endif %}>
           </div>
           {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
+          {% if not field_phone_required %}
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;">
+            Add your number to get a text when your order is ready.
+          </p>
+          {% endif %}
         </div>
 
         {% for question in business.pickup_intake_fields %}

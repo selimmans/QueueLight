@@ -59,6 +59,12 @@ queuelight/
 
 | queue_enabled      | BooleanField          | Default True. False hides queue form on join page.         |
 | pickup_enabled     | BooleanField          | Default False. True shows pickup form on join page.        |
+| field_name_enabled         | BooleanField  | Default True. Show name field on pickup join form.         |
+| field_name_required        | BooleanField  | Default True. Require name before submission.              |
+| field_order_number_enabled | BooleanField  | Default False. Show order number field on pickup join form.|
+| field_order_number_required| BooleanField  | Default False. Require order number before submission.     |
+| field_phone_enabled        | BooleanField  | Default True. Always True — phone is always shown.         |
+| field_phone_required       | BooleanField  | Default False. Require phone before submission.            |
 | pickup_notification_message | CharField  | SMS sent when order marked ready. Blank → default template.|
 | pos_type           | CharField             | "none" / "clover" / "square" / "toast" / "lightspeed". Default "none". |
 | pos_api_token      | CharField             | API token / access token for connected POS. Stored plaintext (see KNOWN_ISSUES). |
@@ -215,6 +221,42 @@ Terminal states: COMPLETED, ABANDONED, SKIPPED
 | Clinic-specific UI  | —      | planned |
 
 Add clinic-specific blocks behind `{% if business.business_type == "clinic" %}` in templates.
+
+---
+
+## Join Page Field Configuration
+
+The pickup join form fields are configurable per business by the platform admin via Settings → "Join page fields". Changes are blocked while there are active (waiting or ready) pickup entries.
+
+| Field                      | Default | Description                                                |
+|----------------------------|---------|------------------------------------------------------------|
+| field_name_enabled         | True    | Show the customer name input                               |
+| field_name_required        | True    | Require name before submission                             |
+| field_order_number_enabled | False   | Show an order number input                                 |
+| field_order_number_required| False   | Require order number before submission                     |
+| field_phone_enabled        | True    | Always True — phone field is always shown                  |
+| field_phone_required       | False   | Require phone before submission                            |
+
+When `field_phone_required=False`, a helper hint ("Add your number to get a text when your order is ready.") is shown beneath the phone field.
+
+When a customer submits without a phone number, `PickupEntry.phone` is stored as `''`. `PickupService.mark_ready()` skips the SMS silently. The confirmation page shows "We'll call your name when your order is ready."
+
+### Reference Presets (not selectable in UI — documented for admin guidance)
+
+**Retail / food spot (default):**
+- Name: show, required
+- Order number: hide
+- Phone: show, optional
+
+**Clinic:**
+- Name: show, required
+- Order number: hide
+- Phone: show, required (need to contact patient)
+
+**Order-number-based counter (e.g. fast food):**
+- Name: hide
+- Order number: show, required
+- Phone: show, optional
 
 ---
 
