@@ -460,11 +460,10 @@ class SettingsView(View):
                 business.field_name_required = request.POST.get("field_name_required") == "1"
                 business.field_order_number_enabled = request.POST.get("field_order_number_enabled") == "1"
                 business.field_order_number_required = request.POST.get("field_order_number_required") == "1"
-                business.field_phone_required = request.POST.get("field_phone_required") == "1"
+                # field_phone_required not saved — phone is always required
                 business.save(update_fields=[
                     "field_name_enabled", "field_name_required",
                     "field_order_number_enabled", "field_order_number_required",
-                    "field_phone_required",
                 ])
 
         elif action == "toggle_queue":

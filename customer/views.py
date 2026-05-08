@@ -343,6 +343,9 @@ class PickupJoinView(View):
             phone, phone_error = _parse_phone(raw_phone, business.country)
             if phone_error:
                 errors["phone"] = phone_error
+        else:
+            # Phone is always required on the pickup join form
+            errors["phone"] = "Please enter your phone number"
 
         customer_name = request.POST.get("customer_name", "").strip()
 
@@ -358,8 +361,6 @@ class PickupJoinView(View):
             except (_json.JSONDecodeError, TypeError):
                 pos_order_items = []
 
-            if business.field_phone_required and not phone:
-                errors["phone"] = "Please enter your phone number"
             if errors:
                 return render(request, self.template_name,
                               self._ctx(business, errors=errors, phone=raw_phone))
@@ -416,9 +417,6 @@ class PickupJoinView(View):
             if business.field_name_enabled and business.field_name_required:
                 if not customer_name:
                     errors["customer_name"] = "Please enter your name"
-            if business.field_phone_required and not phone:
-                errors["phone"] = "Please enter your phone number"
-
             if errors:
                 return render(request, self.template_name,
                               self._ctx(business, errors=errors,

@@ -100,12 +100,12 @@ class TestPickupJoinView:
         resp = client.get(url)
         assert resp.status_code == 404
 
-    def test_post_creates_entry_no_phone(self, client, pickup_only_business):
+    def test_post_creates_entry_with_phone(self, client, pickup_only_business):
         url = reverse("customer:pickup_join", kwargs={"slug": pickup_only_business.slug})
-        resp = client.post(url, {"customer_name": "Alice", "phone": ""})
+        resp = client.post(url, {"customer_name": "Alice", "phone": "+16135550100"})
         assert resp.status_code == 302
         entry = PickupEntry.objects.get(business=pickup_only_business, customer_name="Alice")
-        assert entry.phone == ""
+        assert entry.phone == "+16135550100"
 
     def test_post_requires_order_number_when_configured(self, client, db):
         """Validation enforces order number when field_order_number_required=True."""
@@ -130,8 +130,7 @@ class TestPickupJoinView:
 
     def test_post_redirects_to_confirmation(self, client, pickup_only_business):
         url = reverse("customer:pickup_join", kwargs={"slug": pickup_only_business.slug})
-        # field_name_required=True by default, so include name
-        resp = client.post(url, {"customer_name": "Alice"})
+        resp = client.post(url, {"customer_name": "Alice", "phone": "+16135550100"})
         assert resp.status_code == 302
         assert "pickup/confirmation" in resp["Location"]
 

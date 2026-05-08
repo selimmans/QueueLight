@@ -145,12 +145,13 @@
           <input type="hidden" name="pos_order_items" id="hidden_pos_order_items">
           <input type="hidden" name="customer_name" id="hidden_customer_name">
           <div class="field">
-            <label>Get a text when it's ready <span class="optional-hint">(optional)</span></label>
+            <label>Phone number</label>
             <div class="phone-wrap {% if errors.phone %}error{% endif %}">
               <span class="phone-prefix">+{{ calling_code }}</span>
               <input type="tel" name="phone" id="id_phone_pos"
                      value="{{ phone|default:'' }}"
-                     autocomplete="tel">
+                     autocomplete="tel"
+                     required>
             </div>
             {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
           </div>
@@ -170,12 +171,13 @@
                    autocomplete="given-name" value="{{ customer_name|default:'' }}">
           </div>
           <div class="field">
-            <label>Get a text when it's ready <span class="optional-hint">(optional)</span></label>
+            <label>Phone number</label>
             <div class="phone-wrap {% if errors.phone %}error{% endif %}">
               <span class="phone-prefix">+{{ calling_code }}</span>
               <input type="tel" name="phone" id="id_fallback_phone"
                      value="{{ phone|default:'' }}"
-                     autocomplete="tel">
+                     autocomplete="tel"
+                     required>
             </div>
             {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
           </div>
@@ -227,22 +229,15 @@
         {% endif %}
 
         <div class="field">
-          <label for="id_phone">
-            {% if field_phone_required %}Phone number{% else %}Get a text when ready <span class="optional-hint">(optional)</span>{% endif %}
-          </label>
+          <label for="id_phone">Phone number</label>
           <div class="phone-wrap {% if errors.phone %}error{% endif %}">
             <span class="phone-prefix">+{{ calling_code }}</span>
             <input type="tel" id="id_phone" name="phone"
                    value="{{ phone|default:'' }}"
                    autocomplete="tel"
-                   {% if field_phone_required %}required{% endif %}>
+                   required>
           </div>
           {% if errors.phone %}<div class="field-error">{{ errors.phone }}</div>{% endif %}
-          {% if not field_phone_required %}
-          <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;">
-            Add your number to get a text when your order is ready.
-          </p>
-          {% endif %}
         </div>
 
         {% for question in business.pickup_intake_fields %}
