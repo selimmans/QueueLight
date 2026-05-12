@@ -205,6 +205,15 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] `pollPickup()` updated to render `unregistered_orders` from API and show/hide the section
 - [x] 8 new tests (no-POS empty, order returned, registered excluded, shape, POS failure, ISO timestamp, ms timestamp, response keys); 214 tests passing
 
+## PHASE 24 — POS analytics fields on PickupEntry
+
+- [x] `PickupEntry` model: 3 new fields — `pos_order_created_at` (DateTimeField, nullable), `pos_order_total` (PositiveIntegerField cents, nullable), `pos_order_reference` (CharField) + migration `queues/0007`
+- [x] All 4 POS integrations updated to include `order_total` (cents) and `order_reference` in normalised order dicts (Clover: `order.total`; Square: `total_money.amount` + `reference_id`; Toast: `check.totalAmount` ×100 + `displayNumber`; Lightspeed: `calcTotal` ×100 + `receiptNum`)
+- [x] `match_customer()` orders array extended with `ordered_at` and `order_total` so the customer's browser can pass them as hidden form fields
+- [x] `PickupJoinView` POS-confirmed path: extracts `pos_ordered_at`, `pos_order_total`, `pos_order_reference` from POST, parses timestamp (ISO + ms-epoch) and int total, stamps all 3 on `PickupEntry`
+- [x] `PickupStatusAPIView` `active_orders` response now includes `pos_order_created_at`, `pos_order_total`, `pos_order_reference`; `unregistered_orders` now includes `order_total` and `order_reference`
+- [x] 8 new tests (Clover/Square/Toast/Lightspeed analytics fields, match_customer includes fields, unregistered order shape, active order analytics nulls/values); 222 tests passing
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings

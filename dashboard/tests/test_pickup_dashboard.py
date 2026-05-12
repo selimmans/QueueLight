@@ -401,3 +401,55 @@ class TestPickupStatusAPIUnregistered:
         assert "unregistered_orders" in data
         assert "total_unregistered" in data
         assert isinstance(data["unregistered_orders"], list)
+
+    def test_unregistered_order_includes_total_and_reference(self, client, db):
+        """unregistered_orders items include order_total and order_reference."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="pos-biz-7")
+        _login(client, biz, sp)
+        order_with_total = {
+            **_FAKE_POS_ORDER,
+            "id": "POS-FULL",
+            "order_total": 1250,
+            "order_reference": "R-42",
+        }
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[order_with_total],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        item = resp.json()["unregistered_orders"][0]
+        assert item["order_total"] == 1250
+        assert item["order_reference"] == "R-42"
+
+
+class TestPickupStatusAPIAnalyticsFields:
+    """active_orders response includes pos_order_created_at, pos_order_total, pos_order_reference."""
+
+    def test_active_order_includes_pos_analytics_fields(self, client, pickup_business, pickup_staff):
+        from django.utils import timezone
+        _login(client, pickup_business, pickup_staff)
+        entry = PickupService.register(pickup_business, order_number="X1", customer_name="Eve")
+        # Set analytics fields manually (as the POS-confirm path would)
+        ts = timezone.now()
+        entry.pos_order_created_at = ts
+        entry.pos_order_total = 750
+        entry.pos_order_reference = "R-99"
+        entry.save(update_fields=["pos_order_created_at", "pos_order_total", "pos_order_reference"])
+
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
+        data = resp.json()
+        order = data["active_orders"][0]
+        assert order["pos_order_created_at"] is not None
+        assert order["pos_order_total"] == 750
+        assert order["pos_order_reference"] == "R-99"
+
+    def test_active_order_nulls_when_no_pos(self, client, pickup_business, pickup_staff):
+        """When no POS match, analytics fields are null/empty."""
+        _login(client, pickup_business, pickup_staff)
+        PickupService.register(pickup_business, order_number="X2")
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
+        order = resp.json()["active_orders"][0]
+        assert order["pos_order_created_at"] is None
+        assert order["pos_order_total"] is None
+        assert order["pos_order_reference"] == ""

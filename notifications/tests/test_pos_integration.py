@@ -561,3 +561,112 @@ class TestLightspeedIntegration:
             orders = LightspeedIntegration.get_orders(biz)
 
         assert orders == []
+
+
+# ---------------------------------------------------------------------------
+# Analytics fields: order_total and order_reference
+# ---------------------------------------------------------------------------
+
+class TestPOSAnalyticsFields:
+    """Verify order_total (cents) and order_reference are returned by each integration."""
+
+    def test_clover_order_total_in_cents(self):
+        biz = _make_business("clover")
+        response = {
+            "elements": [{
+                "id": "c1",
+                "note": "Alice",
+                "createdTime": 1700000000000,
+                "total": 1250,  # $12.50
+                "lineItems": {"elements": [{"name": "Latte"}]},
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = response
+        with patch("requests.get", return_value=mock_resp):
+            orders = CloverIntegration.get_orders(biz)
+        assert orders[0]["order_total"] == 1250
+        assert orders[0]["order_reference"] == ""
+
+    def test_square_order_total_and_reference(self):
+        biz = _make_business("square")
+        response = {
+            "orders": [{
+                "id": "sq1",
+                "ticket_name": "Bob",
+                "created_at": "2024-01-01T12:00:00Z",
+                "line_items": [{"name": "Coffee"}],
+                "total_money": {"amount": 450, "currency": "CAD"},
+                "reference_id": "REF-99",
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = response
+        with patch("requests.post", return_value=mock_resp):
+            orders = SquareIntegration.get_orders(biz)
+        assert orders[0]["order_total"] == 450
+        assert orders[0]["order_reference"] == "REF-99"
+
+    def test_toast_order_total_converted_to_cents(self):
+        """Toast returns totalAmount as dollars (float) — we convert to cents."""
+        biz = _make_business("toast", toast_client_id="cid", toast_client_secret="sec")
+        orders_data = [{
+            "guid": "t1",
+            "createdDate": "2024-01-01T12:00:00Z",
+            "displayNumber": "T-42",
+            "checks": [{
+                "customer": {"firstName": "Carol", "lastName": ""},
+                "totalAmount": 8.50,
+                "selections": [{"displayName": "Espresso"}],
+            }]
+        }]
+        auth_resp = MagicMock()
+        auth_resp.status_code = 200
+        auth_resp.json.return_value = {"token": {"accessToken": "tok"}}
+        orders_resp = MagicMock()
+        orders_resp.status_code = 200
+        orders_resp.json.return_value = orders_data
+        with patch("requests.post", return_value=auth_resp):
+            with patch("requests.get", return_value=orders_resp):
+                orders = ToastIntegration.get_orders(biz)
+        assert orders[0]["order_total"] == 850  # $8.50 → 850 cents
+        assert orders[0]["order_reference"] == "T-42"
+
+    def test_lightspeed_order_total_and_reference(self):
+        biz = _make_business("lightspeed")
+        response = {
+            "Sale": [{
+                "saleID": "ls1",
+                "name": "Dave",
+                "timeStamp": "2024-01-01T12:00:00+00:00",
+                "calcTotal": "15.75",
+                "receiptNum": "R-007",
+                "SaleLines": {"SaleLine": {"Item": {"description": "Tea"}}},
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = response
+        with patch("requests.get", return_value=mock_resp):
+            orders = LightspeedIntegration.get_orders(biz)
+        assert orders[0]["order_total"] == 1575  # $15.75 → 1575 cents
+        assert orders[0]["order_reference"] == "R-007"
+
+    def test_match_customer_includes_ordered_at_and_total(self):
+        """match_customer result orders include ordered_at and order_total."""
+        biz = _make_business("clover")
+        fake_orders = [{
+            "id": "c1",
+            "customer_name": "Alice",
+            "items": ["Latte"],
+            "created_at": "2024-01-01T12:00:00Z",
+            "order_total": 1250,
+            "order_reference": "",
+        }]
+        with patch.object(POSIntegration, "get_recent_orders", return_value=fake_orders):
+            result = POSIntegration.match_customer(biz, customer_name="Alice")
+        assert result["matched"] is True
+        assert result["orders"][0]["ordered_at"] == "2024-01-01T12:00:00Z"
+        assert result["orders"][0]["order_total"] == 1250

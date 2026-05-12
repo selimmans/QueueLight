@@ -129,9 +129,12 @@ Immutable. Never update rows. Only insert.
 | registered_at  | DateTimeField         | auto_now_add                                       |
 | ready_at       | DateTimeField         | Set when staff marks Ready.                        |
 | completed_at   | DateTimeField         | Set when staff marks Picked Up.                    |
-| pos_order_id   | CharField             | POS order reference. Blank if no POS match.        |
-| pos_order_items| JSONField             | List of item name strings from POS. [] if no match.|
-| pos_match_confidence | FloatField      | Fuzzy match score 0–1. Null if manually confirmed. |
+| pos_order_id           | CharField     | POS order reference. Blank if no POS match.                         |
+| pos_order_items        | JSONField     | List of item name strings from POS. [] if no match.                 |
+| pos_match_confidence   | FloatField    | Fuzzy match score 0–1. Null if manually confirmed.                  |
+| pos_order_created_at   | DateTimeField | When the POS order was placed. Null if no POS match.                |
+| pos_order_total        | PositiveIntegerField | Order value in cents. Null if no POS match or not available.  |
+| pos_order_reference    | CharField     | Human-readable receipt/ticket number from POS. "" if unavailable.   |
 
 ### queues.PickupEventLog
 

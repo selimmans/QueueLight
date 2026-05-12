@@ -144,6 +144,9 @@
           <input type="hidden" name="pos_order_id" id="hidden_pos_order_id">
           <input type="hidden" name="pos_order_items" id="hidden_pos_order_items">
           <input type="hidden" name="customer_name" id="hidden_customer_name">
+          <input type="hidden" name="pos_ordered_at" id="hidden_pos_ordered_at">
+          <input type="hidden" name="pos_order_total" id="hidden_pos_order_total">
+          <input type="hidden" name="pos_order_reference" id="hidden_pos_order_reference">
           <div class="field">
             <label>Phone number</label>
             <div class="phone-wrap {% if errors.phone %}error{% endif %}">
@@ -287,8 +290,11 @@
     }
 
     // ── State ───────────────────────────────────────────────────────────
-    let matchedOrderId = null;
-    let matchedItems   = [];
+    let matchedOrderId        = null;
+    let matchedItems          = [];
+    let matchedOrderedAt      = "";
+    let matchedOrderTotal     = "";
+    let matchedOrderReference = "";
 
     // ── Elements ────────────────────────────────────────────────────────
     const searchingMsg    = document.getElementById("searching-msg");
@@ -296,10 +302,13 @@
     const matchItemsList  = document.getElementById("match-items");
     const phoneStep       = document.getElementById("phone-step");
     const fallbackSection = document.getElementById("fallback-section");
-    const hiddenOrderId   = document.getElementById("hidden_pos_order_id");
-    const hiddenItems     = document.getElementById("hidden_pos_order_items");
-    const hiddenName      = document.getElementById("hidden_customer_name");
-    const fallbackName    = document.getElementById("id_fallback_name");
+    const hiddenOrderId        = document.getElementById("hidden_pos_order_id");
+    const hiddenItems          = document.getElementById("hidden_pos_order_items");
+    const hiddenName           = document.getElementById("hidden_customer_name");
+    const hiddenOrderedAt      = document.getElementById("hidden_pos_ordered_at");
+    const hiddenOrderTotal     = document.getElementById("hidden_pos_order_total");
+    const hiddenOrderReference = document.getElementById("hidden_pos_order_reference");
+    const fallbackName         = document.getElementById("id_fallback_name");
 
     // ── Helpers ─────────────────────────────────────────────────────────
     function showSearching(on) {
@@ -364,8 +373,11 @@
         if (data.matched) {
           // Use first/best match
           const firstOrder = (data.orders && data.orders.length) ? data.orders[0] : null;
-          matchedOrderId = firstOrder ? firstOrder.order_id : data.order_id;
-          matchedItems   = firstOrder ? (firstOrder.items || []) : (data.items || []);
+          matchedOrderId        = firstOrder ? firstOrder.order_id : data.order_id;
+          matchedItems          = firstOrder ? (firstOrder.items || []) : (data.items || []);
+          matchedOrderedAt      = firstOrder ? (firstOrder.ordered_at  ?? "") : "";
+          matchedOrderTotal     = firstOrder ? (firstOrder.order_total  ?? "") : "";
+          matchedOrderReference = firstOrder ? (firstOrder.order_reference || "") : "";
           showMatch(matchedItems);
         } else {
           showFallback(payload.customer_name || "");
@@ -387,9 +399,12 @@
     // ── "Yes, that's me" ────────────────────────────────────────────────
     document.getElementById("btn-yes").addEventListener("click", () => {
       const name = nameInput?.value.trim() || "";
-      hiddenOrderId.value = matchedOrderId || "";
-      hiddenItems.value   = JSON.stringify(matchedItems);
-      hiddenName.value    = name;
+      hiddenOrderId.value        = matchedOrderId || "";
+      hiddenItems.value          = JSON.stringify(matchedItems);
+      hiddenName.value           = name;
+      hiddenOrderedAt.value      = String(matchedOrderedAt  || "");
+      hiddenOrderTotal.value     = matchedOrderTotal !== "" ? String(matchedOrderTotal) : "";
+      hiddenOrderReference.value = matchedOrderReference || "";
       matchCard.classList.remove("visible");
       phoneStep.classList.add("visible");
       // Save all three identifiers to localStorage for returning customers

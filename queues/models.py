@@ -77,6 +77,10 @@ class PickupEntry(models.Model):
     pos_order_id = models.CharField(max_length=255, blank=True)
     pos_order_items = models.JSONField(default=list, blank=True)
     pos_match_confidence = models.FloatField(null=True, blank=True)
+    # POS analytics — when was the order placed, how much was it, what's the receipt number
+    pos_order_created_at = models.DateTimeField(null=True, blank=True)
+    pos_order_total = models.PositiveIntegerField(null=True, blank=True)  # cents
+    pos_order_reference = models.CharField(max_length=100, blank=True, default="")
     registered_at = models.DateTimeField(auto_now_add=True)
     ready_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

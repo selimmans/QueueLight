@@ -848,6 +848,9 @@ class PickupStatusAPIView(View):
                 "minutes_waiting": minutes_waiting,
                 "intake_answers": e.intake_answers or {},
                 "pos_order_items": e.pos_order_items or [],
+                "pos_order_created_at": e.pos_order_created_at.isoformat() if e.pos_order_created_at else None,
+                "pos_order_total": e.pos_order_total,
+                "pos_order_reference": e.pos_order_reference or "",
             }
 
         active_orders = [_entry_dict(e) for e in entries]
@@ -869,6 +872,8 @@ class PickupStatusAPIView(View):
                         "items": o.get("items", []),
                         "ordered_at": str(created_at) if created_at is not None else None,
                         "minutes_ago": _minutes_ago_from_pos_ts(created_at, now),
+                        "order_total": o.get("order_total"),
+                        "order_reference": o.get("order_reference", ""),
                     })
             except Exception:
                 logger.exception(

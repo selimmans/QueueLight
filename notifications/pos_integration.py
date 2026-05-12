@@ -66,6 +66,10 @@ class CloverIntegration:
                             "customer_name": customer_name,
                             "items": items,
                             "created_at": order.get("createdTime"),
+                            # Clover total is already in cents (int)
+                            "order_total": order.get("total"),
+                            # Clover has no separate receipt number in the standard API
+                            "order_reference": "",
                         }
                     )
             return orders
@@ -147,12 +151,16 @@ class SquareIntegration:
                     if li.get("name")
                 ]
                 if customer_name:
+                    total_money = order.get("total_money") or {}
                     orders.append(
                         {
                             "id": order["id"],
                             "customer_name": customer_name,
                             "items": items,
                             "created_at": order.get("created_at"),
+                            # Square total_money.amount is already in cents (int)
+                            "order_total": total_money.get("amount"),
+                            "order_reference": order.get("reference_id", ""),
                         }
                     )
             return orders
@@ -280,12 +288,21 @@ class ToastIntegration:
                     for sel in check.get("selections", [])
                     if sel.get("displayName")
                 ]
+                # Toast totalAmount is in dollars (float) — convert to cents
+                total_amount = check.get("totalAmount")
+                try:
+                    order_total = round(float(total_amount) * 100) if total_amount is not None else None
+                except (TypeError, ValueError):
+                    order_total = None
                 orders.append(
                     {
                         "id": order.get("guid", ""),
                         "customer_name": customer_name,
                         "items": items,
                         "created_at": order.get("createdDate"),
+                        "order_total": order_total,
+                        # displayNumber is the human-readable ticket number
+                        "order_reference": str(order.get("displayNumber") or order.get("externalId") or ""),
                     }
                 )
             return orders
@@ -373,12 +390,19 @@ class LightspeedIntegration:
                     for line in raw_lines
                     if line.get("Item", {}).get("description")
                 ]
+                # Lightspeed calcTotal is a decimal string like "12.50"
+                try:
+                    order_total = round(float(sale.get("calcTotal", 0)) * 100)
+                except (TypeError, ValueError):
+                    order_total = None
                 orders.append(
                     {
                         "id": str(sale.get("saleID", "")),
                         "customer_name": customer_name,
                         "items": items,
                         "created_at": sale.get("timeStamp"),
+                        "order_total": order_total,
+                        "order_reference": str(sale.get("receiptNum") or ""),
                     }
                 )
             return orders
@@ -483,6 +507,8 @@ class POSIntegration:
                         "order_reference": str(o.get("order_reference") or o["id"]),
                         "items": o["items"],
                         "confidence": 1.0,
+                        "ordered_at": o.get("created_at"),
+                        "order_total": o.get("order_total"),
                     }
                     for o in phone_matches
                 ]
@@ -510,6 +536,8 @@ class POSIntegration:
                         "order_reference": str(o.get("order_reference") or o["id"]),
                         "items": o["items"],
                         "confidence": 1.0,
+                        "ordered_at": o.get("created_at"),
+                        "order_total": o.get("order_total"),
                     }
                     for o in ref_matches
                 ]
@@ -553,6 +581,8 @@ class POSIntegration:
                 "order_reference": str(o.get("order_reference") or o["id"]),
                 "items": o["items"],
                 "confidence": round(score, 4),
+                "ordered_at": o.get("created_at"),
+                "order_total": o.get("order_total"),
             }
             for score, o in scored
         ]

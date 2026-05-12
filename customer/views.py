@@ -361,6 +361,33 @@ class PickupJoinView(View):
             except (_json.JSONDecodeError, TypeError):
                 pos_order_items = []
 
+            # POS analytics fields passed as hidden form fields from JS
+            raw_ordered_at = request.POST.get("pos_ordered_at", "").strip()
+            raw_order_total = request.POST.get("pos_order_total", "").strip()
+            pos_order_reference = request.POST.get("pos_order_reference", "").strip()
+
+            # Parse order creation timestamp
+            pos_order_created_at = None
+            if raw_ordered_at:
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    from django.utils import timezone as _djtz
+                    dt = parse_datetime(raw_ordered_at)
+                    if dt is not None:
+                        if dt.tzinfo is None:
+                            dt = _djtz.make_aware(dt)
+                        pos_order_created_at = dt
+                except Exception:
+                    pass
+
+            # Parse order total (cents)
+            pos_order_total = None
+            if raw_order_total:
+                try:
+                    pos_order_total = int(raw_order_total)
+                except (ValueError, TypeError):
+                    pass
+
             if errors:
                 return render(request, self.template_name,
                               self._ctx(business, errors=errors, phone=raw_phone))
@@ -377,7 +404,13 @@ class PickupJoinView(View):
             entry.pos_order_id = pos_order_id
             entry.pos_order_items = pos_order_items
             entry.pos_match_confidence = None  # already confirmed by customer
-            entry.save(update_fields=["pos_order_id", "pos_order_items", "pos_match_confidence"])
+            entry.pos_order_created_at = pos_order_created_at
+            entry.pos_order_total = pos_order_total
+            entry.pos_order_reference = pos_order_reference
+            entry.save(update_fields=[
+                "pos_order_id", "pos_order_items", "pos_match_confidence",
+                "pos_order_created_at", "pos_order_total", "pos_order_reference",
+            ])
 
         elif pos_enabled:
             # ── POS fallback path (no match / "that's not me") ──────────
