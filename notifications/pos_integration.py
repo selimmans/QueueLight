@@ -429,11 +429,45 @@ class LightspeedIntegration:
 # Dispatcher
 # ---------------------------------------------------------------------------
 
+def _demo_pos_orders() -> list[dict]:
+    """Hardcoded realistic café orders for the 'demo' POS type."""
+    from datetime import datetime, timedelta, timezone as _tz
+    now = datetime.now(_tz.utc)
+    return [
+        {
+            "id": "DEMO-001",
+            "customer_name": "Sarah Johnson",
+            "items": ["Oat Milk Latte", "Blueberry Scone"],
+            "created_at": (now - timedelta(minutes=14)).isoformat(),
+            "order_total": 1275,
+            "order_reference": "T-41",
+        },
+        {
+            "id": "DEMO-002",
+            "customer_name": "Ahmed Al-Rashid",
+            "items": ["Double Americano", "Avocado Toast"],
+            "created_at": (now - timedelta(minutes=9)).isoformat(),
+            "order_total": 1850,
+            "order_reference": "T-42",
+        },
+        {
+            "id": "DEMO-003",
+            "customer_name": "Emma Chen",
+            "items": ["Matcha Latte", "Chocolate Croissant"],
+            "created_at": (now - timedelta(minutes=3)).isoformat(),
+            "order_total": 1150,
+            "order_reference": "T-43",
+        },
+    ]
+
+
 class POSIntegration:
 
     @staticmethod
     def get_recent_orders(business, minutes: int = 120) -> list[dict]:
         """Fetch orders from the connected POS. Returns [] if none configured."""
+        if business.pos_type == "demo":
+            return _demo_pos_orders()
         if business.pos_type == business.POS_CLOVER:
             return CloverIntegration.get_orders(business, minutes)
         if business.pos_type == business.POS_SQUARE:

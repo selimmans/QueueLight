@@ -773,6 +773,78 @@ class PickupPickedUpView(View):
         return redirect("dashboard:dashboard", slug=slug)
 
 
+@method_decorator(csrf_exempt, name="dispatch")
+class PickupUnregisteredReadyView(View):
+    """POST /staff/<slug>/pickup/unregistered-ready/
+
+    Staff taps Ready on a Section 2 (not-yet-scanned) POS order.
+    Creates a PickupEntry with all POS data stamped, marks it ready immediately,
+    and it will appear in Section 1 on the next poll.
+    """
+
+    def post(self, request, slug):
+        import json as _json
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+
+        pos_order_id    = request.POST.get("pos_order_id", "").strip()
+        customer_name   = request.POST.get("customer_name", "").strip()
+        pos_order_reference = request.POST.get("pos_order_reference", "").strip()
+
+        raw_items = request.POST.get("pos_order_items", "[]")
+        try:
+            pos_order_items = [str(i) for i in _json.loads(raw_items) if isinstance(i, str)]
+        except (_json.JSONDecodeError, TypeError):
+            pos_order_items = []
+
+        raw_ordered_at = request.POST.get("pos_ordered_at", "").strip()
+        pos_order_created_at = None
+        if raw_ordered_at:
+            try:
+                from django.utils.dateparse import parse_datetime
+                from django.utils import timezone as _djtz
+                dt = parse_datetime(raw_ordered_at)
+                if dt is not None:
+                    if dt.tzinfo is None:
+                        dt = _djtz.make_aware(dt)
+                    pos_order_created_at = dt
+            except Exception:
+                pass
+
+        raw_total = request.POST.get("pos_order_total", "").strip()
+        pos_order_total = None
+        if raw_total:
+            try:
+                pos_order_total = int(raw_total)
+            except (ValueError, TypeError):
+                pass
+
+        # Use reference as display number if available, else pos_order_id
+        order_number = pos_order_reference or pos_order_id or "WALK-IN"
+
+        entry = PickupService.register(
+            business,
+            order_number=order_number,
+            customer_name=customer_name,
+        )
+        # Stamp all POS data
+        entry.pos_order_id = pos_order_id
+        entry.pos_order_items = pos_order_items
+        entry.pos_match_confidence = None
+        entry.pos_order_created_at = pos_order_created_at
+        entry.pos_order_total = pos_order_total
+        entry.pos_order_reference = pos_order_reference
+        entry.save(update_fields=[
+            "pos_order_id", "pos_order_items", "pos_match_confidence",
+            "pos_order_created_at", "pos_order_total", "pos_order_reference",
+        ])
+        # Mark ready immediately — staff already called the name
+        PickupService.mark_ready(entry)
+
+        return redirect("dashboard:dashboard", slug=slug)
+
+
 class PickupClosingSoonView(View):
     def post(self, request, slug):
         business = get_object_or_404(Business, slug=slug)

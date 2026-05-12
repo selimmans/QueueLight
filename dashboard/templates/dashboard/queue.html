@@ -667,15 +667,24 @@
         ? `<span class="entry-items"> · ${items.join(", ")}</span>`
         : "";
       const minsHtml = o.minutes_ago != null ? ` · ${o.minutes_ago}m ago` : "";
+      const readyForm = `
+        <form method="post" action="/staff/${SLUG}/pickup/unregistered-ready/" style="display:inline">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
+          <input type="hidden" name="pos_order_id" value="${o.pos_order_id || ""}">
+          <input type="hidden" name="customer_name" value="${name}">
+          <input type="hidden" name="pos_order_items" value="${JSON.stringify(items)}">
+          <input type="hidden" name="pos_ordered_at" value="${o.ordered_at || ""}">
+          <input type="hidden" name="pos_order_total" value="${o.order_total ?? ""}">
+          <input type="hidden" name="pos_order_reference" value="${o.order_reference || ""}">
+          <button class="action-btn btn-ready" type="submit">Ready</button>
+        </form>`;
       return `<div class="entry unregistered-entry">
         <div class="badge" style="background:#f3f4f6;color:#9ca3af;font-size:1rem">📢</div>
         <div class="entry-body">
           <div class="entry-name">${name}${itemsHtml}</div>
-          <div class="entry-meta">Ordered${minsHtml}</div>
+          <div class="entry-meta">Ordered${minsHtml} · call name</div>
         </div>
-        <div class="entry-actions">
-          <span class="call-name-tag">Call name</span>
-        </div>
+        <div class="entry-actions">${readyForm}</div>
       </div>`;
     }
     {% endif %}
