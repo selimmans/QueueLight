@@ -338,13 +338,37 @@ The staff dashboard (`/staff/<slug>/`) adapts its layout based on `dashboard_mod
       "customer_name": "Bob",
       "status": "waiting",
       "registered_at": "2026-04-29T12:00:00+00:00",
-      "minutes_waiting": 5
+      "minutes_waiting": 5,
+      "intake_answers": {},
+      "pos_order_items": []
     }
   ],
-  "total_active": 1
+  "total_active": 1,
+  "unregistered_orders": [
+    {
+      "pos_order_id": "ABC123",
+      "customer_name": "Ahmed",
+      "items": ["Pistachio Latte", "Muffin"],
+      "ordered_at": "2026-05-07T14:23:00+00:00",
+      "minutes_ago": 4
+    }
+  ],
+  "total_unregistered": 1
 }
 ```
-`minutes_waiting` is calculated server-side (integer, rounded down) to avoid JS timezone issues. `active_orders` excludes `picked_up` entries.
+
+`minutes_waiting` / `minutes_ago` are calculated server-side (integers, rounded down) to avoid JS timezone issues. `active_orders` excludes `picked_up` entries.
+
+`unregistered_orders` is always present (empty list when `pos_type == 'none'`). It contains POS orders from the last 2 hours whose `id` does not match any active `PickupEntry.pos_order_id`. If the POS fetch fails, the list is empty and the error is logged — the API still returns 200.
+
+### Dashboard Pickup Panel Sections
+
+| Section | Label | Source | Actions |
+|---------|-------|---------|---------|
+| Section 1 | "Active Orders" | `active_orders` from API | Ready / Picked up buttons |
+| Section 2 | "Not yet scanned" | `unregistered_orders` from API | "📢 Call name" indicator (no button) |
+
+Section 2 is hidden when empty. It only renders in the template when `business.pos_type != 'none'`. Entries are greyed out (`opacity: 0.65`) to visually distinguish them from registered orders. When a customer eventually scans and registers, their order automatically moves from Section 2 to Section 1 on the next 5-second poll.
 
 ---
 

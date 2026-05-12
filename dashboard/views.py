@@ -1,7 +1,10 @@
 import io
+import logging
 import os
 import struct
 import zlib
+
+logger = logging.getLogger(__name__)
 
 import qrcode
 from PIL import Image, ImageColor, ImageDraw, ImageFont
@@ -788,6 +791,37 @@ class PickupClearView(View):
         return redirect("dashboard:settings", slug=slug)
 
 
+def _minutes_ago_from_pos_ts(created_at, now) -> int | None:
+    """Convert a POS created_at value (int ms or ISO string) to minutes ago.
+
+    Clover returns createdTime as milliseconds-since-epoch (int).
+    Square, Toast, Lightspeed return ISO 8601 strings.
+    Returns None if the value cannot be parsed.
+    """
+    if created_at is None:
+        return None
+    dt = None
+    if isinstance(created_at, (int, float)):
+        try:
+            from datetime import datetime, timezone as _tz
+            dt = datetime.fromtimestamp(created_at / 1000, tz=_tz.utc)
+        except Exception:
+            return None
+    elif isinstance(created_at, str):
+        try:
+            from django.utils.dateparse import parse_datetime
+            from django.utils import timezone as djtz
+            dt = parse_datetime(created_at)
+            if dt is not None and dt.tzinfo is None:
+                dt = djtz.make_aware(dt)
+        except Exception:
+            return None
+    if dt is None:
+        return None
+    diff = now - dt
+    return max(0, int(diff.total_seconds() / 60))
+
+
 class PickupStatusAPIView(View):
     def get(self, request, slug):
         from django.utils import timezone as tz
@@ -817,7 +851,36 @@ class PickupStatusAPIView(View):
             }
 
         active_orders = [_entry_dict(e) for e in entries]
-        return JsonResponse({"active_orders": active_orders, "total_active": len(active_orders)})
+
+        # ── Section 2: POS orders not yet registered by a customer ──────────
+        unregistered_orders = []
+        if business.pos_type != business.POS_NONE:
+            try:
+                from notifications.pos_integration import POSIntegration
+                registered_pos_ids = {e.pos_order_id for e in entries if e.pos_order_id}
+                pos_orders = POSIntegration.get_recent_orders(business)
+                for o in pos_orders:
+                    if o.get("id") in registered_pos_ids:
+                        continue
+                    created_at = o.get("created_at")
+                    unregistered_orders.append({
+                        "pos_order_id": o.get("id", ""),
+                        "customer_name": o.get("customer_name", ""),
+                        "items": o.get("items", []),
+                        "ordered_at": str(created_at) if created_at is not None else None,
+                        "minutes_ago": _minutes_ago_from_pos_ts(created_at, now),
+                    })
+            except Exception:
+                logger.exception(
+                    "Failed to fetch unregistered POS orders for %s", slug
+                )
+
+        return JsonResponse({
+            "active_orders": active_orders,
+            "total_active": len(active_orders),
+            "unregistered_orders": unregistered_orders,
+            "total_unregistered": len(unregistered_orders),
+        })
 
 
 # ── Rate limiter for the public match endpoint (10 req/min per IP) ─────────

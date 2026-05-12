@@ -266,6 +266,16 @@
     .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
     .action-btn:hover { opacity: 0.75; }
 
+    /* ── Unregistered (not-yet-scanned) orders ──────── */
+    .unregistered-entry { opacity: 0.65; }
+    .unregistered-entry .entry-name { color: #6b7280; }
+    .call-name-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
     .empty {
       padding: 2.25rem 1rem;
       text-align: center;
@@ -493,6 +503,16 @@
         {% endif %}
       </div>
 
+      {% if business.pos_type != 'none' %}
+      <div id="unregistered-section" style="display:none">
+        <div class="section-label" style="margin-top:0.75rem">
+          <span class="dot" style="background:#9ca3af;animation:none"></span>
+          Not yet scanned — <span id="unregistered-count">0</span>
+        </div>
+        <div class="queue-card" id="unregistered-list"></div>
+      </div>
+      {% endif %}
+
       <div class="qr-section">
         <img src="{% url 'dashboard:qr_code' slug=business.slug %}" alt="QR code">
         <div>
@@ -638,6 +658,27 @@
       const det = document.getElementById("pickup-intake-" + id);
       if (det) det.classList.toggle("open", pickupExpandedIds.has(id));
     }
+
+    {% if business.pos_type != 'none' %}
+    function renderUnregisteredOrder(o) {
+      const name = o.customer_name || "Unknown";
+      const items = (o.items || []);
+      const itemsHtml = items.length
+        ? `<span class="entry-items"> · ${items.join(", ")}</span>`
+        : "";
+      const minsHtml = o.minutes_ago != null ? ` · ${o.minutes_ago}m ago` : "";
+      return `<div class="entry unregistered-entry">
+        <div class="badge" style="background:#f3f4f6;color:#9ca3af;font-size:1rem">📢</div>
+        <div class="entry-body">
+          <div class="entry-name">${name}${itemsHtml}</div>
+          <div class="entry-meta">Ordered${minsHtml}</div>
+        </div>
+        <div class="entry-actions">
+          <span class="call-name-tag">Call name</span>
+        </div>
+      </div>`;
+    }
+    {% endif %}
     {% endif %}
 
     // ── Batch intercept ────────────────────────────────
@@ -745,6 +786,20 @@
           list.innerHTML = orders.length
             ? orders.map(renderPickupEntry).join("")
             : `<p class="empty">No active orders</p>`;
+
+          {% if business.pos_type != 'none' %}
+          const unregSection = document.getElementById("unregistered-section");
+          const unregList    = document.getElementById("unregistered-list");
+          const unregCounter = document.getElementById("unregistered-count");
+          const unregOrders  = data.unregistered_orders || [];
+          if (unregSection) unregSection.style.display = unregOrders.length ? "block" : "none";
+          if (unregCounter) unregCounter.textContent = unregOrders.length;
+          if (unregList) {
+            unregList.innerHTML = unregOrders.length
+              ? unregOrders.map(renderUnregisteredOrder).join("")
+              : "";
+          }
+          {% endif %}
         })
         .catch(() => {});
     }

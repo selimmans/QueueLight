@@ -250,3 +250,154 @@ class TestSettingsFeatureToggles:
         client.post(url, {"action": "toggle_queue", "queue_enabled": "0"})
         biz.refresh_from_db()
         assert biz.queue_enabled is False
+
+
+# ---------------------------------------------------------------------------
+# Unregistered POS orders in /api/pickup/<slug>/status/
+# ---------------------------------------------------------------------------
+
+_FAKE_POS_ORDER = {
+    "id": "POS-001",
+    "customer_name": "Ahmed",
+    "items": ["Pistachio Latte", "Muffin"],
+    "created_at": "2026-05-07T14:23:00+00:00",
+}
+
+
+class TestPickupStatusAPIUnregistered:
+    """Section 2: POS orders that have no matching PickupEntry."""
+
+    def _pos_biz(self, db, slug="pos-biz"):
+        """Business with a POS integration configured."""
+        biz = Business.objects.create(
+            name="POS Café",
+            slug=slug,
+            is_active=True,
+            queue_enabled=False,
+            pickup_enabled=True,
+            pos_type="clover",
+            pos_api_token="tok",
+            pos_merchant_id="mid",
+        )
+        sp = StaffPhone.objects.create(phone="+16135550060", business=biz, name="Staff")
+        return biz, sp
+
+    def test_no_pos_returns_empty_unregistered(self, client, pickup_business, pickup_staff):
+        """When pos_type=none, unregistered_orders is always empty."""
+        _login(client, pickup_business, pickup_staff)
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
+        data = resp.json()
+        assert data["unregistered_orders"] == []
+        assert data["total_unregistered"] == 0
+
+    def test_unregistered_order_returned(self, client, db):
+        """A POS order with no matching PickupEntry appears in unregistered_orders."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db)
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_FAKE_POS_ORDER],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        data = resp.json()
+        assert data["total_unregistered"] == 1
+        assert data["unregistered_orders"][0]["pos_order_id"] == "POS-001"
+        assert data["unregistered_orders"][0]["customer_name"] == "Ahmed"
+        assert data["unregistered_orders"][0]["items"] == ["Pistachio Latte", "Muffin"]
+
+    def test_registered_entry_excluded_from_unregistered(self, client, db):
+        """A POS order whose id matches a PickupEntry.pos_order_id is excluded."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="pos-biz-2")
+        _login(client, biz, sp)
+        # Register the customer — link their entry to the POS order
+        entry = PickupService.register(biz, order_number="POS-001")
+        entry.pos_order_id = "POS-001"
+        entry.save(update_fields=["pos_order_id"])
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_FAKE_POS_ORDER],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        data = resp.json()
+        assert data["total_unregistered"] == 0
+        assert data["unregistered_orders"] == []
+
+    def test_unregistered_order_shape(self, client, db):
+        """unregistered_orders items have all required keys."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="pos-biz-3")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_FAKE_POS_ORDER],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        item = resp.json()["unregistered_orders"][0]
+        assert "pos_order_id" in item
+        assert "customer_name" in item
+        assert "items" in item
+        assert "ordered_at" in item
+        assert "minutes_ago" in item
+
+    def test_pos_failure_returns_empty_unregistered(self, client, db):
+        """If the POS API call raises, the endpoint still returns 200 with empty list."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="pos-biz-4")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            side_effect=RuntimeError("Network error"),
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["unregistered_orders"] == []
+        assert data["total_unregistered"] == 0
+
+    def test_minutes_ago_from_iso_timestamp(self, client, db):
+        """minutes_ago is computed correctly for ISO string timestamps."""
+        from unittest.mock import patch
+        from datetime import datetime, timedelta, timezone
+        biz, sp = self._pos_biz(db, slug="pos-biz-5")
+        _login(client, biz, sp)
+        ten_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        order = {**_FAKE_POS_ORDER, "id": "POS-ISO", "created_at": ten_mins_ago}
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[order],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        item = resp.json()["unregistered_orders"][0]
+        assert item["minutes_ago"] is not None
+        assert 9 <= item["minutes_ago"] <= 11  # allow 1 min clock skew
+
+    def test_minutes_ago_from_ms_timestamp(self, client, db):
+        """minutes_ago is computed correctly for millisecond epoch timestamps (Clover)."""
+        from unittest.mock import patch
+        from datetime import datetime, timedelta, timezone
+        import time
+        biz, sp = self._pos_biz(db, slug="pos-biz-6")
+        _login(client, biz, sp)
+        five_mins_ago_ms = int(
+            (datetime.now(timezone.utc) - timedelta(minutes=5)).timestamp() * 1000
+        )
+        order = {**_FAKE_POS_ORDER, "id": "POS-MS", "created_at": five_mins_ago_ms}
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[order],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        item = resp.json()["unregistered_orders"][0]
+        assert item["minutes_ago"] is not None
+        assert 4 <= item["minutes_ago"] <= 6
+
+    def test_response_shape_includes_new_keys(self, client, pickup_business, pickup_staff):
+        """Existing callers get unregistered_orders and total_unregistered even with no POS."""
+        _login(client, pickup_business, pickup_staff)
+        resp = client.get(f"/api/pickup/{pickup_business.slug}/status/")
+        data = resp.json()
+        assert "unregistered_orders" in data
+        assert "total_unregistered" in data
+        assert isinstance(data["unregistered_orders"], list)

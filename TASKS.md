@@ -195,6 +195,16 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] Fixes known issue: POS flow phone step lacked `required` attribute
 - [x] Tests updated: `test_pickup_views.py` and `test_join_field_config.py` rewritten for required phone; 206 tests passing
 
+## PHASE 23 — Show unregistered POS orders on pickup dashboard
+
+- [x] `PickupStatusAPIView`: when `pos_type != 'none'`, calls `POSIntegration.get_recent_orders()`, filters out orders whose `pos_order_id` matches an active `PickupEntry`, returns remainder as `unregistered_orders`
+- [x] API response extended: `unregistered_orders: [{pos_order_id, customer_name, items, ordered_at, minutes_ago}]` + `total_unregistered`; existing `active_orders` / `total_active` unchanged
+- [x] `_minutes_ago_from_pos_ts()` helper: handles int (ms epoch / Clover), ISO string (Square / Toast / Lightspeed), and `None`
+- [x] POS fetch wrapped in try/except — any POS failure returns empty list, API still returns 200
+- [x] Dashboard template: "Not yet scanned" section with greyed entries, 📢 badge, "Call name" label; hidden when empty; only rendered when `business.pos_type != 'none'`
+- [x] `pollPickup()` updated to render `unregistered_orders` from API and show/hide the section
+- [x] 8 new tests (no-POS empty, order returned, registered excluded, shape, POS failure, ISO timestamp, ms timestamp, response keys); 214 tests passing
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings
