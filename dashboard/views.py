@@ -941,7 +941,15 @@ class PickupStatusAPIView(View):
                     phone = (o.get("phone") or "").strip()
                     if not phone:
                         continue
-                    order_number = o.get("order_reference") or (o.get("id", "")[:12])
+                    ref = o.get("order_reference", "").strip()
+                    phone_val = o.get("phone", "").strip()
+                    if ref:
+                        order_number = ref
+                    elif phone_val and len(phone_val) >= 4:
+                        # Display as ···XXXX — readable enough to call out in a busy room
+                        order_number = f"···{phone_val[-4:]}"
+                    else:
+                        order_number = o.get("id", "")[:12]
                     try:
                         new_entry = PickupService.register(
                             business,

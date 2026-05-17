@@ -13,6 +13,45 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Phone extraction helper
+# ---------------------------------------------------------------------------
+
+import re
+
+# Matches common North American and international phone patterns typed anywhere
+# in a text field — with or without country code, spaces, dashes, dots, parens.
+_PHONE_PATTERN = re.compile(
+    r"(?<!\d)"                          # not preceded by a digit
+    r"(\+?1[\s.\-]?)?"                  # optional +1 or 1 country code
+    r"\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}"
+    r"(?!\d)"                           # not followed by a digit
+)
+
+
+def _extract_phone(text: str, country: str = "CA") -> str:
+    """Scan *text* for anything that looks like a phone number.
+
+    Returns an E.164 string (e.g. '+16135550001') or '' if nothing found.
+    Uses the phonenumbers library for normalisation so regional formats work.
+    """
+    if not text:
+        return ""
+    try:
+        import phonenumbers as _pn
+        for m in _PHONE_PATTERN.finditer(text):
+            raw = m.group(0).strip()
+            try:
+                parsed = _pn.parse(raw, country)
+                if _pn.is_valid_number(parsed):
+                    return _pn.format_number(parsed, _pn.PhoneNumberFormat.E164)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return ""
+
+
+# ---------------------------------------------------------------------------
 # Clover
 # ---------------------------------------------------------------------------
 
@@ -184,20 +223,51 @@ class SquareIntegration:
                     if li.get("name")
                 ]
 
-                # Fetch customer phone if a customer is linked to this order
+                # ── Phone: try multiple sources in priority order ──────────
                 phone = ""
+
+                # 1. Square Customer API (most reliable — stored on the account)
                 customer_id = order.get("customer_id", "")
                 if customer_id:
                     phone = SquareIntegration.get_customer_phone(business, customer_id)
-                    # Also try to fill customer_name from fulfillment recipient phone
-                    if not customer_name:
-                        for f in order.get("fulfillments", []):
-                            rcp = f.get("pickup_details", {}).get("recipient", {})
+
+                # 2. Fulfillment recipient phone / name
+                if not customer_name or not phone:
+                    for f in order.get("fulfillments", []):
+                        rcp = f.get("pickup_details", {}).get("recipient", {})
+                        if not customer_name:
                             customer_name = rcp.get("display_name", "").strip()
-                            if not phone:
-                                phone = (rcp.get("phone_number") or "").strip()
-                            if customer_name:
-                                break
+                        if not phone:
+                            phone = (rcp.get("phone_number") or "").strip()
+                        if customer_name and phone:
+                            break
+
+                # 3. Scan every text field staff might have typed a number into
+                #    (ticket name, reference_id, note, custom attributes)
+                if not phone:
+                    country = getattr(business, "country", "CA") or "CA"
+                    candidates = [
+                        order.get("ticket_name", ""),
+                        order.get("reference_id", ""),
+                        order.get("note", ""),
+                        customer_name,  # in case they typed phone there
+                    ]
+                    # Custom attributes: values are dicts like {"string_value": "..."}
+                    for attr in order.get("custom_attributes", {}).values():
+                        if isinstance(attr, dict):
+                            candidates.append(attr.get("string_value", ""))
+                        elif isinstance(attr, str):
+                            candidates.append(attr)
+
+                    for text in candidates:
+                        phone = _extract_phone(text, country)
+                        if phone:
+                            break
+
+                # 4. If customer_name looks like a phone number itself, clear it
+                #    so we don't display a phone number as someone's name
+                if customer_name and _extract_phone(customer_name, getattr(business, "country", "CA") or "CA"):
+                    customer_name = ""
 
                 # Include orders with a phone even if no name
                 if customer_name or phone:
