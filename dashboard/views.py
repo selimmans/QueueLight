@@ -931,7 +931,24 @@ class PickupStatusAPIView(View):
         if business.pos_type != business.POS_NONE:
             try:
                 from notifications.pos_integration import POSIntegration
+                from datetime import timedelta
                 registered_pos_ids = {e.pos_order_id for e in entries if e.pos_order_id}
+
+                # Also exclude POS orders that were recently completed/picked-up so they
+                # don't bounce back to Section 2 after being marked done.
+                cutoff = now - timedelta(hours=4)
+                completed_ids = (
+                    PickupEntry.objects.filter(
+                        business=business,
+                        registered_at__gte=cutoff,
+                    )
+                    .exclude(pos_order_id="")
+                    .exclude(pos_order_id__isnull=True)
+                    .exclude(status__in=[PickupEntry.Status.WAITING, PickupEntry.Status.READY])
+                    .values_list("pos_order_id", flat=True)
+                )
+                registered_pos_ids.update(completed_ids)
+
                 pos_orders = POSIntegration.get_recent_orders(business)
 
                 # Auto-register orders that have a phone number → appear in Section 1
