@@ -33,6 +33,10 @@
       align-items: center;
     }
 
+    @media (min-width: 768px) {
+      .header { padding: 1rem 2rem; }
+    }
+
     .header-name {
       font-family: "DM Serif Display", serif;
       font-size: 1.35rem;
@@ -119,6 +123,13 @@
 
     /* ── Container ──────────────────────────────────── */
     .container { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
+
+    @media (min-width: 768px) {
+      .container { max-width: 860px; padding: 1.75rem 2rem 3rem; }
+    }
+    @media (min-width: 1200px) {
+      .container { max-width: 1080px; }
+    }
 
     /* ── Call Next ──────────────────────────────────── */
     .call-btn {
@@ -611,7 +622,6 @@
         ? `<div class="badge badge-ready">Ready</div>`
         : `<div class="badge badge-waiting">Waiting</div>`;
       const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
-      const mins = e.minutes_waiting > 0 ? ` · ${e.minutes_waiting}m ago` : "";
       // POS order items shown inline after customer name
       const items = e.pos_order_items || [];
       const itemsHtml = items.length
@@ -628,6 +638,17 @@
       const expandAttr = hasAnswers ? ` onclick="togglePickupExpand(${e.id})"` : "";
       const expandClass = hasAnswers ? " expandable" : "";
       const metaExtra = hasAnswers ? " · tap to expand" : "";
+
+      // Prefer pos_order_created_at for "ordered X ago", fall back to minutes_waiting
+      let timeLabel = "";
+      if (e.pos_order_created_at) {
+        const orderedMs = Date.now() - new Date(e.pos_order_created_at).getTime();
+        const orderedMins = Math.max(0, Math.round(orderedMs / 60000));
+        timeLabel = ` · Ordered ${orderedMins}m ago`;
+      } else if (e.minutes_waiting > 0) {
+        timeLabel = ` · ${e.minutes_waiting}m ago`;
+      }
+
       let action = "";
       if (e.status === "waiting") {
         action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
@@ -644,7 +665,7 @@
         ${statusBadge}
         <div class="entry-body${expandClass}"${expandAttr}>
           <div class="entry-name">#${e.order_number}${nameHtml}${itemsHtml}</div>
-          <div class="entry-meta">Registered${mins}${metaExtra}</div>
+          <div class="entry-meta">Registered${timeLabel}${metaExtra}</div>
           ${intakeHtml}
         </div>
         <div class="entry-actions">${action}</div>
