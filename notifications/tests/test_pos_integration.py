@@ -154,7 +154,8 @@ class TestSquareIntegration:
         assert orders[0]["customer_name"] == ""  # no real customer name in this order
         assert "Flat White" in orders[0]["items"]
 
-    def test_falls_back_to_fulfillment_recipient(self):
+    def test_customer_name_always_empty(self):
+        """Square integration no longer uses fulfillment recipient as customer_name."""
         biz = _make_business(pos_type="square")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -163,7 +164,8 @@ class TestSquareIntegration:
         with patch("requests.post", return_value=mock_resp):
             orders = SquareIntegration.get_orders(biz)
 
-        assert orders[1]["customer_name"] == "Lina"
+        # customer_name is always empty — phone via Customer API is the identifier
+        assert orders[1]["customer_name"] == ""
 
     def test_returns_empty_on_api_error(self):
         biz = _make_business(pos_type="square")
@@ -610,7 +612,8 @@ class TestPOSAnalyticsFields:
         with patch("requests.post", return_value=mock_resp):
             orders = SquareIntegration.get_orders(biz)
         assert orders[0]["order_total"] == 450
-        assert orders[0]["order_reference"] == "REF-99"
+        # ticket_name takes priority over reference_id
+        assert orders[0]["order_reference"] == "Bob"
 
     def test_toast_order_total_converted_to_cents(self):
         """Toast returns totalAmount as dollars (float) — we convert to cents."""

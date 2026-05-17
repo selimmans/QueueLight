@@ -209,23 +209,10 @@ class SquareIntegration:
             raw_orders = resp.json().get("orders", [])
             logger.info("Square returned %d raw orders for %s", len(raw_orders), business.slug)
             orders = []
-            country = getattr(business, "country", "CA") or "CA"
             for order in raw_orders:
-                # ticket_name is Square's auto-generated counter ("01", "25", etc.)
-                # — it is NOT a customer name; use it as the order reference instead.
+                # Ticket number is what staff see and call out
                 ticket_name = order.get("ticket_name", "").strip()
-                ref = order.get("reference_id", "").strip()
-                order_reference = ref or ticket_name  # human-readable ticket identifier
-
-                # customer_name: actual person name from fulfillment recipient only
-                customer_name = ""
-                for f in order.get("fulfillments", []):
-                    recipient = f.get("pickup_details", {}).get("recipient", {})
-                    dn = recipient.get("display_name", "").strip()
-                    # Ignore if it's just a digit string (ticket number, not a name)
-                    if dn and not dn.isdigit():
-                        customer_name = dn
-                        break
+                order_reference = ticket_name or order.get("reference_id", "").strip() or order.get("id", "")[:6]
 
                 items = [
                     li["name"]
@@ -233,70 +220,29 @@ class SquareIntegration:
                     if li.get("name")
                 ]
 
-                # ── Phone: try multiple sources in priority order ──────────
+                # Phone: check Customer API via order.customer_id and tender customer_ids
                 phone = ""
-
-                # Collect all customer_ids from order + tenders (receipt collection
-                # stores customer_id on the tender even if order.customer_id is unset)
                 customer_ids = set()
                 if order.get("customer_id"):
                     customer_ids.add(order["customer_id"])
                 for tender in order.get("tenders", []):
                     if tender.get("customer_id"):
                         customer_ids.add(tender["customer_id"])
-
-                # 1. Square Customer API for any linked customer_id
                 for cid in customer_ids:
                     phone = SquareIntegration.get_customer_phone(business, cid)
                     if phone:
                         break
 
-                # 2. Fulfillment recipient phone
-                if not phone:
-                    for f in order.get("fulfillments", []):
-                        rcp = f.get("pickup_details", {}).get("recipient", {})
-                        phone = (rcp.get("phone_number") or "").strip()
-                        if phone:
-                            break
-
-                # 3. Scan every text field staff might have typed a number into
-                #    (ticket name, reference_id, note, custom attributes)
-                if not phone:
-                    candidates = [
-                        order.get("note", ""),
-                        order.get("reference_id", ""),
-                        order.get("ticket_name", ""),
-                    ]
-                    for attr in order.get("custom_attributes", {}).values():
-                        if isinstance(attr, dict):
-                            candidates.append(attr.get("string_value", ""))
-                        elif isinstance(attr, str):
-                            candidates.append(attr)
-                    for text in candidates:
-                        phone = _extract_phone(text, country)
-                        if phone:
-                            break
-
-                # Fallback: use first 6 chars of order ID so every order shows
-                if not order_reference:
-                    order_reference = order.get("id", "")[:6]
-
                 total_money = order.get("total_money") or {}
-                orders.append(
-                    {
-                        "id": order["id"],
-                        "customer_name": customer_name,
-                        "items": items,
-                        "created_at": order.get("created_at"),
-                        "order_total": total_money.get("amount"),
-                        "order_reference": order_reference,
-                        "phone": phone,
-                    }
-                )
-                logger.debug(
-                    "Square order %s ref=%r items=%d phone_found=%s",
-                    order.get("id", "")[:8], order_reference, len(items), bool(phone),
-                )
+                orders.append({
+                    "id": order["id"],
+                    "customer_name": "",
+                    "items": items,
+                    "created_at": order.get("created_at"),
+                    "order_total": total_money.get("amount"),
+                    "order_reference": order_reference,
+                    "phone": phone,
+                })
             return orders
 
         except Exception:
