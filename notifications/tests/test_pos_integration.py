@@ -167,6 +167,29 @@ class TestSquareIntegration:
         # customer_name is always empty — phone via Customer API is the identifier
         assert orders[1]["customer_name"] == ""
 
+    def test_line_item_quantity_shown_as_prefix(self):
+        """When quantity > 1, item is stored as '2x Orange Juice' not repeated."""
+        biz = _make_business(pos_type="square")
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"orders": [{
+            "id": "sq-qty-1",
+            "ticket_name": "07",
+            "created_at": "2024-01-01T12:00:00Z",
+            "line_items": [
+                {"name": "Orange Juice", "quantity": "2"},
+                {"name": "Water",        "quantity": "1"},
+            ],
+        }]}
+
+        with patch("requests.post", return_value=mock_resp):
+            orders = SquareIntegration.get_orders(biz)
+
+        assert len(orders) == 1
+        assert "2x Orange Juice" in orders[0]["items"]
+        assert "Water" in orders[0]["items"]          # qty 1 — no prefix
+        assert "Orange Juice" not in orders[0]["items"]  # bare name replaced by "2x …"
+
     def test_returns_empty_on_api_error(self):
         biz = _make_business(pos_type="square")
         mock_resp = MagicMock()

@@ -699,13 +699,25 @@
       });
     }
 
+    // Collapse duplicate item strings into "2x Name" format.
+    // Handles old DB entries and POS systems that repeat items as separate entries.
+    function collapseItems(items) {
+      const counts = {};
+      const order = [];
+      items.forEach(name => {
+        if (!counts[name]) { counts[name] = 0; order.push(name); }
+        counts[name]++;
+      });
+      return order.map(name => counts[name] > 1 ? `${counts[name]}x ${name}` : name);
+    }
+
     function renderPickupEntry(e) {
       const statusBadge = e.status === "ready"
         ? `<div class="badge badge-ready">Ready</div>`
         : `<div class="badge badge-waiting">Waiting</div>`;
       const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
       // POS order items shown inline after customer name
-      const items = e.pos_order_items || [];
+      const items = collapseItems(e.pos_order_items || []);
       const itemsHtml = items.length
         ? `<span class="entry-items"> · ${items.join(", ")}</span>`
         : "";
@@ -767,7 +779,7 @@
       // customer_name is the actual person's name if Square has one
       const ref = o.order_reference || "";
       const customerName = o.customer_name || "";
-      const items = (o.items || []);
+      const items = collapseItems(o.items || []);
       const itemsHtml = items.length
         ? `<span class="entry-items"> · ${items.join(", ")}</span>`
         : "";

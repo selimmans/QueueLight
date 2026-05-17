@@ -213,11 +213,16 @@ class SquareIntegration:
                 # Ticket number is what staff see and call out — no UUID fallback
                 order_reference = order.get("ticket_name", "").strip() or order.get("reference_id", "").strip()
 
-                items = [
-                    li["name"]
-                    for li in order.get("line_items", [])
-                    if li.get("name")
-                ]
+                items = []
+                for li in order.get("line_items", []):
+                    name = li.get("name", "").strip()
+                    if not name:
+                        continue
+                    try:
+                        qty = int(float(li.get("quantity") or "1"))
+                    except (ValueError, TypeError):
+                        qty = 1
+                    items.append(f"{qty}x {name}" if qty > 1 else name)
 
                 # Phone: check Customer API via order.customer_id and tender customer_ids
                 phone = ""
