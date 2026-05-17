@@ -788,7 +788,7 @@
       return `<div class="entry unregistered-entry">
         <div class="badge" style="background:#f3f4f6;color:#9ca3af;letter-spacing:.02em">POS</div>
         <div class="entry-body">
-          <div class="entry-name">${ref ? displayRef + displayName : customerName || "Unknown"}${itemsHtml}</div>
+          <div class="entry-name">${ref ? displayRef + displayName : ""}${itemsHtml}</div>
           <div class="entry-meta">Ordered${minsHtml} · call name</div>
         </div>
         <div class="entry-actions">${readyForm}</div>

@@ -613,7 +613,7 @@ class TestPOSAnalyticsFields:
             orders = SquareIntegration.get_orders(biz)
         assert orders[0]["order_total"] == 450
         # ticket_name takes priority over reference_id
-        assert orders[0]["order_reference"] == "Bob"
+        assert orders[0]["order_reference"] == "Bob"  # ticket_name value
 
     def test_toast_order_total_converted_to_cents(self):
         """Toast returns totalAmount as dollars (float) — we convert to cents."""

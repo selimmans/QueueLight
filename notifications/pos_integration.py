@@ -210,9 +210,8 @@ class SquareIntegration:
             logger.info("Square returned %d raw orders for %s", len(raw_orders), business.slug)
             orders = []
             for order in raw_orders:
-                # Ticket number is what staff see and call out
-                ticket_name = order.get("ticket_name", "").strip()
-                order_reference = ticket_name or order.get("reference_id", "").strip() or order.get("id", "")[:6]
+                # Ticket number is what staff see and call out — no UUID fallback
+                order_reference = order.get("ticket_name", "").strip() or order.get("reference_id", "").strip()
 
                 items = [
                     li["name"]
