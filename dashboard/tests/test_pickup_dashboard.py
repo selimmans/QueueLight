@@ -453,3 +453,152 @@ class TestPickupStatusAPIAnalyticsFields:
         assert order["pos_order_created_at"] is None
         assert order["pos_order_total"] is None
         assert order["pos_order_reference"] == ""
+
+
+# ---------------------------------------------------------------------------
+# Phase 25: Auto-registration of POS orders that have a phone number
+# ---------------------------------------------------------------------------
+
+_POS_ORDER_WITH_PHONE = {
+    "id": "SQ-PHONE-001",
+    "customer_name": "Jordan Lee",
+    "items": ["Steak Frites", "Still Water"],
+    "created_at": "2026-05-17T10:00:00+00:00",
+    "phone": "+16135559911",
+    "order_total": 2400,
+    "order_reference": "T-55",
+}
+
+_POS_ORDER_NO_PHONE = {
+    "id": "SQ-NOPHONE-001",
+    "customer_name": "Anonymous",
+    "items": ["Coffee"],
+    "created_at": "2026-05-17T10:05:00+00:00",
+    "phone": "",
+    "order_total": 350,
+    "order_reference": "T-56",
+}
+
+
+class TestPickupAutoRegistration:
+    """Phase 25: POS orders with a phone are auto-registered into Section 1."""
+
+    def _pos_biz(self, db, slug="auto-reg-biz"):
+        biz = Business.objects.create(
+            name="Auto Café",
+            slug=slug,
+            is_active=True,
+            queue_enabled=False,
+            pickup_enabled=True,
+            pos_type="square",
+            pos_api_token="tok",
+            pos_merchant_id="mid",
+        )
+        sp = StaffPhone.objects.create(phone="+16135550070", business=biz, name="Staff")
+        return biz, sp
+
+    def test_phone_order_auto_registered_in_section1(self, client, db):
+        """POS order with phone → appears in active_orders (Section 1)."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db)
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_WITH_PHONE],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        data = resp.json()
+        assert data["total_active"] == 1
+        assert data["active_orders"][0]["order_number"] == "T-55"
+        assert data["active_orders"][0]["customer_name"] == "Jordan Lee"
+
+    def test_phone_order_excluded_from_section2(self, client, db):
+        """POS order with phone → NOT in unregistered_orders (Section 2)."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="auto-reg-biz-2")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_WITH_PHONE],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        data = resp.json()
+        assert data["total_unregistered"] == 0
+        assert data["unregistered_orders"] == []
+
+    def test_no_phone_order_stays_in_section2(self, client, db):
+        """POS order without phone → stays in unregistered_orders (Section 2)."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="auto-reg-biz-3")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_NO_PHONE],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        data = resp.json()
+        assert data["total_unregistered"] == 1
+        assert data["total_active"] == 0
+
+    def test_mixed_orders_split_correctly(self, client, db):
+        """One order with phone → Section 1; one without → Section 2."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="auto-reg-biz-4")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_WITH_PHONE, _POS_ORDER_NO_PHONE],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        data = resp.json()
+        assert data["total_active"] == 1
+        assert data["total_unregistered"] == 1
+
+    def test_auto_registered_entry_persisted_in_db(self, client, db):
+        """Auto-registration creates a real PickupEntry with all POS fields stamped."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="auto-reg-biz-5")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_WITH_PHONE],
+        ):
+            client.get(f"/api/pickup/{biz.slug}/status/")
+
+        entry = PickupEntry.objects.get(business=biz)
+        assert entry.phone == "+16135559911"
+        assert entry.pos_order_id == "SQ-PHONE-001"
+        assert entry.pos_order_items == ["Steak Frites", "Still Water"]
+        assert entry.pos_order_total == 2400
+        assert entry.pos_order_reference == "T-55"
+        assert entry.status == PickupEntry.Status.WAITING
+
+    def test_auto_registered_only_once_on_repeated_polls(self, client, db):
+        """Polling repeatedly does not create duplicate PickupEntries."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="auto-reg-biz-6")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_WITH_PHONE],
+        ):
+            client.get(f"/api/pickup/{biz.slug}/status/")
+            client.get(f"/api/pickup/{biz.slug}/status/")
+            client.get(f"/api/pickup/{biz.slug}/status/")
+
+        assert PickupEntry.objects.filter(business=biz).count() == 1
+
+    def test_pos_analytics_on_auto_registered_entry(self, client, db):
+        """active_orders for auto-registered entry includes pos_order_created_at."""
+        from unittest.mock import patch
+        biz, sp = self._pos_biz(db, slug="auto-reg-biz-7")
+        _login(client, biz, sp)
+        with patch(
+            "notifications.pos_integration.POSIntegration.get_recent_orders",
+            return_value=[_POS_ORDER_WITH_PHONE],
+        ):
+            resp = client.get(f"/api/pickup/{biz.slug}/status/")
+        order = resp.json()["active_orders"][0]
+        assert order["pos_order_created_at"] is not None
+        assert order["pos_order_total"] == 2400
+        assert order["pos_order_reference"] == "T-55"

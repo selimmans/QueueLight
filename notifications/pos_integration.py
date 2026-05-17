@@ -98,11 +98,44 @@ class SquareIntegration:
     BASE_URL = "https://connect.squareup.com/v2"
 
     @staticmethod
+    def get_customer_phone(business, customer_id: str) -> str:
+        """Fetch a customer's phone number from Square, with 10-min cache.
+
+        Returns E.164 string or "" if unavailable.
+        """
+        from django.core.cache import cache
+        import requests as _req
+
+        cache_key = f"sq_cust_phone:{customer_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            resp = _req.get(
+                f"{SquareIntegration.BASE_URL}/customers/{customer_id}",
+                headers={"Authorization": f"Bearer {business.pos_api_token}"},
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                phone = (
+                    resp.json().get("customer", {}).get("phone_number") or ""
+                ).strip()
+                cache.set(cache_key, phone, timeout=600)
+                return phone
+        except Exception:
+            logger.exception("Square customer lookup failed for %s", customer_id)
+
+        cache.set(cache_key, "", timeout=60)  # cache miss briefly
+        return ""
+
+    @staticmethod
     def get_orders(business, minutes: int = 120) -> list[dict]:
         """Return recent Square orders as normalised dicts.
 
         Uses merchant's access token from the Square Developer dashboard.
         pos_merchant_id is used as the Square location_id.
+        Includes customer phone when a customer_id is linked to the order.
         """
         import requests as _req
 
@@ -150,7 +183,24 @@ class SquareIntegration:
                     for li in order.get("line_items", [])
                     if li.get("name")
                 ]
-                if customer_name:
+
+                # Fetch customer phone if a customer is linked to this order
+                phone = ""
+                customer_id = order.get("customer_id", "")
+                if customer_id:
+                    phone = SquareIntegration.get_customer_phone(business, customer_id)
+                    # Also try to fill customer_name from fulfillment recipient phone
+                    if not customer_name:
+                        for f in order.get("fulfillments", []):
+                            rcp = f.get("pickup_details", {}).get("recipient", {})
+                            customer_name = rcp.get("display_name", "").strip()
+                            if not phone:
+                                phone = (rcp.get("phone_number") or "").strip()
+                            if customer_name:
+                                break
+
+                # Include orders with a phone even if no name
+                if customer_name or phone:
                     total_money = order.get("total_money") or {}
                     orders.append(
                         {
@@ -158,9 +208,9 @@ class SquareIntegration:
                             "customer_name": customer_name,
                             "items": items,
                             "created_at": order.get("created_at"),
-                            # Square total_money.amount is already in cents (int)
                             "order_total": total_money.get("amount"),
                             "order_reference": order.get("reference_id", ""),
+                            "phone": phone,
                         }
                     )
             return orders

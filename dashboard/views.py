@@ -863,35 +863,34 @@ class PickupClearView(View):
         return redirect("dashboard:settings", slug=slug)
 
 
-def _minutes_ago_from_pos_ts(created_at, now) -> int | None:
-    """Convert a POS created_at value (int ms or ISO string) to minutes ago.
-
-    Clover returns createdTime as milliseconds-since-epoch (int).
-    Square, Toast, Lightspeed return ISO 8601 strings.
-    Returns None if the value cannot be parsed.
-    """
+def _parse_pos_ts(created_at):
+    """Parse a POS created_at value to an aware datetime, or None."""
     if created_at is None:
         return None
-    dt = None
     if isinstance(created_at, (int, float)):
         try:
-            from datetime import datetime, timezone as _tz
-            dt = datetime.fromtimestamp(created_at / 1000, tz=_tz.utc)
+            from datetime import datetime as _dt, timezone as _tz
+            return _dt.fromtimestamp(created_at / 1000, tz=_tz.utc)
         except Exception:
             return None
-    elif isinstance(created_at, str):
+    if isinstance(created_at, str):
         try:
             from django.utils.dateparse import parse_datetime
             from django.utils import timezone as djtz
             dt = parse_datetime(created_at)
-            if dt is not None and dt.tzinfo is None:
-                dt = djtz.make_aware(dt)
+            if dt is not None:
+                return dt if dt.tzinfo else djtz.make_aware(dt)
         except Exception:
-            return None
+            pass
+    return None
+
+
+def _minutes_ago_from_pos_ts(created_at, now) -> int | None:
+    """Convert a POS created_at value (int ms or ISO string) to minutes ago."""
+    dt = _parse_pos_ts(created_at)
     if dt is None:
         return None
-    diff = now - dt
-    return max(0, int(diff.total_seconds() / 60))
+    return max(0, int((now - dt).total_seconds() / 60))
 
 
 class PickupStatusAPIView(View):
@@ -934,6 +933,47 @@ class PickupStatusAPIView(View):
                 from notifications.pos_integration import POSIntegration
                 registered_pos_ids = {e.pos_order_id for e in entries if e.pos_order_id}
                 pos_orders = POSIntegration.get_recent_orders(business)
+
+                # Auto-register orders that have a phone number → appear in Section 1
+                for o in pos_orders:
+                    if o.get("id") in registered_pos_ids:
+                        continue
+                    phone = (o.get("phone") or "").strip()
+                    if not phone:
+                        continue
+                    order_number = o.get("order_reference") or (o.get("id", "")[:12])
+                    try:
+                        new_entry = PickupService.register(
+                            business,
+                            order_number=order_number,
+                            customer_name=o.get("customer_name", ""),
+                            phone=phone,
+                        )
+                        new_entry.pos_order_id = o.get("id", "")
+                        new_entry.pos_order_items = o.get("items", [])
+                        new_entry.pos_match_confidence = None
+                        new_entry.pos_order_created_at = _parse_pos_ts(o.get("created_at"))
+                        new_entry.pos_order_total = o.get("order_total")
+                        new_entry.pos_order_reference = o.get("order_reference", "")
+                        new_entry.save(update_fields=[
+                            "pos_order_id", "pos_order_items", "pos_match_confidence",
+                            "pos_order_created_at", "pos_order_total", "pos_order_reference",
+                        ])
+                        entries.append(new_entry)
+                        registered_pos_ids.add(o.get("id", ""))
+                        logger.info(
+                            "Auto-registered POS order %s for phone %s (business=%s)",
+                            o.get("id"), phone, slug,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to auto-register POS order %s for %s", o.get("id"), slug
+                        )
+
+                # Rebuild active_orders to include newly auto-registered entries
+                active_orders = [_entry_dict(e) for e in entries]
+
+                # Orders without a phone stay in Section 2
                 for o in pos_orders:
                     if o.get("id") in registered_pos_ids:
                         continue
