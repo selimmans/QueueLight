@@ -206,9 +206,11 @@ class SquareIntegration:
                 )
                 return []
 
+            raw_orders = resp.json().get("orders", [])
+            logger.info("Square returned %d raw orders for %s", len(raw_orders), business.slug)
             orders = []
             country = getattr(business, "country", "CA") or "CA"
-            for order in resp.json().get("orders", []):
+            for order in raw_orders:
                 # ticket_name is Square's auto-generated counter ("01", "25", etc.)
                 # — it is NOT a customer name; use it as the order reference instead.
                 ticket_name = order.get("ticket_name", "").strip()
@@ -275,25 +277,26 @@ class SquareIntegration:
                         if phone:
                             break
 
-                logger.debug(
-                    "Square order %s ref=%r phone_found=%s customer_ids=%s",
-                    order.get("id", "")[:8], order_reference, bool(phone), list(customer_ids),
-                )
+                # Fallback: use first 6 chars of order ID so every order shows
+                if not order_reference:
+                    order_reference = order.get("id", "")[:6]
 
-                # Include orders that have either a usable identifier or a phone
-                if order_reference or customer_name or phone:
-                    total_money = order.get("total_money") or {}
-                    orders.append(
-                        {
-                            "id": order["id"],
-                            "customer_name": customer_name,
-                            "items": items,
-                            "created_at": order.get("created_at"),
-                            "order_total": total_money.get("amount"),
-                            "order_reference": order_reference,
-                            "phone": phone,
-                        }
-                    )
+                total_money = order.get("total_money") or {}
+                orders.append(
+                    {
+                        "id": order["id"],
+                        "customer_name": customer_name,
+                        "items": items,
+                        "created_at": order.get("created_at"),
+                        "order_total": total_money.get("amount"),
+                        "order_reference": order_reference,
+                        "phone": phone,
+                    }
+                )
+                logger.debug(
+                    "Square order %s ref=%r items=%d phone_found=%s",
+                    order.get("id", "")[:8], order_reference, len(items), bool(phone),
+                )
             return orders
 
         except Exception:
