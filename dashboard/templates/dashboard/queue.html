@@ -618,18 +618,85 @@
 
     {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
 
-    // ── Silent pickup action — no page reload ──────────────────────────────
+    // ── Pickup state ────────────────────────────────────────────────────────
+    let _activeOrders = [];
+    let _unregOrders  = [];
+
+    function renderPickupState() {
+      const list    = document.getElementById("pickup-list");
+      const counter = document.getElementById("pickup-count");
+      if (!list) return;
+      if (counter) counter.textContent = _activeOrders.length;
+      list.innerHTML = _activeOrders.length
+        ? _activeOrders.map(renderPickupEntry).join("")
+        : `<p class="empty">No active orders</p>`;
+
+      {% if business.pos_type != 'none' %}
+      const unregSection = document.getElementById("unregistered-section");
+      const unregList    = document.getElementById("unregistered-list");
+      const unregCounter = document.getElementById("unregistered-count");
+      if (unregSection) unregSection.style.display = _unregOrders.length ? "block" : "none";
+      if (unregCounter) unregCounter.textContent = _unregOrders.length;
+      if (unregList) {
+        unregList.innerHTML = _unregOrders.length
+          ? _unregOrders.map(renderUnregisteredOrder).join("") : "";
+      }
+      {% endif %}
+    }
+
+    // ── Silent POST — fire and forget, then sync ────────────────────────────
     function pickupPost(url, extraData) {
       const fd = new FormData();
       fd.append("csrfmiddlewaretoken", getCsrf());
       if (extraData) {
         Object.entries(extraData).forEach(([k, v]) => {
-          if (v !== null && v !== undefined) fd.append(k, v);
+          if (v !== null && v !== undefined) fd.append(k, String(v));
         });
       }
       fetch(url, { method: "POST", body: fd, redirect: "follow" })
-        .catch(() => {})
-        .finally(() => { pollPickup(); });
+        .finally(() => pollPickup());
+    }
+
+    // ── Optimistic actions — update UI instantly, POST in background ────────
+    function markReady(id) {
+      _activeOrders = _activeOrders.map(o =>
+        o.id === id ? { ...o, status: "ready" } : o
+      );
+      renderPickupState();
+      pickupPost(`/staff/${SLUG}/pickup/${id}/ready/`);
+    }
+
+    function markPickedUp(id) {
+      _activeOrders = _activeOrders.filter(o => o.id !== id);
+      renderPickupState();
+      pickupPost(`/staff/${SLUG}/pickup/${id}/picked-up/`);
+    }
+
+    function markUnregisteredReady(data) {
+      // Optimistically remove from Section 2 and add a placeholder to Section 1
+      _unregOrders = _unregOrders.filter(o => o.pos_order_id !== data.pos_order_id);
+      const tempEntry = {
+        id: "tmp-" + data.pos_order_id,
+        order_number: data.pos_order_reference || data.pos_order_id,
+        customer_name: data.customer_name || "",
+        status: "ready",
+        minutes_waiting: 0,
+        pos_order_items: data.pos_order_items || [],
+        pos_order_created_at: data.pos_ordered_at || null,
+        pos_order_total: data.pos_order_total || null,
+        pos_order_reference: data.pos_order_reference || "",
+        intake_answers: {},
+      };
+      _activeOrders = [..._activeOrders, tempEntry];
+      renderPickupState();
+      pickupPost(`/staff/${SLUG}/pickup/unregistered-ready/`, {
+        pos_order_id:        data.pos_order_id,
+        customer_name:       data.customer_name,
+        pos_order_items:     JSON.stringify(data.pos_order_items || []),
+        pos_ordered_at:      data.pos_ordered_at || "",
+        pos_order_total:     data.pos_order_total ?? "",
+        pos_order_reference: data.pos_order_reference || "",
+      });
     }
 
     function renderPickupEntry(e) {
@@ -667,10 +734,10 @@
       let action = "";
       if (e.status === "waiting") {
         action = `<button class="action-btn btn-ready"
-          onclick="this.disabled=true;pickupPost('/staff/${SLUG}/pickup/${e.id}/ready/')">Ready</button>`;
+          onclick="markReady(${e.id})">Ready</button>`;
       } else if (e.status === "ready") {
         action = `<button class="action-btn btn-pickedup"
-          onclick="this.disabled=true;pickupPost('/staff/${SLUG}/pickup/${e.id}/picked-up/')">Picked up</button>`;
+          onclick="markPickedUp(${e.id})">Picked up</button>`;
       }
       return `<div class="entry">
         ${statusBadge}
@@ -708,16 +775,16 @@
       const displayName = customerName && customerName !== ref ? ` &mdash; ${customerName}` : "";
       const displayLine = displayRef || customerName || "Unknown";
 
-      const readyForm = `<button class="action-btn btn-ready" onclick="
-        this.disabled=true;
-        pickupPost('/staff/${SLUG}/pickup/unregistered-ready/', {
-          pos_order_id: ${JSON.stringify(o.pos_order_id || '')},
-          customer_name: ${JSON.stringify(customerName)},
-          pos_order_items: ${JSON.stringify(JSON.stringify(items))},
-          pos_ordered_at: ${JSON.stringify(o.ordered_at || '')},
-          pos_order_total: ${JSON.stringify(String(o.order_total ?? ''))},
-          pos_order_reference: ${JSON.stringify(ref)}
-        })">Ready</button>`;
+      const orderData = {
+        pos_order_id:        o.pos_order_id || "",
+        customer_name:       customerName,
+        pos_order_items:     items,
+        pos_ordered_at:      o.ordered_at || "",
+        pos_order_total:     o.order_total ?? null,
+        pos_order_reference: ref,
+      };
+      const readyForm = `<button class="action-btn btn-ready"
+        onclick='markUnregisteredReady(${JSON.stringify(orderData).replace(/'/g, "&#39;")})'>Ready</button>`;
       return `<div class="entry unregistered-entry">
         <div class="badge" style="background:#f3f4f6;color:#9ca3af;letter-spacing:.02em">POS</div>
         <div class="entry-body">
@@ -827,28 +894,9 @@
       fetch("/api/pickup/" + SLUG + "/status/")
         .then(r => r.json())
         .then(data => {
-          const list    = document.getElementById("pickup-list");
-          const counter = document.getElementById("pickup-count");
-          if (!list) return;
-          const orders = data.active_orders || [];
-          if (counter) counter.textContent = orders.length;
-          list.innerHTML = orders.length
-            ? orders.map(renderPickupEntry).join("")
-            : `<p class="empty">No active orders</p>`;
-
-          {% if business.pos_type != 'none' %}
-          const unregSection = document.getElementById("unregistered-section");
-          const unregList    = document.getElementById("unregistered-list");
-          const unregCounter = document.getElementById("unregistered-count");
-          const unregOrders  = data.unregistered_orders || [];
-          if (unregSection) unregSection.style.display = unregOrders.length ? "block" : "none";
-          if (unregCounter) unregCounter.textContent = unregOrders.length;
-          if (unregList) {
-            unregList.innerHTML = unregOrders.length
-              ? unregOrders.map(renderUnregisteredOrder).join("")
-              : "";
-          }
-          {% endif %}
+          _activeOrders = data.active_orders || [];
+          _unregOrders  = data.unregistered_orders || [];
+          renderPickupState();
         })
         .catch(() => {});
     }
