@@ -739,10 +739,13 @@
         action = `<button class="action-btn btn-pickedup"
           onclick="markPickedUp(${e.id})">Picked up</button>`;
       }
+      const titleHtml = e.order_number
+        ? `#${e.order_number}${nameHtml}`
+        : (e.customer_name ? e.customer_name : "");
       return `<div class="entry">
         ${statusBadge}
         <div class="entry-body${expandClass}"${expandAttr}>
-          <div class="entry-name">#${e.order_number}${nameHtml}${itemsHtml}</div>
+          <div class="entry-name">${titleHtml}${titleHtml && itemsHtml ? itemsHtml : items.join(", ")}</div>
           <div class="entry-meta">Registered${timeLabel}${metaExtra}</div>
           ${intakeHtml}
         </div>

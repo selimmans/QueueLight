@@ -820,8 +820,7 @@ class PickupUnregisteredReadyView(View):
             except (ValueError, TypeError):
                 pass
 
-        # Use reference as display number if available, else pos_order_id
-        order_number = pos_order_reference or pos_order_id or "WALK-IN"
+        order_number = pos_order_reference or ""  # no ticket → items identify the order
 
         entry = PickupService.register(
             business,
@@ -963,10 +962,9 @@ class PickupStatusAPIView(View):
                     if ref:
                         order_number = ref
                     elif phone_val and len(phone_val) >= 4:
-                        # Display as ···XXXX — readable enough to call out in a busy room
                         order_number = f"···{phone_val[-4:]}"
                     else:
-                        order_number = o.get("id", "")[:12]
+                        order_number = ""  # no ticket number — items will identify the order
                     try:
                         new_entry = PickupService.register(
                             business,
