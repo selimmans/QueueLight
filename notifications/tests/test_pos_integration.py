@@ -138,6 +138,7 @@ class TestCloverIntegration:
 
 class TestSquareIntegration:
     def test_returns_normalised_orders_from_ticket_name(self):
+        """ticket_name is the order reference (ticket number), NOT the customer name."""
         biz = _make_business(pos_type="square")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -148,7 +149,9 @@ class TestSquareIntegration:
 
         assert len(orders) == 2
         assert orders[0]["id"] == "sq-order-1"
-        assert orders[0]["customer_name"] == "Mohamed"
+        # ticket_name goes to order_reference, not customer_name
+        assert orders[0]["order_reference"] == "Mohamed"
+        assert orders[0]["customer_name"] == ""  # no real customer name in this order
         assert "Flat White" in orders[0]["items"]
 
     def test_falls_back_to_fulfillment_recipient(self):

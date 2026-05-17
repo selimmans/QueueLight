@@ -682,27 +682,36 @@
 
     {% if business.pos_type != 'none' %}
     function renderUnregisteredOrder(o) {
-      const name = o.customer_name || "Unknown";
+      // order_reference is the ticket number ("25", "01", etc.) — the identifier
+      // customer_name is the actual person's name if Square has one
+      const ref = o.order_reference || "";
+      const customerName = o.customer_name || "";
       const items = (o.items || []);
       const itemsHtml = items.length
         ? `<span class="entry-items"> · ${items.join(", ")}</span>`
         : "";
       const minsHtml = o.minutes_ago != null ? ` · ${o.minutes_ago}m ago` : "";
+
+      // Display: ticket number first, then customer name if different
+      const displayRef = ref ? `#${ref}` : "";
+      const displayName = customerName && customerName !== ref ? ` &mdash; ${customerName}` : "";
+      const displayLine = displayRef || customerName || "Unknown";
+
       const readyForm = `
         <form method="post" action="/staff/${SLUG}/pickup/unregistered-ready/" style="display:inline">
           <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
           <input type="hidden" name="pos_order_id" value="${o.pos_order_id || ""}">
-          <input type="hidden" name="customer_name" value="${name}">
+          <input type="hidden" name="customer_name" value="${customerName}">
           <input type="hidden" name="pos_order_items" value="${JSON.stringify(items)}">
           <input type="hidden" name="pos_ordered_at" value="${o.ordered_at || ""}">
           <input type="hidden" name="pos_order_total" value="${o.order_total ?? ""}">
-          <input type="hidden" name="pos_order_reference" value="${o.order_reference || ""}">
+          <input type="hidden" name="pos_order_reference" value="${ref}">
           <button class="action-btn btn-ready" type="submit">Ready</button>
         </form>`;
       return `<div class="entry unregistered-entry">
         <div class="badge" style="background:#f3f4f6;color:#9ca3af;letter-spacing:.02em">POS</div>
         <div class="entry-body">
-          <div class="entry-name">${name}${itemsHtml}</div>
+          <div class="entry-name">${ref ? displayRef + displayName : customerName || "Unknown"}${itemsHtml}</div>
           <div class="entry-meta">Ordered${minsHtml} · call name</div>
         </div>
         <div class="entry-actions">${readyForm}</div>

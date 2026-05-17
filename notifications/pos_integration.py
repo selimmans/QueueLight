@@ -207,15 +207,23 @@ class SquareIntegration:
                 return []
 
             orders = []
+            country = getattr(business, "country", "CA") or "CA"
             for order in resp.json().get("orders", []):
-                # Try ticket_name first, then pickup fulfillment recipient
-                customer_name = order.get("ticket_name", "").strip()
-                if not customer_name:
-                    for f in order.get("fulfillments", []):
-                        recipient = f.get("pickup_details", {}).get("recipient", {})
-                        customer_name = recipient.get("display_name", "").strip()
-                        if customer_name:
-                            break
+                # ticket_name is Square's auto-generated counter ("01", "25", etc.)
+                # — it is NOT a customer name; use it as the order reference instead.
+                ticket_name = order.get("ticket_name", "").strip()
+                ref = order.get("reference_id", "").strip()
+                order_reference = ref or ticket_name  # human-readable ticket identifier
+
+                # customer_name: actual person name from fulfillment recipient only
+                customer_name = ""
+                for f in order.get("fulfillments", []):
+                    recipient = f.get("pickup_details", {}).get("recipient", {})
+                    dn = recipient.get("display_name", "").strip()
+                    # Ignore if it's just a digit string (ticket number, not a name)
+                    if dn and not dn.isdigit():
+                        customer_name = dn
+                        break
 
                 items = [
                     li["name"]
@@ -231,26 +239,22 @@ class SquareIntegration:
                 if customer_id:
                     phone = SquareIntegration.get_customer_phone(business, customer_id)
 
-                # 2. Fulfillment recipient phone / name
-                if not customer_name or not phone:
+                # 2. Fulfillment recipient phone
+                if not phone:
                     for f in order.get("fulfillments", []):
                         rcp = f.get("pickup_details", {}).get("recipient", {})
-                        if not customer_name:
-                            customer_name = rcp.get("display_name", "").strip()
                         if not phone:
                             phone = (rcp.get("phone_number") or "").strip()
-                        if customer_name and phone:
+                        if phone:
                             break
 
                 # 3. Scan every text field staff might have typed a number into
                 #    (ticket name, reference_id, note, custom attributes)
                 if not phone:
-                    country = getattr(business, "country", "CA") or "CA"
                     candidates = [
-                        order.get("ticket_name", ""),
-                        order.get("reference_id", ""),
                         order.get("note", ""),
-                        customer_name,  # in case they typed phone there
+                        order.get("reference_id", ""),
+                        order.get("ticket_name", ""),
                     ]
                     # Custom attributes: values are dicts like {"string_value": "..."}
                     for attr in order.get("custom_attributes", {}).values():
@@ -264,13 +268,8 @@ class SquareIntegration:
                         if phone:
                             break
 
-                # 4. If customer_name looks like a phone number itself, clear it
-                #    so we don't display a phone number as someone's name
-                if customer_name and _extract_phone(customer_name, getattr(business, "country", "CA") or "CA"):
-                    customer_name = ""
-
-                # Include orders with a phone even if no name
-                if customer_name or phone:
+                # Include orders that have either a usable identifier or a phone
+                if order_reference or customer_name or phone:
                     total_money = order.get("total_money") or {}
                     orders.append(
                         {
@@ -279,7 +278,7 @@ class SquareIntegration:
                             "items": items,
                             "created_at": order.get("created_at"),
                             "order_total": total_money.get("amount"),
-                            "order_reference": order.get("reference_id", ""),
+                            "order_reference": order_reference,
                             "phone": phone,
                         }
                     )
