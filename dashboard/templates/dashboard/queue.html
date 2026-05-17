@@ -617,6 +617,21 @@
     }
 
     {% if dashboard_mode == "pickup_only" or dashboard_mode == "both" %}
+
+    // ── Silent pickup action — no page reload ──────────────────────────────
+    function pickupPost(url, extraData) {
+      const fd = new FormData();
+      fd.append("csrfmiddlewaretoken", getCsrf());
+      if (extraData) {
+        Object.entries(extraData).forEach(([k, v]) => {
+          if (v !== null && v !== undefined) fd.append(k, v);
+        });
+      }
+      fetch(url, { method: "POST", body: fd, redirect: "follow" })
+        .catch(() => {})
+        .finally(() => { pollPickup(); });
+    }
+
     function renderPickupEntry(e) {
       const statusBadge = e.status === "ready"
         ? `<div class="badge badge-ready">Ready</div>`
@@ -651,15 +666,11 @@
 
       let action = "";
       if (e.status === "waiting") {
-        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/ready/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
-          <button class="action-btn btn-ready" type="submit">Ready</button>
-        </form>`;
+        action = `<button class="action-btn btn-ready"
+          onclick="this.disabled=true;pickupPost('/staff/${SLUG}/pickup/${e.id}/ready/')">Ready</button>`;
       } else if (e.status === "ready") {
-        action = `<form method="post" action="/staff/${SLUG}/pickup/${e.id}/picked-up/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
-          <button class="action-btn btn-pickedup" type="submit">Picked up</button>
-        </form>`;
+        action = `<button class="action-btn btn-pickedup"
+          onclick="this.disabled=true;pickupPost('/staff/${SLUG}/pickup/${e.id}/picked-up/')">Picked up</button>`;
       }
       return `<div class="entry">
         ${statusBadge}
@@ -697,17 +708,16 @@
       const displayName = customerName && customerName !== ref ? ` &mdash; ${customerName}` : "";
       const displayLine = displayRef || customerName || "Unknown";
 
-      const readyForm = `
-        <form method="post" action="/staff/${SLUG}/pickup/unregistered-ready/" style="display:inline">
-          <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
-          <input type="hidden" name="pos_order_id" value="${o.pos_order_id || ""}">
-          <input type="hidden" name="customer_name" value="${customerName}">
-          <input type="hidden" name="pos_order_items" value="${JSON.stringify(items).replace(/"/g, '&quot;')}">
-          <input type="hidden" name="pos_ordered_at" value="${o.ordered_at || ""}">
-          <input type="hidden" name="pos_order_total" value="${o.order_total ?? ""}">
-          <input type="hidden" name="pos_order_reference" value="${ref}">
-          <button class="action-btn btn-ready" type="submit">Ready</button>
-        </form>`;
+      const readyForm = `<button class="action-btn btn-ready" onclick="
+        this.disabled=true;
+        pickupPost('/staff/${SLUG}/pickup/unregistered-ready/', {
+          pos_order_id: ${JSON.stringify(o.pos_order_id || '')},
+          customer_name: ${JSON.stringify(customerName)},
+          pos_order_items: ${JSON.stringify(JSON.stringify(items))},
+          pos_ordered_at: ${JSON.stringify(o.ordered_at || '')},
+          pos_order_total: ${JSON.stringify(String(o.order_total ?? ''))},
+          pos_order_reference: ${JSON.stringify(ref)}
+        })">Ready</button>`;
       return `<div class="entry unregistered-entry">
         <div class="badge" style="background:#f3f4f6;color:#9ca3af;letter-spacing:.02em">POS</div>
         <div class="entry-body">
