@@ -702,7 +702,7 @@
           <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">
           <input type="hidden" name="pos_order_id" value="${o.pos_order_id || ""}">
           <input type="hidden" name="customer_name" value="${customerName}">
-          <input type="hidden" name="pos_order_items" value="${JSON.stringify(items)}">
+          <input type="hidden" name="pos_order_items" value="${JSON.stringify(items).replace(/"/g, '&quot;')}">
           <input type="hidden" name="pos_ordered_at" value="${o.ordered_at || ""}">
           <input type="hidden" name="pos_order_total" value="${o.order_total ?? ""}">
           <input type="hidden" name="pos_order_reference" value="${ref}">
