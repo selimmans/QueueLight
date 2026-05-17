@@ -898,7 +898,7 @@
           _unregOrders  = data.unregistered_orders || [];
           renderPickupState();
         })
-        .catch(() => {});
+        .catch(err => console.error("[pickup poll]", err));
     }
     {% endif %}
 

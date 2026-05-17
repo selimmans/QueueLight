@@ -234,17 +234,26 @@ class SquareIntegration:
                 # ── Phone: try multiple sources in priority order ──────────
                 phone = ""
 
-                # 1. Square Customer API (most reliable — stored on the account)
-                customer_id = order.get("customer_id", "")
-                if customer_id:
-                    phone = SquareIntegration.get_customer_phone(business, customer_id)
+                # Collect all customer_ids from order + tenders (receipt collection
+                # stores customer_id on the tender even if order.customer_id is unset)
+                customer_ids = set()
+                if order.get("customer_id"):
+                    customer_ids.add(order["customer_id"])
+                for tender in order.get("tenders", []):
+                    if tender.get("customer_id"):
+                        customer_ids.add(tender["customer_id"])
+
+                # 1. Square Customer API for any linked customer_id
+                for cid in customer_ids:
+                    phone = SquareIntegration.get_customer_phone(business, cid)
+                    if phone:
+                        break
 
                 # 2. Fulfillment recipient phone
                 if not phone:
                     for f in order.get("fulfillments", []):
                         rcp = f.get("pickup_details", {}).get("recipient", {})
-                        if not phone:
-                            phone = (rcp.get("phone_number") or "").strip()
+                        phone = (rcp.get("phone_number") or "").strip()
                         if phone:
                             break
 
@@ -256,17 +265,20 @@ class SquareIntegration:
                         order.get("reference_id", ""),
                         order.get("ticket_name", ""),
                     ]
-                    # Custom attributes: values are dicts like {"string_value": "..."}
                     for attr in order.get("custom_attributes", {}).values():
                         if isinstance(attr, dict):
                             candidates.append(attr.get("string_value", ""))
                         elif isinstance(attr, str):
                             candidates.append(attr)
-
                     for text in candidates:
                         phone = _extract_phone(text, country)
                         if phone:
                             break
+
+                logger.debug(
+                    "Square order %s ref=%r phone_found=%s customer_ids=%s",
+                    order.get("id", "")[:8], order_reference, bool(phone), list(customer_ids),
+                )
 
                 # Include orders that have either a usable identifier or a phone
                 if order_reference or customer_name or phone:
