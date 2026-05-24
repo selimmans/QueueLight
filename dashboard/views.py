@@ -447,6 +447,10 @@ class SettingsView(View):
             business.pickup_intake_fields = pickup_questions
             business.save(update_fields=["pickup_notification_message", "pickup_intake_fields"])
 
+        elif action == "save_pickup_display":
+            business.pickup_show_wait_estimate = request.POST.get("pickup_show_wait_estimate") == "1"
+            business.save(update_fields=["pickup_show_wait_estimate"])
+
         elif action == "save_join_fields":
             if _require_superuser(request):
                 # Block change if there are active pickup entries
@@ -1015,11 +1019,47 @@ class PickupStatusAPIView(View):
                     "Failed to fetch unregistered POS orders for %s", slug
                 )
 
+        # ── Projected wait estimate ───────────────────────────────────────────
+        projected_wait_mins = None
+        if business.pickup_show_wait_estimate:
+            try:
+                cutoff = now - timedelta(hours=2)
+                recent_done = PickupEntry.objects.filter(
+                    business=business,
+                    status=PickupEntry.Status.PICKED_UP,
+                    pos_order_created_at__gte=cutoff,
+                    pos_order_created_at__isnull=False,
+                    completed_at__isnull=False,
+                )
+                cycle_times = []
+                for e in recent_done:
+                    mins = (e.completed_at - e.pos_order_created_at).total_seconds() / 60
+                    if 1 < mins < 90:  # sanity bounds
+                        cycle_times.append(mins)
+
+                if len(cycle_times) >= 5:
+                    avg_cycle = sum(cycle_times) / len(cycle_times)
+                    # Throughput: orders per minute over the 2-hour window
+                    throughput = len(cycle_times) / 120.0
+                    # Historical average orders "in flight" at any moment
+                    avg_inflight = throughput * avg_cycle
+                    # Current pending load
+                    current_pending = (
+                        sum(1 for e in entries if e.status == PickupEntry.Status.WAITING)
+                        + len(unregistered_orders)
+                    )
+                    # Extra time for load above historical baseline
+                    extra = max(0.0, current_pending - avg_inflight) / throughput if throughput > 0 else 0.0
+                    projected_wait_mins = max(1, round(avg_cycle + extra))
+            except Exception:
+                logger.exception("Failed to compute projected wait for %s", slug)
+
         return JsonResponse({
             "active_orders": active_orders,
             "total_active": len(active_orders),
             "unregistered_orders": unregistered_orders,
             "total_unregistered": len(unregistered_orders),
+            "projected_wait_mins": projected_wait_mins,
         })
 
 

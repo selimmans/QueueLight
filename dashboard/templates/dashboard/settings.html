@@ -670,6 +670,30 @@
     </form>
     {% endif %}
 
+    <!-- ── Pickup display options (admin only) ── -->
+    {% if business.pickup_enabled and is_admin %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_pickup_display">
+      <div class="section">
+        <h2 style="margin-bottom:1rem">Pickup display</h2>
+        <div class="field" style="flex-direction:row;align-items:center;gap:1rem;justify-content:space-between">
+          <div>
+            <label style="margin-bottom:0.1rem">Projected wait time</label>
+            <div class="hint" style="margin-top:0.2rem">Shows estimated wait on the dashboard, based on the last 2 hours of orders and current queue depth. Updates every 5 seconds.</div>
+          </div>
+          {% if business.pickup_show_wait_estimate %}
+            <input type="hidden" name="pickup_show_wait_estimate" value="0">
+            <button class="mode-btn active" type="submit" style="min-width:60px;padding:0.4rem 0.75rem;flex-shrink:0">On</button>
+          {% else %}
+            <input type="hidden" name="pickup_show_wait_estimate" value="1">
+            <button class="mode-btn" type="submit" style="min-width:60px;padding:0.4rem 0.75rem;flex-shrink:0">Off</button>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+    {% endif %}
+
     <!-- ── Pickup intake questions (admin only, collapsible, default hidden) ── -->
     {% if business.pickup_enabled and is_admin %}
     <form method="post">

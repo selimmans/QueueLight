@@ -49,6 +49,7 @@ class Business(models.Model):
     intake_fields = models.JSONField(default=list, blank=True)
     queue_enabled = models.BooleanField(default=True)
     pickup_enabled = models.BooleanField(default=False)
+    pickup_show_wait_estimate = models.BooleanField(default=False)
     pickup_intake_fields = models.JSONField(default=list, blank=True)
     pickup_notification_message = models.CharField(
         max_length=320,

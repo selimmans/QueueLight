@@ -481,9 +481,16 @@
        class="tab-panel {% if dashboard_mode == 'pickup_only' %}solo{% endif %}">
 
     <div class="container">
-      <div class="section-label" style="margin-top:0">
-        <span class="dot" style="background:#4f46e5;animation:none"></span>
-        Active Orders — <span id="pickup-count">{{ pickup_entries|length }}</span>
+      <div class="section-label" style="margin-top:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <span class="dot" style="background:#4f46e5;animation:none"></span>
+          Active Orders — <span id="pickup-count">{{ pickup_entries|length }}</span>
+        </div>
+        {% if business.pickup_show_wait_estimate %}
+        <div id="wait-estimate" style="font-size:0.8rem;font-weight:600;color:#4f46e5;display:none">
+          ⏱ ~<span id="wait-mins">—</span> min estimated wait
+        </div>
+        {% endif %}
       </div>
       <div class="queue-card" id="pickup-list">
         {% if pickup_entries %}
@@ -912,6 +919,17 @@
           _activeOrders = data.active_orders || [];
           _unregOrders  = data.unregistered_orders || [];
           renderPickupState();
+          // Projected wait estimate
+          const waitEl = document.getElementById("wait-estimate");
+          if (waitEl) {
+            const mins = data.projected_wait_mins;
+            if (mins != null) {
+              document.getElementById("wait-mins").textContent = mins;
+              waitEl.style.display = "block";
+            } else {
+              waitEl.style.display = "none";
+            }
+          }
         })
         .catch(err => console.error("[pickup poll]", err));
     }
