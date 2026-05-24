@@ -1040,19 +1040,17 @@ class PickupStatusAPIView(View):
                 if len(cycle_times) >= 5:
                     # Throughput: orders completed per minute over the window
                     throughput = len(cycle_times) / 120.0
-                    # Minimum floor: fastest 25th-percentile order (kitchen can't go below this)
-                    sorted_times = sorted(cycle_times)
-                    min_wait = max(5.0, sorted_times[len(sorted_times) // 4])
-                    # Current pending load (waiting + unregistered POS orders)
-                    current_pending = (
+                    # Orders not yet ready: waiting + unregistered (excludes "Ready" — already cooking)
+                    waiting_count = (
                         sum(1 for e in entries if e.status == PickupEntry.Status.WAITING)
                         + len(unregistered_orders)
                     )
-                    # Time to clear everything currently ahead of a new order
-                    if current_pending == 0:
-                        projected_wait_mins = round(min_wait)
-                    else:
-                        projected_wait_mins = max(round(min_wait), round(current_pending / throughput))
+                    # Only show estimate when there's a meaningful queue (5+ orders)
+                    if waiting_count >= 5 and throughput > 0:
+                        # Range: ±25% throughput variance for honest uncertainty
+                        low  = max(1, round(waiting_count / (throughput * 1.25)))
+                        high = max(1, round(waiting_count / (throughput * 0.75)))
+                        projected_wait_mins = {"low": low, "high": high, "queue": waiting_count}
             except Exception:
                 logger.exception("Failed to compute projected wait for %s", slug)
 

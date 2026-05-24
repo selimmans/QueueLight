@@ -488,7 +488,7 @@
         </div>
         {% if business.pickup_show_wait_estimate %}
         <div id="wait-estimate" style="font-size:0.8rem;font-weight:600;color:#4f46e5;display:none">
-          ⏱ ~<span id="wait-mins">—</span> min estimated wait
+          ⏱ ~<span id="wait-range">—</span> min · <span id="wait-queue">—</span> in queue
         </div>
         {% endif %}
       </div>
@@ -922,9 +922,11 @@
           // Projected wait estimate
           const waitEl = document.getElementById("wait-estimate");
           if (waitEl) {
-            const mins = data.projected_wait_mins;
-            if (mins != null) {
-              document.getElementById("wait-mins").textContent = mins;
+            const w = data.projected_wait_mins;
+            if (w != null) {
+              const rangeStr = w.low === w.high ? `${w.low}` : `${w.low}–${w.high}`;
+              document.getElementById("wait-range").textContent = rangeStr;
+              document.getElementById("wait-queue").textContent = `${w.queue} order${w.queue === 1 ? "" : "s"}`;
               waitEl.style.display = "block";
             } else {
               waitEl.style.display = "none";
