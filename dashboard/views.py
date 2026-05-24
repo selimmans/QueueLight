@@ -1038,19 +1038,21 @@ class PickupStatusAPIView(View):
                         cycle_times.append(mins)
 
                 if len(cycle_times) >= 5:
-                    avg_cycle = sum(cycle_times) / len(cycle_times)
-                    # Throughput: orders per minute over the 2-hour window
+                    # Throughput: orders completed per minute over the window
                     throughput = len(cycle_times) / 120.0
-                    # Historical average orders "in flight" at any moment
-                    avg_inflight = throughput * avg_cycle
-                    # Current pending load
+                    # Minimum floor: fastest 25th-percentile order (kitchen can't go below this)
+                    sorted_times = sorted(cycle_times)
+                    min_wait = max(5.0, sorted_times[len(sorted_times) // 4])
+                    # Current pending load (waiting + unregistered POS orders)
                     current_pending = (
                         sum(1 for e in entries if e.status == PickupEntry.Status.WAITING)
                         + len(unregistered_orders)
                     )
-                    # Extra time for load above historical baseline
-                    extra = max(0.0, current_pending - avg_inflight) / throughput if throughput > 0 else 0.0
-                    projected_wait_mins = max(1, round(avg_cycle + extra))
+                    # Time to clear everything currently ahead of a new order
+                    if current_pending == 0:
+                        projected_wait_mins = round(min_wait)
+                    else:
+                        projected_wait_mins = max(round(min_wait), round(current_pending / throughput))
             except Exception:
                 logger.exception("Failed to compute projected wait for %s", slug)
 
