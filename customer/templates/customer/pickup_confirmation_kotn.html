@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kotn Cup 26 — Your shirt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --brand: {{ business.logo_colour }}; --r: 10px; --bg: var(--brand); --surface: #fff; --accent: {{ business.colour_accent }}; --border: {{ business.colour_border }}; --text: #18181b; --text-muted: #71717a; }
+    body { font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); min-height: 100dvh; display: flex; flex-direction: column; }
+
+    .header { padding: 2.5rem 1.5rem 2rem; text-align: center; }
+    .header-wordmark { font-family: "Archivo Black", sans-serif; font-size: 1.9rem; letter-spacing: .02em; color: var(--accent); line-height: 1.05; text-transform: uppercase; }
+    .header-sub { margin-top: 0.6rem; font-size: 0.72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+
+    .body { flex: 1; padding: 0 1rem 2.5rem; max-width: 440px; width: 100%; margin: 0 auto; }
+
+    .confirm-card { background: var(--surface); border-radius: var(--r); padding: 1.75rem 1.25rem; box-shadow: 0 8px 24px rgba(0,0,0,.18); text-align: center; }
+    .order-label { font-size: 0.68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem; }
+    .shirt-name { font-family: "Archivo Black", sans-serif; font-size: 2.1rem; color: var(--text); line-height: 1.1; margin-bottom: 0.4rem; text-transform: uppercase; }
+    .shirt-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.1rem; }
+    .confirm-msg { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; }
+    .confirm-msg strong { color: var(--text); }
+
+    .status-pill { display: inline-flex; align-items: center; gap: 0.45rem; background: #f4f4f5; border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-top: 1.25rem; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .ready-overlay { display: none; position: fixed; inset: 0; background: var(--brand); color: #fff; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; z-index: 10; }
+    .ready-overlay.active { display: flex; }
+    .ready-overlay .ov-title { font-family: "Archivo Black", sans-serif; font-size: 2.2rem; margin-bottom: 0.75rem; line-height: 1.2; text-transform: uppercase; }
+    .ready-overlay .ov-name { font-size: 1.1rem; opacity: 0.9; margin-bottom: 0.5rem; }
+    .ready-overlay .ov-sub { font-size: 0.95rem; opacity: 0.8; }
+
+    .done-card { display: none; background: var(--surface); border-radius: var(--r); padding: 1.75rem 1.25rem; box-shadow: 0 8px 24px rgba(0,0,0,.18); text-align: center; color: var(--text-muted); font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+
+  <div class="ready-overlay" id="readyOverlay">
+    <div class="ov-title">Your shirt is ready!</div>
+    <div class="ov-name">{{ entry.customer_name }}</div>
+    <div class="ov-sub">Come pick it up at the Kotn Cup 26 pop-up.</div>
+  </div>
+
+  <div class="header">
+    <div class="header-wordmark">Kotn Cup 26</div>
+    <div class="header-sub">Order registered</div>
+  </div>
+
+  <div class="body" id="mainBody">
+    <div class="confirm-card" id="waitingCard">
+      <div class="order-label">Order #{{ entry.order_number }}</div>
+      <div class="shirt-name">{{ entry.customer_name }}</div>
+      <div class="shirt-meta">Patch #{{ patch }}{% if entry.intake_answers.Size %} · {{ entry.intake_answers.Size }}{% endif %}</div>
+
+      {% if entry.phone %}
+        <p class="confirm-msg">Got it. We'll text you when <strong>{{ entry.customer_name }}</strong>'s shirt is ready.</p>
+      {% else %}
+        <p class="confirm-msg">We'll call your name when your shirt is ready.</p>
+      {% endif %}
+
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Waiting
+      </div>
+    </div>
+
+    <div class="done-card" id="doneCard"></div>
+  </div>
+
+  <script>
+    const STATUS_URL = "{% url 'customer:pickup_status' slug=business.slug entry_id=entry.pk %}";
+    var pollInterval;
+
+    function applyState(data) {
+      const status = data.status;
+
+      if (status === "ready") {
+        document.getElementById("readyOverlay").classList.add("active");
+        clearInterval(pollInterval);
+        return;
+      }
+
+      if (status === "picked_up") {
+        clearInterval(pollInterval);
+        document.getElementById("waitingCard").style.display = "none";
+        var done = document.getElementById("doneCard");
+        done.style.display = "block";
+        done.textContent = "Your shirt has been picked up. Thanks for coming out!";
+        return;
+      }
+
+      if (status === "cancelled") {
+        clearInterval(pollInterval);
+        document.getElementById("waitingCard").style.display = "none";
+        var done = document.getElementById("doneCard");
+        done.style.display = "block";
+        done.textContent = "This order has been cancelled.";
+        return;
+      }
+    }
+
+    function poll() {
+      fetch(STATUS_URL)
+        .then(function(r) { return r.json(); })
+        .then(applyState)
+        .catch(function() {});
+    }
+
+    pollInterval = setInterval(poll, 5000);
+    poll();
+  </script>
+</body>
+</html>

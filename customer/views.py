@@ -1,4 +1,5 @@
 from django.core.cache import cache
+from django.db import transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
@@ -14,6 +15,21 @@ from queues.services import QueueService, RuleViolationError
 
 _JOIN_LIMIT = 20
 _JOIN_WINDOW = 3600
+
+# ── Kotn Cup 26 pop-up (one-off event, Trinity Bellwoods, Toronto) ──────────
+KOTN_POPUP_SLUG = "kotn-cup-toronto"
+KOTN_NAME_MAX_LENGTH = 8
+# Only 6 physical patch designs exist at the event.
+KOTN_PATCH_MIN = 1
+KOTN_PATCH_MAX = 6
+# 300 physical numbered shirt tags on hand — order number is auto-assigned
+# sequentially, never typed by the customer.
+KOTN_ORDER_MIN = 1
+KOTN_ORDER_MAX = 300
+KOTN_SIZES = [
+    {"key": "short-sleeve", "name": "Short Sleeve"},
+    {"key": "long-sleeve", "name": "Long Sleeve"},
+]
 
 
 def _is_rate_limited(ip: str) -> bool:
@@ -286,6 +302,11 @@ class PickupJoinView(View):
 
     template_name = "customer/pickup_join.html"
 
+    def _template_name(self, business):
+        if business.slug == KOTN_POPUP_SLUG:
+            return "customer/pickup_join_kotn.html"
+        return self.template_name
+
     def _get_business(self, slug):
         key = f"business_obj:{slug}"
         business = cache.get(key)
@@ -300,7 +321,7 @@ class PickupJoinView(View):
         # Toast uses toast_client_id/secret instead of pos_api_token
         if business.pos_type == business.POS_TOAST:
             pos_enabled = business.pos_type != business.POS_NONE and bool(business.toast_client_id)
-        return {
+        ctx = {
             "business": business,
             "calling_code": calling_code,
             "pos_enabled": pos_enabled,
@@ -312,14 +333,20 @@ class PickupJoinView(View):
             "field_order_number_required": business.field_order_number_required,
             "field_phone_required": business.field_phone_required,
             "errors": {},
-            **kwargs,
         }
+        if business.slug == KOTN_POPUP_SLUG:
+            ctx["kotn_patch_min"] = KOTN_PATCH_MIN
+            ctx["kotn_patch_max"] = KOTN_PATCH_MAX
+            ctx["kotn_sizes"] = KOTN_SIZES
+            ctx["name_max_length"] = KOTN_NAME_MAX_LENGTH
+        ctx.update(kwargs)
+        return ctx
 
     def get(self, request, slug):
         business = self._get_business(slug)
         if not business.is_active or not business.pickup_enabled:
             raise Http404
-        return render(request, self.template_name, self._ctx(business))
+        return render(request, self._template_name(business), self._ctx(business))
 
     def post(self, request, slug):
         import json as _json
@@ -327,9 +354,11 @@ class PickupJoinView(View):
         if not business.is_active or not business.pickup_enabled:
             raise Http404
 
+        template_name = self._template_name(business)
+
         ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")).split(",")[0].strip()
         if _is_rate_limited(ip):
-            return render(request, self.template_name,
+            return render(request, template_name,
                           self._ctx(business, global_error="Too many requests. Please try again later."),
                           status=429)
 
@@ -389,7 +418,7 @@ class PickupJoinView(View):
                     pass
 
             if errors:
-                return render(request, self.template_name,
+                return render(request, template_name,
                               self._ctx(business, errors=errors, phone=raw_phone))
 
             # Use pos_order_id as the display order number for staff dashboard
@@ -418,7 +447,7 @@ class PickupJoinView(View):
             if not customer_name:
                 errors["customer_name"] = "Please enter your name"
             if errors:
-                return render(request, self.template_name,
+                return render(request, template_name,
                               self._ctx(business, errors=errors, phone=raw_phone,
                                         customer_name=customer_name))
 
@@ -442,6 +471,9 @@ class PickupJoinView(View):
 
             order_number = request.POST.get("order_number", "").strip()
             customer_name = request.POST.get("customer_name", "").strip()
+            patch = request.POST.get("patch", "").strip()
+            size = request.POST.get("size", "").strip()
+            is_kotn_popup = business.slug == KOTN_POPUP_SLUG
 
             # Apply field config validations
             if business.field_order_number_enabled and business.field_order_number_required:
@@ -450,11 +482,22 @@ class PickupJoinView(View):
             if business.field_name_enabled and business.field_name_required:
                 if not customer_name:
                     errors["customer_name"] = "Please enter your name"
+                elif is_kotn_popup and len(customer_name) > KOTN_NAME_MAX_LENGTH:
+                    errors["customer_name"] = f"Name must be {KOTN_NAME_MAX_LENGTH} characters or fewer"
+            if is_kotn_popup:
+                if not patch:
+                    errors["patch"] = "Please enter your patch number"
+                elif not patch.isdigit() or not (KOTN_PATCH_MIN <= int(patch) <= KOTN_PATCH_MAX):
+                    errors["patch"] = f"Patch number must be between {KOTN_PATCH_MIN} and {KOTN_PATCH_MAX}"
+            if is_kotn_popup and not size:
+                errors["size"] = "Please choose a size"
             if errors:
-                return render(request, self.template_name,
+                return render(request, template_name,
                               self._ctx(business, errors=errors,
                                         order_number=order_number,
                                         customer_name=customer_name,
+                                        patch=patch,
+                                        size=size,
                                         phone=raw_phone))
 
             # Auto-generate order number when field is disabled or optional + empty
@@ -466,13 +509,48 @@ class PickupJoinView(View):
                 q: request.POST.get(f"pickup_intake_{i}", "").strip()
                 for i, q in enumerate(pickup_intake_fields)
             }
-            entry = PickupService.register(
-                business,
-                order_number=order_number,
-                customer_name=customer_name,
-                phone=phone,
-                intake_answers=intake_answers,
-            )
+            if patch:
+                intake_answers["Patch"] = patch
+            if size:
+                intake_answers["Size"] = next(
+                    (s["name"] for s in KOTN_SIZES if s["key"] == size), size
+                )
+            if is_kotn_popup:
+                # Lock the Business row to serialize concurrent joins so two
+                # customers can never be handed the same shirt-tag number.
+                with transaction.atomic():
+                    Business.objects.select_for_update().get(pk=business.pk)
+                    used = PickupEntry.objects.filter(
+                        business=business, order_number__regex=r"^\d+$"
+                    ).count()
+                    next_number = used + 1
+                    if next_number > KOTN_ORDER_MAX:
+                        return render(request, template_name,
+                                      self._ctx(business,
+                                                 global_error=(
+                                                     f"Sorry, we're at capacity "
+                                                     f"({KOTN_ORDER_MAX} shirts). "
+                                                     "Please check with staff."
+                                                 ),
+                                                 customer_name=customer_name,
+                                                 patch=patch,
+                                                 size=size,
+                                                 phone=raw_phone))
+                    entry = PickupService.register(
+                        business,
+                        order_number=str(next_number),
+                        customer_name=customer_name,
+                        phone=phone,
+                        intake_answers=intake_answers,
+                    )
+            else:
+                entry = PickupService.register(
+                    business,
+                    order_number=order_number,
+                    customer_name=customer_name,
+                    phone=phone,
+                    intake_answers=intake_answers,
+                )
 
         return redirect("customer:pickup_confirmation", slug=slug, entry_id=entry.pk)
 
@@ -483,7 +561,13 @@ class PickupConfirmView(View):
     def get(self, request, slug, entry_id):
         business = get_object_or_404(Business, slug=slug)
         entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
-        return render(request, self.template_name, {"business": business, "entry": entry})
+        template_name = (
+            "customer/pickup_confirmation_kotn.html"
+            if business.slug == KOTN_POPUP_SLUG
+            else self.template_name
+        )
+        patch = entry.intake_answers.get("Patch", "") if entry.intake_answers else ""
+        return render(request, template_name, {"business": business, "entry": entry, "patch": patch})
 
 
 class PickupCustomerStatusView(View):

@@ -214,6 +214,22 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] `PickupStatusAPIView` `active_orders` response now includes `pos_order_created_at`, `pos_order_total`, `pos_order_reference`; `unregistered_orders` now includes `order_total` and `order_reference`
 - [x] 8 new tests (Clover/Square/Toast/Lightspeed analytics fields, match_customer includes fields, unregistered order shape, active order analytics nulls/values); 222 tests passing
 
+## PHASE 25 — Kotn Cup 26 pop-up (one-off branded event, Trinity Bellwoods Toronto, Fri July 10)
+
+- [x] `customer/views.py`: `KOTN_POPUP_SLUG = "kotn-cup-toronto"` constant gates all one-off logic; `PickupJoinView`/`PickupConfirmView` pick branded templates for this slug
+- [x] Name field repurposed as "name to embroider", capped at 8 chars (`KOTN_NAME_MAX_LENGTH`), enforced client-side (`maxlength` + live JS counter, defensively clamps on overflow) and server-side
+- [x] Shirt size added as a required two-option field (Short Sleeve / Long Sleeve), stored in `PickupEntry.intake_answers["Size"]` — no model/migration change, reuses existing JSONField
+- [x] Patch number added as a required numeric field, stored in `intake_answers["Patch"]` — no model/migration change
+- [x] New branded templates: `customer/templates/customer/pickup_join_kotn.html`, `pickup_confirmation_kotn.html` — maroon/gold palette pulled from `business.logo_colour`/`colour_accent`, Archivo Black display font, patch/size/name/phone fields, live ready-status polling (reuses existing `pickup_status` endpoint, unchanged)
+- [x] Dashboard (`dashboard/templates/dashboard/queue.html`): pickup rows now also show `intake_answers.Patch` and `intake_answers.Size` inline (both SSR initial block and JS `renderPickupEntry` poll path), same treatment as existing `pos_order_items`
+- [x] Order number auto-assigned server-side (never typed by customer) so staff know what to write on the physical shirt tag
+- [x] Verified end-to-end in browser preview: join → validation (name >8 chars, out-of-range patch both client- and server-side) → confirmation page → dashboard shows name/patch/size/order number inline → "Ready" tap flips status, fires SMS (Twilio call executes correctly; only failed in dev because sandbox to/from numbers matched), customer confirmation page flips to ready overlay via existing poll
+- [x] 230 existing tests still pass — one dashboard test caught an over-broad first draft (order-number hiding leaked to all businesses); fixed by scoping to `kotn-cup-toronto` only
+- [x] Number ranges fixed: `KOTN_PATCH_MIN/MAX = 1/6` (only 6 physical patch designs); added `KOTN_ORDER_MIN/MAX = 1/300`. Order number is now auto-assigned sequentially (1–300) inside `transaction.atomic()` with `Business.objects.select_for_update()` locking the business row, so concurrent joins at event start can't collide. Capacity overflow (>300) shown as a `global_error` on the join page ("Sorry, we're at capacity..."), entry not created. Patch hint text in `pickup_join_kotn.html` already used template variables (`{{ kotn_patch_min }}`–`{{ kotn_patch_max }}`), so it updated automatically.
+- [x] 11 new tests added in `customer/tests/test_kotn_popup.py`: branded template rendering, name length cap, patch range/non-numeric validation, missing size, valid submission, sequential order-number assignment (1, 2, 3...), customer cannot override order_number, capacity-reached blocks new entries, other-business order numbers don't collide. 241 tests passing.
+- [ ] `kotn-cup-toronto` Business row created in **local dev DB only** — confirmed via `curl` that production (`https://web-production-d59e3.up.railway.app`) 404s on `/q/kotn-cup-toronto/pickup/`. Nothing committed or pushed yet either.
+- [ ] `twilio_from_number` should be left blank on the Business record — production already has `TWILIO_FROM_NUMBER=+18254609913` as a global env var fallback (confirmed via `railway variables`), same number the "demo" business uses directly
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings

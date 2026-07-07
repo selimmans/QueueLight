@@ -500,7 +500,7 @@
               {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
             </div>
             <div class="entry-body">
-              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}{% if entry.pos_order_items %}<span class="entry-items"> · {{ entry.pos_order_items|join:", " }}</span>{% endif %}</div>
+              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}{% if entry.pos_order_items %}<span class="entry-items"> · {{ entry.pos_order_items|join:", " }}</span>{% endif %}{% if entry.intake_answers.Patch %}<span class="entry-items"> · Patch: {{ entry.intake_answers.Patch }}</span>{% endif %}{% if entry.intake_answers.Size %}<span class="entry-items"> · {{ entry.intake_answers.Size }}</span>{% endif %}</div>
               <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
             </div>
             <div class="entry-actions">
@@ -729,7 +729,11 @@
         ? `<span class="entry-items"> · ${items.join(", ")}</span>`
         : "";
       const answers = e.intake_answers || {};
-      const answerEntries = Object.entries(answers).filter(([,v]) => v);
+      const patch = answers.Patch || "";
+      const patchHtml = patch ? `<span class="entry-items"> · Patch: ${patch}</span>` : "";
+      const size = answers.Size || "";
+      const sizeHtml = size ? `<span class="entry-items"> · ${size}</span>` : "";
+      const answerEntries = Object.entries(answers).filter(([k,v]) => v && k !== "Patch" && k !== "Size");
       const hasAnswers = answerEntries.length > 0;
       const intakeHtml = hasAnswers
         ? `<div class="intake-details" id="pickup-intake-${e.id}">${
@@ -764,7 +768,7 @@
       return `<div class="entry">
         ${statusBadge}
         <div class="entry-body${expandClass}"${expandAttr}>
-          <div class="entry-name">${titleHtml}${titleHtml && itemsHtml ? itemsHtml : items.join(", ")}</div>
+          <div class="entry-name">${titleHtml}${itemsHtml}${patchHtml}${sizeHtml}</div>
           <div class="entry-meta">Registered${timeLabel}${metaExtra}</div>
           ${intakeHtml}
         </div>
