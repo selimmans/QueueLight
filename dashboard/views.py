@@ -308,7 +308,10 @@ class QRPosterPNGView(View):
         if not _require_session(request, business):
             return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
 
-        join_path = reverse("customer:join", kwargs={"slug": slug})
+        if business.pickup_enabled and not business.queue_enabled:
+            join_path = reverse("customer:pickup_join", kwargs={"slug": slug})
+        else:
+            join_path = reverse("customer:join", kwargs={"slug": slug})
         join_url = request.build_absolute_uri(join_path)
 
         poster_type = request.GET.get("type", "pickup")
@@ -339,7 +342,10 @@ class QRCodeView(View):
         cache_key = f"qr_png:{slug}"
         png = cache.get(cache_key)
         if png is None:
-            join_path = reverse("customer:join", kwargs={"slug": slug})
+            if business.pickup_enabled and not business.queue_enabled:
+                join_path = reverse("customer:pickup_join", kwargs={"slug": slug})
+            else:
+                join_path = reverse("customer:join", kwargs={"slug": slug})
             join_url = request.build_absolute_uri(join_path)
             png = _build_qr_png(join_url)
             cache.set(cache_key, png, timeout=None)
@@ -355,7 +361,10 @@ class QRPosterView(View):
         if not _require_session(request, business):
             return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
 
-        join_path = reverse("customer:join", kwargs={"slug": slug})
+        if business.pickup_enabled and not business.queue_enabled:
+            join_path = reverse("customer:pickup_join", kwargs={"slug": slug})
+        else:
+            join_path = reverse("customer:join", kwargs={"slug": slug})
         join_url = request.build_absolute_uri(join_path)
 
         poster_type = request.GET.get("type", "pickup")
