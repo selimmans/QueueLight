@@ -291,12 +291,20 @@
 
   function renderOrderSummary() {
     const el = document.getElementById("orderSummary");
-    el.innerHTML = shirts.map((shirt, idx) => `
-      <div class="summary-row">
+    el.innerHTML = shirts.map((shirt, idx) => {
+      const crests = shirt.patches.map(k => KOTN_PATCHES.find(p => p.key === k)).map(p => `
+        <img src="${CREST_BASE}${p.crest}" alt="${p.name}" style="width:46px; height:46px; object-fit:contain; flex-shrink:0;">
+      `).join("");
+      return `
+      <div class="summary-row" style="align-items:center;">
         <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860; flex-shrink:0;">Shirt ${idx + 1}</div>
-        <div style="font-size:14px; font-weight:700; text-align:right;">${summaryText(shirt)}</div>
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px;">
+          <div style="display:flex; gap:6px; flex-shrink:0;">${crests}</div>
+          <div style="font-size:14px; font-weight:700; text-align:right;">${summaryText(shirt)}</div>
+        </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
   }
 
   const phoneInput = document.getElementById("phoneInput");
