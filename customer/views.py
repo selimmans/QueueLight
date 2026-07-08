@@ -1,3 +1,5 @@
+import re
+
 from django.core.cache import cache
 from django.db import transaction
 from django.http import Http404, JsonResponse
@@ -19,11 +21,18 @@ _JOIN_WINDOW = 3600
 # ── Kotn Cup 26 pop-up (one-off event, Trinity Bellwoods, Toronto) ──────────
 KOTN_POPUP_SLUG = "kotn-cup-toronto"
 KOTN_NAME_MAX_LENGTH = 8
-# Only 6 physical patch designs exist at the event.
-KOTN_PATCH_MIN = 1
-KOTN_PATCH_MAX = 6
+KOTN_NAME_RE = re.compile(r"^[A-Z0-9 ]+$")
+# 6 fixed patch designs, matching the client's crest artwork.
+KOTN_PATCHES = [
+    {"key": "sporting-club", "name": "Sporting Club", "crest": "crest-sporting-club.png"},
+    {"key": "sunburst", "name": "Cup 26 Sunburst", "crest": "crest-sunburst.png"},
+    {"key": "made-in-cairo", "name": "Made In Cairo", "crest": "crest-made-in-cairo.png"},
+    {"key": "toronto", "name": "Toronto", "crest": "crest-toronto.png"},
+    {"key": "cup26", "name": "Cup 26", "crest": "crest-cup26-square.png"},
+    {"key": "kotn-shield", "name": "Kotn Shield", "crest": "crest-kotn-shield.png"},
+]
 # 300 physical numbered shirt tags on hand — order number is auto-assigned
-# sequentially, never typed by the customer.
+# sequentially (zero-padded to 3 digits, e.g. "003"), never typed by the customer.
 KOTN_ORDER_MIN = 1
 KOTN_ORDER_MAX = 300
 KOTN_SIZES = [
@@ -335,8 +344,7 @@ class PickupJoinView(View):
             "errors": {},
         }
         if business.slug == KOTN_POPUP_SLUG:
-            ctx["kotn_patch_min"] = KOTN_PATCH_MIN
-            ctx["kotn_patch_max"] = KOTN_PATCH_MAX
+            ctx["kotn_patches"] = KOTN_PATCHES
             ctx["kotn_sizes"] = KOTN_SIZES
             ctx["name_max_length"] = KOTN_NAME_MAX_LENGTH
         ctx.update(kwargs)
@@ -475,6 +483,9 @@ class PickupJoinView(View):
             size = request.POST.get("size", "").strip()
             is_kotn_popup = business.slug == KOTN_POPUP_SLUG
 
+            if is_kotn_popup:
+                customer_name = customer_name.upper()
+
             # Apply field config validations
             if business.field_order_number_enabled and business.field_order_number_required:
                 if not order_number:
@@ -484,11 +495,13 @@ class PickupJoinView(View):
                     errors["customer_name"] = "Please enter your name"
                 elif is_kotn_popup and len(customer_name) > KOTN_NAME_MAX_LENGTH:
                     errors["customer_name"] = f"Name must be {KOTN_NAME_MAX_LENGTH} characters or fewer"
+                elif is_kotn_popup and not KOTN_NAME_RE.match(customer_name):
+                    errors["customer_name"] = "Name can only contain letters, numbers, and spaces"
+            kotn_patch = None
             if is_kotn_popup:
-                if not patch:
-                    errors["patch"] = "Please enter your patch number"
-                elif not patch.isdigit() or not (KOTN_PATCH_MIN <= int(patch) <= KOTN_PATCH_MAX):
-                    errors["patch"] = f"Patch number must be between {KOTN_PATCH_MIN} and {KOTN_PATCH_MAX}"
+                kotn_patch = next((p for p in KOTN_PATCHES if p["key"] == patch), None)
+                if not kotn_patch:
+                    errors["patch"] = "Please choose a patch"
             if is_kotn_popup and not size:
                 errors["size"] = "Please choose a size"
             if errors:
@@ -509,7 +522,9 @@ class PickupJoinView(View):
                 q: request.POST.get(f"pickup_intake_{i}", "").strip()
                 for i, q in enumerate(pickup_intake_fields)
             }
-            if patch:
+            if kotn_patch:
+                intake_answers["Patch"] = kotn_patch["name"]
+            elif patch:
                 intake_answers["Patch"] = patch
             if size:
                 intake_answers["Size"] = next(
@@ -538,7 +553,7 @@ class PickupJoinView(View):
                                                  phone=raw_phone))
                     entry = PickupService.register(
                         business,
-                        order_number=str(next_number),
+                        order_number=f"{next_number:03d}",
                         customer_name=customer_name,
                         phone=phone,
                         intake_answers=intake_answers,

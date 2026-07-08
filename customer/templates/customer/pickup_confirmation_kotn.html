@@ -3,115 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kotn Cup 26 — Your shirt</title>
+  <title>Kotn Cup 26 — Your order</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Staatliches&family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --brand: {{ business.logo_colour }}; --r: 10px; --bg: var(--brand); --surface: #fff; --accent: {{ business.colour_accent }}; --border: {{ business.colour_border }}; --text: #18181b; --text-muted: #71717a; }
-    body { font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); min-height: 100dvh; display: flex; flex-direction: column; }
-
-    .header { padding: 2.5rem 1.5rem 2rem; text-align: center; }
-    .header-wordmark { font-family: "Archivo Black", sans-serif; font-size: 1.9rem; letter-spacing: .02em; color: var(--accent); line-height: 1.05; text-transform: uppercase; }
-    .header-sub { margin-top: 0.6rem; font-size: 0.72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.7); }
-
-    .body { flex: 1; padding: 0 1rem 2.5rem; max-width: 440px; width: 100%; margin: 0 auto; }
-
-    .confirm-card { background: var(--surface); border-radius: var(--r); padding: 1.75rem 1.25rem; box-shadow: 0 8px 24px rgba(0,0,0,.18); text-align: center; }
-    .order-label { font-size: 0.68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem; }
-    .shirt-name { font-family: "Archivo Black", sans-serif; font-size: 2.1rem; color: var(--text); line-height: 1.1; margin-bottom: 0.4rem; text-transform: uppercase; }
-    .shirt-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.1rem; }
-    .confirm-msg { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; }
-    .confirm-msg strong { color: var(--text); }
-
-    .status-pill { display: inline-flex; align-items: center; gap: 0.45rem; background: #f4f4f5; border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-top: 1.25rem; }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-
-    .ready-overlay { display: none; position: fixed; inset: 0; background: var(--brand); color: #fff; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; z-index: 10; }
-    .ready-overlay.active { display: flex; }
-    .ready-overlay .ov-title { font-family: "Archivo Black", sans-serif; font-size: 2.2rem; margin-bottom: 0.75rem; line-height: 1.2; text-transform: uppercase; }
-    .ready-overlay .ov-name { font-size: 1.1rem; opacity: 0.9; margin-bottom: 0.5rem; }
-    .ready-overlay .ov-sub { font-size: 0.95rem; opacity: 0.8; }
-
-    .done-card { display: none; background: var(--surface); border-radius: var(--r); padding: 1.75rem 1.25rem; box-shadow: 0 8px 24px rgba(0,0,0,.18); text-align: center; color: var(--text-muted); font-size: 0.95rem; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f0e4; font-family: 'Inter', sans-serif; color: #2a1e18; }
+    .wrap { max-width: 460px; margin: 0 auto; padding: 44px 22px 70px; }
+    .stage { text-align: center; min-height: calc(100vh - 114px); display: flex; flex-direction: column; justify-content: center; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .footer { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:56px; }
+    .footer .line { height:1px; width:22px; background:#d8cba8; }
+    .footer .label { font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:#b7a780; }
+    .summary-row { display:flex; justify-content:space-between; padding:0 4px; margin-bottom:14px; }
+    .summary-label { font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860; }
+    .summary-value { font-size:15px; font-weight:700; }
   </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="stage">
 
-  <div class="ready-overlay" id="readyOverlay">
-    <div class="ov-title">Your shirt is ready!</div>
-    <div class="ov-name">{{ entry.customer_name }}</div>
-    <div class="ov-sub">Come pick it up at the Kotn Cup 26 pop-up.</div>
-  </div>
+    <div class="screen active" id="queueScreen">
+      <div style="display:flex; align-items:center; justify-content:center; margin-bottom:40px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+          <div style="width:12px; height:12px; border-radius:50%; background:#a82a30;"></div>
+          <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#a82a30;">Received</div>
+        </div>
+        <div style="width:64px; height:1px; background:#d8cba8; margin:0 6px; transform:translateY(-9px);"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+          <div style="width:12px; height:12px; border-radius:50%; border:2px solid #d8cba8; position:relative;">
+            <div style="position:absolute; inset:-5px; border-radius:50%; border:1px solid #eac672; animation:pulse-dot 1.4s ease infinite;"></div>
+          </div>
+          <div style="font-size:10px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#8a7860;">Ready</div>
+        </div>
+      </div>
 
-  <div class="header">
-    <div class="header-wordmark">Kotn Cup 26</div>
-    <div class="header-sub">Order registered</div>
-  </div>
+      <div style="font-family:'Amiri',serif; font-weight:700; font-size:40px; line-height:1; color:#a82a30; margin-bottom:26px;">قطن</div>
 
-  <div class="body" id="mainBody">
-    <div class="confirm-card" id="waitingCard">
-      <div class="order-label">Order #{{ entry.order_number }}</div>
-      <div class="shirt-name">{{ entry.customer_name }}</div>
-      <div class="shirt-meta">Patch #{{ patch }}{% if entry.intake_answers.Size %} · {{ entry.intake_answers.Size }}{% endif %}</div>
+      <div style="font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#8a7860; margin-bottom:10px;">Order No.</div>
+      <div style="font-family:'Staatliches',sans-serif; font-size:108px; line-height:1; color:#a82a30; letter-spacing:0.02em; margin-bottom:46px;">{{ entry.order_number }}</div>
 
-      {% if entry.phone %}
-        <p class="confirm-msg">Got it. We'll text you when <strong>{{ entry.customer_name }}</strong>'s shirt is ready.</p>
-      {% else %}
-        <p class="confirm-msg">We'll call your name when your shirt is ready.</p>
+      <div style="height:1px; background:#d8cba8; margin-bottom:26px;"></div>
+
+      <div class="summary-row">
+        <div class="summary-label">Patch</div>
+        <div class="summary-value">{{ patch }}</div>
+      </div>
+      {% if entry.intake_answers.Size %}
+      <div class="summary-row">
+        <div class="summary-label">Sleeve</div>
+        <div class="summary-value">{{ entry.intake_answers.Size }}</div>
+      </div>
       {% endif %}
+      <div class="summary-row" style="margin-bottom:26px;">
+        <div class="summary-label">Name</div>
+        <div style="font-family:'Staatliches',sans-serif; font-size:20px; letter-spacing:0.04em;">{{ entry.customer_name }}</div>
+      </div>
 
-      <div class="status-pill">
-        <span class="status-dot"></span>
-        Waiting
+      <div style="height:1px; background:#d8cba8; margin-bottom:30px;"></div>
+
+      <div style="font-size:15px; font-style:italic; color:#6b5a48; line-height:1.6;">We'll text you the second it's ready. Keep this tab open and it'll automatically update.</div>
+
+      <div class="footer">
+        <div class="line"></div>
+        <div class="label">Kotn Cup 26</div>
+        <div class="line"></div>
       </div>
     </div>
 
-    <div class="done-card" id="doneCard"></div>
+    <div class="screen" id="readyScreen">
+      <div style="font-size:12px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:#2a601e; margin-bottom:14px;">Ready For Pickup</div>
+      <div style="font-family:'Amiri',serif; font-weight:700; font-size:52px; line-height:1; color:#2a601e; margin-bottom:40px;">قطن</div>
+
+      <div style="font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#8a7860; margin-bottom:10px;">Order No.</div>
+      <div style="font-family:'Staatliches',sans-serif; font-size:108px; line-height:1; color:#2a601e; letter-spacing:0.02em; margin-bottom:40px;">{{ entry.order_number }}</div>
+
+      <div style="font-size:15px; font-style:italic; color:#4a5a44; line-height:1.6;">Show this screen at the counter to collect your kit.</div>
+
+      <div class="footer">
+        <div class="line"></div>
+        <div class="label">Kotn Cup 26</div>
+        <div class="line"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="doneScreen">
+      <div style="font-size:15px; color:#6b5a48; line-height:1.6;" id="doneMessage"></div>
+      <div class="footer">
+        <div class="line"></div>
+        <div class="label">Kotn Cup 26</div>
+        <div class="line"></div>
+      </div>
+    </div>
+
   </div>
+</div>
 
-  <script>
-    const STATUS_URL = "{% url 'customer:pickup_status' slug=business.slug entry_id=entry.pk %}";
-    var pollInterval;
+<script>
+  const STATUS_URL = "{% url 'customer:pickup_status' slug=business.slug entry_id=entry.pk %}";
+  const JOIN_URL = "{% url 'customer:pickup_join' slug=business.slug %}";
+  const KIOSK_RESET_MS = 25000;
+  var pollInterval;
 
-    function applyState(data) {
-      const status = data.status;
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
 
-      if (status === "ready") {
-        document.getElementById("readyOverlay").classList.add("active");
-        clearInterval(pollInterval);
-        return;
-      }
+  function applyState(data) {
+    const status = data.status;
 
-      if (status === "picked_up") {
-        clearInterval(pollInterval);
-        document.getElementById("waitingCard").style.display = "none";
-        var done = document.getElementById("doneCard");
-        done.style.display = "block";
-        done.textContent = "Your shirt has been picked up. Thanks for coming out!";
-        return;
-      }
-
-      if (status === "cancelled") {
-        clearInterval(pollInterval);
-        document.getElementById("waitingCard").style.display = "none";
-        var done = document.getElementById("doneCard");
-        done.style.display = "block";
-        done.textContent = "This order has been cancelled.";
-        return;
-      }
+    if (status === "ready") {
+      show("readyScreen");
+      clearInterval(pollInterval);
+      // Shared kiosk device — silently hand itself back to the next
+      // customer in line rather than staying on this order forever.
+      setTimeout(function() { window.location.href = JOIN_URL; }, KIOSK_RESET_MS);
+      return;
     }
 
-    function poll() {
-      fetch(STATUS_URL)
-        .then(function(r) { return r.json(); })
-        .then(applyState)
-        .catch(function() {});
+    if (status === "picked_up") {
+      clearInterval(pollInterval);
+      document.getElementById("doneMessage").textContent = "Your order has been picked up. Thanks for coming out!";
+      show("doneScreen");
+      return;
     }
 
-    pollInterval = setInterval(poll, 5000);
-    poll();
-  </script>
+    if (status === "cancelled") {
+      clearInterval(pollInterval);
+      document.getElementById("doneMessage").textContent = "This order has been cancelled.";
+      show("doneScreen");
+      return;
+    }
+  }
+
+  function poll() {
+    fetch(STATUS_URL)
+      .then(function(r) { return r.json(); })
+      .then(applyState)
+      .catch(function() {});
+  }
+
+  pollInterval = setInterval(poll, 5000);
+  poll();
+</script>
 </body>
 </html>
