@@ -260,6 +260,14 @@ DJANGO_TIME_ZONE=America/Toronto
 - [ ] **Not yet verified in a real phone browser on real event WiFi** — everything above was checked via curl (headers/content) and the Preview tool's headless browser, not an actual phone. Worth a real-device smoke test before Friday given the perf work was specifically motivated by "every customer's own phone, cold cache."
 - [ ] Sleeve length (Short/Long) and garment Size (XS-XXL) are now two separate selectors — confirm with the client this is the intended garment spec (i.e., a customer picks a sleeve style AND a size, not one combined field) before the event, since this was added directly from a user request mid-session, not from a designer-reviewed spec like the rest of PHASE 25b.
 
+## PHASE 25d — Kotn Cup 26: patch crest reminders + dashboard grouping (DEPLOYED)
+
+- [x] Patch/crest thumbnail(s) now shown on the phone-entry step (`pickup_join_kotn.html` `renderOrderSummary()`) as a visual reminder next to each shirt's text summary, right before the customer submits their phone number. Commit `6a87133`.
+- [x] Patch/crest thumbnail(s) also added to the waiting/ready confirmation screens (`pickup_confirmation_kotn.html`) — both the multi-tag `.tag-card` layout and the single-shirt summary layout, verified in both waiting (maroon) and ready (green) themes. Commit `ba25617`.
+- [x] Pickup dashboard now splits active orders into two visually distinct sections — "To Prepare" (waiting, grey header) and "Ready for Pickup" (ready, green header) — instead of interleaving both statuses in one list. Implemented for both the Kotn card layout and the generic (non-Kotn) entry layout, in the initial server render (`DashboardView` now passes `pickup_waiting`/`pickup_ready` in addition to `pickup_entries`) and the live 5s poll re-render (`renderPickupState()` now groups `_activeOrders` by status client-side). Verified locally on both kotn-cup-toronto and demo-cafe (POS "Not yet scanned" section unaffected). Commit `7f6272b`.
+- [x] 249 tests still passing (no test changes needed — pure template/view context addition, no behavior change to existing fields).
+- [x] Confirmed via direct production DB read (`railway connect Postgres --environment production`) that the previously-reported "sizes missing on dashboard" was not a code/data bug — the only active order at the time had `size` stored correctly and production was running the latest deployed code; likely a stale/uncached dashboard tab.
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings
