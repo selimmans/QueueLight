@@ -5,18 +5,43 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kotn Cup 26 — Your order</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Staatliches&family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Staatliches&family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="preload" as="font" type="font/woff2" href="{% static 'customer/kotn/fonts/Anton.woff2' %}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{% static 'customer/kotn/fonts/Staatliches.woff2' %}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="{% static 'customer/kotn/fonts/Inter-variable.woff2' %}" crossorigin>
   <link rel="preload" as="image" href="{% static 'customer/kotn/ticker-panel-maroon.png' %}">
   <link rel="preload" as="image" href="{% static 'customer/kotn/ticker-panel-gold.png' %}">
   <style>
+    @font-face {
+      font-family: 'Anton';
+      src: url('{% static "customer/kotn/fonts/Anton.woff2" %}') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Staatliches';
+      src: url('{% static "customer/kotn/fonts/Staatliches.woff2" %}') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Inter';
+      src: url('{% static "customer/kotn/fonts/Inter-variable.woff2" %}') format('woff2');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Amiri';
+      src: url('{% static "customer/kotn/fonts/Amiri-700.woff2" %}') format('woff2');
+      font-weight: 700;
+      font-display: swap;
+      unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+    }
     @font-face {
       font-family: 'Sohne Dreiviertelfett';
       src: url('{% static "customer/kotn/TestSohne-Dreiviertelfett.otf" %}') format('opentype');
       font-weight: 800;
       font-style: normal;
+      font-display: swap;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: #f6f0e4; font-family: 'Inter', sans-serif; color: #2a1e18; }
@@ -89,7 +114,7 @@
           <div class="tag-num">{{ shirt.tag }}</div>
           <div style="flex:1;">
             <div style="font-size:14px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
-            <div style="font-size:12px; color:#8a7860;">{{ shirt.sleeve }} &middot; {{ shirt.name }}</div>
+            <div style="font-size:12px; color:#8a7860;">{{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
           </div>
         </div>
         {% endfor %}
@@ -107,6 +132,12 @@
         <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860;">Sleeve</div>
         <div style="font-size:15px; font-weight:700;">{{ shirt.sleeve }}</div>
       </div>
+      {% if shirt.size %}
+      <div style="display:flex; justify-content:space-between; padding:0 4px; margin-bottom:14px;">
+        <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860;">Size</div>
+        <div style="font-size:15px; font-weight:700;">{{ shirt.size }}</div>
+      </div>
+      {% endif %}
       <div style="display:flex; justify-content:space-between; padding:0 4px; margin-bottom:26px;">
         <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860;">Name</div>
         <div style="font-family:'Sohne Dreiviertelfett','Staatliches',sans-serif; font-size:24px; letter-spacing:0.02em;">{{ shirt.name }}</div>

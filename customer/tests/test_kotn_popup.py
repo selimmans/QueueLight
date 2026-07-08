@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from businesses.models import Business
 from customer.views import (
+    KOTN_GARMENT_SIZES,
     KOTN_ORDER_MAX,
     KOTN_PATCH_MAX_PER_SHIRT,
     KOTN_PATCHES,
@@ -25,6 +26,7 @@ def _shirt(**overrides):
     data = {
         "patches": [KOTN_PATCHES[0]["key"]],
         "sleeve": "short-sleeve",
+        "size": "m",
         "name": "Sam",
     }
     data.update(overrides)
@@ -80,6 +82,19 @@ class TestKotnShirtValidation:
         resp = client.post(url, _post([_shirt(sleeve="medium")]))
         assert resp.status_code == 400
         assert b"sleeve length" in resp.content
+
+    def test_invalid_size_rejected(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        resp = client.post(url, _post([_shirt(size="xxxl")]))
+        assert resp.status_code == 400
+        assert b"choose a size" in resp.content
+
+    def test_size_is_stored(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        resp = client.post(url, _post([_shirt(size="xl")]))
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(business=kotn_business)
+        assert entry.intake_answers["Shirts"][0]["size"] == "XL"
 
     def test_missing_name_rejected(self, client, kotn_business):
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})

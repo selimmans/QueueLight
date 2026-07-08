@@ -525,7 +525,7 @@
               <div class="kotn-shirt-row">
                 <div class="kotn-shirt-tag">{{ shirt.tag }}</div>
                 {% for p in shirt.patches %}<img class="kotn-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}">{% endfor %}
-                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }} &middot; {{ shirt.name }}</div>
+                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
               </div>
               {% endfor %}
             </div>
@@ -783,7 +783,7 @@
         return `<div class="kotn-shirt-row">
           <div class="kotn-shirt-tag">${shirt.tag}</div>
           ${crestsHtml}
-          <div class="kotn-shirt-info"><strong>${patchNames}</strong> &middot; ${shirt.sleeve} &middot; ${shirt.name}</div>
+          <div class="kotn-shirt-info"><strong>${patchNames}</strong> &middot; ${shirt.sleeve}${shirt.size ? " &middot; Size " + shirt.size : ""} &middot; ${shirt.name}</div>
         </div>`;
       }).join("");
 

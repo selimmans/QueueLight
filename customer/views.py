@@ -42,6 +42,14 @@ KOTN_SIZES = [
     {"key": "short-sleeve", "name": "Short Sleeve"},
     {"key": "long-sleeve", "name": "Long Sleeve"},
 ]
+KOTN_GARMENT_SIZES = [
+    {"key": "xs", "name": "XS"},
+    {"key": "s", "name": "S"},
+    {"key": "m", "name": "M"},
+    {"key": "l", "name": "L"},
+    {"key": "xl", "name": "XL"},
+    {"key": "xxl", "name": "XXL"},
+]
 
 
 def _is_rate_limited(ip: str) -> bool:
@@ -353,6 +361,7 @@ class PickupJoinView(View):
         if business.slug == KOTN_POPUP_SLUG:
             ctx["kotn_patches"] = KOTN_PATCHES
             ctx["kotn_sizes"] = KOTN_SIZES
+            ctx["kotn_garment_sizes"] = KOTN_GARMENT_SIZES
             ctx["name_max_length"] = KOTN_NAME_MAX_LENGTH
             ctx["kotn_patch_max_per_shirt"] = KOTN_PATCH_MAX_PER_SHIRT
         ctx.update(kwargs)
@@ -559,6 +568,9 @@ class PickupJoinView(View):
                 if not any(sz["key"] == s.get("sleeve") for sz in KOTN_SIZES):
                     global_error = "Please choose a sleeve length for every shirt."
                     break
+                if not any(gs["key"] == s.get("size") for gs in KOTN_GARMENT_SIZES):
+                    global_error = "Please choose a size for every shirt."
+                    break
                 name = (s.get("name") or "").strip().upper()
                 if not name:
                     global_error = "Every shirt needs a name for the back."
@@ -583,9 +595,11 @@ class PickupJoinView(View):
                 for k in s["patches"] for p in KOTN_PATCHES if p["key"] == k
             ]
             sleeve_name = next(sz["name"] for sz in KOTN_SIZES if sz["key"] == s["sleeve"])
+            size_name = next(gs["name"] for gs in KOTN_GARMENT_SIZES if gs["key"] == s["size"])
             shirts.append({
                 "patches": patches,
                 "sleeve": sleeve_name,
+                "size": size_name,
                 "name": s["name"].strip().upper(),
             })
 
