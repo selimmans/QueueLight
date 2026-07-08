@@ -926,6 +926,7 @@ class PickupStatusAPIView(View):
                 "id": e.pk,
                 "order_number": e.order_number,
                 "customer_name": e.customer_name,
+                "phone": e.phone or "",
                 "status": e.status,
                 "registered_at": e.registered_at.isoformat(),
                 "minutes_waiting": minutes_waiting,

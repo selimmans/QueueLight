@@ -4,20 +4,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kotn Cup 26 — Make your shirt</title>
+  <title>Kotn Cup 26 — Build your kit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Staatliches&family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Sohne Dreiviertelfett';
+      src: url('{% static "customer/kotn/TestSohne-Dreiviertelfett.otf" %}') format('opentype');
+      font-weight: 800;
+      font-style: normal;
+    }
     * { box-sizing: border-box; }
     body { margin: 0; background: #f6f0e4; font-family: 'Inter', sans-serif; color: #2a1e18; }
     a { color: #a82a30; }
-    a:hover { color: #c23f46; }
     input::placeholder { color: #b3a486; }
     .wrap { max-width: 460px; margin: 0 auto; padding: 44px 22px 70px; }
-    .rule { height: 1px; background: #d8cba8; margin: 36px 0 26px; }
+    .rule { height: 1px; background: #d8cba8; margin: 34px 0 8px; }
+    .rule-tight { height: 1px; background: #d8cba8; margin: 32px 0 22px; }
+    .summary-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; background: none; border: none; border-top: 1px solid #d8cba8; padding: 16px 2px; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; }
     .row-btn { display: flex; align-items: center; gap: 14px; width: 100%; background: none; border: none; border-top: 1px solid #d8cba8; padding: 12px 2px; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; }
-    .row-btn:last-child { border-bottom: 1px solid #d8cba8; }
     .row-num { font-family: 'Staatliches', sans-serif; font-size: 20px; width: 26px; color: #c9b98f; }
     .row-btn.active .row-num { color: #a82a30; }
     .row-crest { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
@@ -27,13 +33,20 @@
     .row-btn.active .row-check { opacity: 1; }
     .sleeve-btn { flex: 1; background: none; border: none; border-bottom: 2px solid #d8cba8; padding: 12px 0; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7860; }
     .sleeve-btn.active { border-bottom-color: #a82a30; font-weight: 800; color: #2a1e18; }
-    #nameInput { width: 100%; background: none; border: none; border-bottom: 2px solid #a82a30; padding: 10px 0 14px; font-size: 34px; font-family: 'Staatliches', sans-serif; letter-spacing: 0.06em; color: #2a1e18; text-transform: uppercase; text-align: center; margin-bottom: 6px; outline: none; }
-    #phoneInput { width: 100%; background: none; border: none; border-bottom: 2px solid #d8cba8; padding: 10px 0 14px; font-size: 18px; font-family: 'Inter', sans-serif; font-weight: 600; color: #2a1e18; text-align: center; margin-bottom: 8px; outline: none; }
+    #nameInput { width: 100%; background: none; border: none; border-bottom: 2px solid #a82a30; padding: 10px 0 14px; font-size: 32px; font-family: 'Sohne Dreiviertelfett', 'Staatliches', sans-serif; letter-spacing: 0.02em; color: #2a1e18; text-transform: uppercase; text-align: center; outline: none; }
+    #addBtn { width: 100%; margin-top: 18px; background: none; border: 2px solid #a82a30; color: #a82a30; padding: 14px; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; font-family: 'Inter', sans-serif; }
+    #addBtn.disabled { border-color: #d8cba8; color: #a89876; cursor: not-allowed; }
+    #continueBtn { width: 100%; margin-top: 14px; background: #a82a30; color: #f6f0e4; border: none; padding: 19px; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; font-family: 'Inter', sans-serif; }
+    #continueBtn.disabled { background: #d8cba8; color: #a89876; cursor: not-allowed; }
+    .back-link { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a82a30; margin-bottom: 26px; }
+    #phoneInput { width: 100%; background: none; border: none; border-bottom: 2px solid #d8cba8; padding: 10px 0 14px; font-size: 18px; font-family: 'Inter', sans-serif; font-weight: 600; color: #2a1e18; text-align: center; margin-bottom: 38px; outline: none; }
     #phoneInput:focus { border-bottom-color: #a82a30; }
-    #submitBtn { width: 100%; background: #d8cba8; color: #a89876; border: none; padding: 19px; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: not-allowed; font-family: 'Inter', sans-serif; margin-top: 30px; }
+    #submitBtn { width: 100%; background: #d8cba8; color: #a89876; border: none; padding: 19px; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: not-allowed; font-family: 'Inter', sans-serif; }
     #submitBtn.ready { background: #a82a30; color: #f6f0e4; cursor: pointer; }
-    .field-error { margin-top: 10px; font-size: 12px; color: #a82a30; }
     .global-error { background: #fbe4e2; border: 1px solid #e6a9a3; border-radius: 6px; padding: 12px 14px; color: #a82a30; font-size: 13px; margin-bottom: 26px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    #maxPatchNote { font-size: 12px; color: #8a7860; font-style: italic; margin-top: 12px; display: none; }
   </style>
 </head>
 <body>
@@ -54,121 +67,231 @@
 
   <form method="post" id="kotn-form">
     {% csrf_token %}
+    <input type="hidden" name="shirts" id="shirtsInput">
+    <input type="hidden" name="phone" id="phoneHidden">
 
-    <div class="rule"></div>
-
-    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px;">
-      <div style="font-family:'Anton',sans-serif; font-size:20px; letter-spacing:0.02em;">Pick Your Patch</div>
-      <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#8a7860;">01 / 03</div>
+    <div class="step active" id="stepShirts">
+      <div class="rule"></div>
+      <div id="shirtsContainer"></div>
+      <button type="button" id="addBtn" class="disabled">+ Add Another Shirt</button>
+      <button type="button" id="continueBtn" class="disabled">Finish This Shirt First</button>
     </div>
 
-    <div id="patchList" style="display:flex; flex-direction:column;">
-      {% for p in kotn_patches %}
-      <button type="button" class="row-btn{% if patch == p.key or forloop.first and not patch %} active{% endif %}" data-key="{{ p.key }}">
-        <div class="row-num">{{ forloop.counter|stringformat:"02d" }}</div>
-        <img class="row-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}" />
-        <div class="row-label">{{ p.name }}</div>
-        <div class="row-check">&#10003;</div>
-      </button>
-      {% endfor %}
+    <div class="step" id="stepPhone">
+      <button type="button" class="back-link" id="backBtn">&larr; Edit Shirts</button>
+      <div style="font-family:'Anton',sans-serif; font-size:20px; letter-spacing:0.02em; margin-bottom:14px;">Your Order</div>
+      <div id="orderSummary"></div>
+      <div style="height:1px; background:#d8cba8; margin:30px 0 26px;"></div>
+      <div style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8f6a28; margin-bottom:10px;">Your Phone</div>
+      <div style="font-size:12px; color:#8a7860; margin-bottom:16px;">We'll text you the moment it's ready.</div>
+      <input id="phoneInput" type="tel" placeholder="(416) 555-0134" autocomplete="tel">
+      <button type="submit" id="submitBtn">Add Your Phone</button>
     </div>
-    <input type="hidden" name="patch" id="patchInput" value="{{ patch|default:'' }}">
-    {% if errors.patch %}<div class="field-error">{{ errors.patch }}</div>{% endif %}
-
-    <div class="rule"></div>
-
-    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px;">
-      <div style="font-family:'Anton',sans-serif; font-size:20px; letter-spacing:0.02em;">Sleeve Length</div>
-      <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#8a7860;">02 / 03</div>
-    </div>
-    <div style="display:flex; gap:0;">
-      {% for s in kotn_sizes %}
-      <button type="button" class="sleeve-btn{% if size == s.key or forloop.first and not size %} active{% endif %}" data-key="{{ s.key }}">{{ s.name }}</button>
-      {% endfor %}
-    </div>
-    <input type="hidden" name="size" id="sizeInput" value="{{ size|default:'' }}">
-    {% if errors.size %}<div class="field-error">{{ errors.size }}</div>{% endif %}
-
-    <div class="rule"></div>
-
-    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px;">
-      <div style="font-family:'Anton',sans-serif; font-size:20px; letter-spacing:0.02em;">Name For The Back</div>
-      <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#8a7860;">03 / 03</div>
-    </div>
-    <div style="font-size:12px; color:#8a7860; margin-bottom:20px;">(max <span id="maxLen">{{ name_max_length }}</span> letters)</div>
-
-    <input id="nameInput" type="text" name="customer_name" placeholder="HELALI" maxlength="{{ name_max_length }}" autocomplete="off" value="{{ customer_name|default:'' }}" />
-    <div style="text-align:center; font-size:12px; color:#8a7860; margin-bottom:10px;">
-      <span id="charsLeft">{{ name_max_length }}</span> letters left
-    </div>
-    {% if errors.customer_name %}<div class="field-error" style="text-align:center;">{{ errors.customer_name }}</div>{% endif %}
-
-    <div style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8f6a28; margin-bottom:10px; margin-top:26px;">Your Phone</div>
-    <div style="font-size:12px; color:#8a7860; margin-bottom:16px;">We'll text you the moment it's ready.</div>
-    <input id="phoneInput" type="tel" name="phone" placeholder="(416) 555-0134" value="{{ phone|default:'' }}" />
-    {% if errors.phone %}<div class="field-error" style="text-align:center;">{{ errors.phone }}</div>{% endif %}
-
-    <button id="submitBtn" type="submit">Add Name + Phone</button>
   </form>
 
 </div>
 
+<template id="patchRowTemplate">
+  <button type="button" class="row-btn" data-key="">
+    <div class="row-num"></div>
+    <img class="row-crest" src="" alt="">
+    <div class="row-label"></div>
+    <div class="row-check">&#10003;</div>
+  </button>
+</template>
+
 <script>
-  const patchRows = document.querySelectorAll('#patchList .row-btn');
-  const patchInput = document.getElementById('patchInput');
-  patchRows.forEach(btn => btn.addEventListener('click', () => {
-    patchRows.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    patchInput.value = btn.dataset.key;
-  }));
-  if (!patchInput.value && patchRows.length) patchInput.value = patchRows[0].dataset.key;
-
-  const sleeveBtns = document.querySelectorAll('.sleeve-btn');
-  const sizeInput = document.getElementById('sizeInput');
-  sleeveBtns.forEach(btn => btn.addEventListener('click', () => {
-    sleeveBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    sizeInput.value = btn.dataset.key;
-  }));
-  if (!sizeInput.value && sleeveBtns.length) sizeInput.value = sleeveBtns[0].dataset.key;
-
+  const KOTN_PATCHES = [
+    {% for p in kotn_patches %}{ key: "{{ p.key }}", name: "{{ p.name|escapejs }}", crest: "{{ p.crest }}" }{% if not forloop.last %},{% endif %}{% endfor %}
+  ];
+  const KOTN_SIZES = [
+    {% for s in kotn_sizes %}{ key: "{{ s.key }}", name: "{{ s.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
+  ];
   const MAX_LEN = {{ name_max_length }};
-  const nameInput = document.getElementById('nameInput');
-  const charsLeft = document.getElementById('charsLeft');
-  const phoneInput = document.getElementById('phoneInput');
-  const submitBtn = document.getElementById('submitBtn');
+  const MAX_PATCHES = {{ kotn_patch_max_per_shirt }};
+  const CREST_BASE = "{% static 'customer/kotn/' %}";
 
-  function validate() {
-    const nameOk = nameInput.value.trim().length > 0;
-    const digits = phoneInput.value.replace(/\D/g, '');
-    const phoneOk = digits.length === 10;
-    if (nameOk && phoneOk) {
-      submitBtn.classList.add('ready');
-      submitBtn.textContent = 'Place My Order';
-    } else {
-      submitBtn.classList.remove('ready');
-      submitBtn.textContent = 'Add Name + Phone';
-    }
+  let shirts = [{ patches: [], sleeve: "short-sleeve", name: "" }];
+  let activeIndex = 0;
+
+  function isValid(shirt) {
+    return shirt.patches.length > 0 && shirt.name.trim().length > 0;
+  }
+  function allValid() {
+    return shirts.every(isValid);
+  }
+  function summaryText(shirt) {
+    const patchNames = shirt.patches.map(k => KOTN_PATCHES.find(p => p.key === k).name).join(" + ");
+    const sleeveName = KOTN_SIZES.find(s => s.key === shirt.sleeve).name;
+    return `${patchNames || "No patch"} · ${sleeveName}${shirt.name ? " · " + shirt.name : ""}`;
   }
 
-  nameInput.addEventListener('input', () => {
-    nameInput.value = nameInput.value.toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, MAX_LEN);
-    charsLeft.textContent = MAX_LEN - nameInput.value.length;
-    validate();
+  function renderShirts() {
+    const container = document.getElementById("shirtsContainer");
+    container.innerHTML = "";
+
+    shirts.forEach((shirt, idx) => {
+      if (idx !== activeIndex) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "summary-row";
+        row.innerHTML = `
+          <div style="font-size:14px; color:#5a4a3a; line-height:1.4;">Shirt ${idx + 1}: ${summaryText(shirt)}</div>
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#a82a30; font-weight:800; flex-shrink:0;">Edit</div>
+        `;
+        row.addEventListener("click", () => { activeIndex = idx; renderShirts(); });
+        container.appendChild(row);
+        return;
+      }
+
+      const block = document.createElement("div");
+      block.style.paddingTop = "22px";
+      block.innerHTML = `
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px;">
+          <div style="font-family:'Anton',sans-serif; font-size:22px; letter-spacing:0.02em;">Shirt ${idx + 1}</div>
+          ${shirts.length > 1 ? '<button type="button" class="removeBtn" style="background:none; border:none; padding:4px; cursor:pointer; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860; font-family:\'Inter\',sans-serif;">Remove</button>' : ""}
+        </div>
+        <div class="rule-tight"></div>
+        <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:18px;">
+          <div style="font-family:'Anton',sans-serif; font-size:18px; letter-spacing:0.02em;">Pick Your Patch</div>
+          <div style="font-size:12px; font-weight:600; color:#8a7860;">(Up to ${MAX_PATCHES})</div>
+        </div>
+        <div class="patchList"></div>
+        <div class="maxPatchNote" id="maxPatchNote" style="font-size:12px; color:#8a7860; font-style:italic; margin-top:12px; display:none;">Deselect one to choose another.</div>
+        <div class="rule-tight"></div>
+        <div style="font-family:'Anton',sans-serif; font-size:18px; letter-spacing:0.02em; margin-bottom:16px;">Sleeve Length</div>
+        <div class="sleeveRow" style="display:flex; gap:0;"></div>
+        <div class="rule-tight"></div>
+        <div style="font-family:'Anton',sans-serif; font-size:18px; letter-spacing:0.02em; margin-bottom:6px;">Name For The Back</div>
+        <div style="font-size:12px; color:#8a7860; margin-bottom:18px;">(max ${MAX_LEN} letters)</div>
+        <input id="nameInput" type="text" placeholder="HELALI" maxlength="${MAX_LEN}" autocomplete="off">
+      `;
+      container.appendChild(block);
+
+      const patchListEl = block.querySelector(".patchList");
+      KOTN_PATCHES.forEach((p, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "row-btn" + (shirt.patches.includes(p.key) ? " active" : "");
+        btn.innerHTML = `
+          <div class="row-num">${String(i + 1).padStart(2, "0")}</div>
+          <img class="row-crest" src="${CREST_BASE}${p.crest}" alt="${p.name}">
+          <div class="row-label">${p.name}</div>
+          <div class="row-check">&#10003;</div>
+        `;
+        btn.addEventListener("click", () => {
+          if (shirt.patches.includes(p.key)) {
+            shirt.patches = shirt.patches.filter(k => k !== p.key);
+          } else if (shirt.patches.length < MAX_PATCHES) {
+            shirt.patches.push(p.key);
+          }
+          renderShirts();
+        });
+        patchListEl.appendChild(btn);
+      });
+      block.querySelector("#maxPatchNote").style.display = shirt.patches.length >= MAX_PATCHES ? "block" : "none";
+
+      const sleeveRow = block.querySelector(".sleeveRow");
+      KOTN_SIZES.forEach(s => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sleeve-btn" + (shirt.sleeve === s.key ? " active" : "");
+        btn.textContent = s.name;
+        btn.addEventListener("click", () => { shirt.sleeve = s.key; renderShirts(); });
+        sleeveRow.appendChild(btn);
+      });
+
+      const nameInput = block.querySelector("#nameInput");
+      nameInput.value = shirt.name;
+      nameInput.addEventListener("input", () => {
+        shirt.name = nameInput.value.toUpperCase().replace(/[^A-Z0-9 ]/g, "").slice(0, MAX_LEN);
+        nameInput.value = shirt.name;
+        updateButtons();
+      });
+
+      const removeBtn = block.querySelector(".removeBtn");
+      if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+          shirts.splice(idx, 1);
+          activeIndex = Math.max(0, idx - 1);
+          renderShirts();
+        });
+      }
+    });
+
+    updateButtons();
+  }
+
+  function updateButtons() {
+    const addBtn = document.getElementById("addBtn");
+    const continueBtn = document.getElementById("continueBtn");
+    const activeValid = isValid(shirts[activeIndex]);
+    addBtn.classList.toggle("disabled", !activeValid);
+    const everyValid = allValid();
+    continueBtn.classList.toggle("disabled", !everyValid);
+    continueBtn.textContent = everyValid ? "Continue to Phone" : "Finish This Shirt First";
+  }
+
+  document.getElementById("addBtn").addEventListener("click", () => {
+    if (!isValid(shirts[activeIndex])) return;
+    shirts.push({ patches: [], sleeve: "short-sleeve", name: "" });
+    activeIndex = shirts.length - 1;
+    renderShirts();
   });
 
-  phoneInput.addEventListener('input', () => {
-    const digits = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+  document.getElementById("continueBtn").addEventListener("click", () => {
+    if (!allValid()) return;
+    renderOrderSummary();
+    document.getElementById("stepShirts").classList.remove("active");
+    document.getElementById("stepPhone").classList.add("active");
+  });
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    document.getElementById("stepPhone").classList.remove("active");
+    document.getElementById("stepShirts").classList.add("active");
+  });
+
+  function renderOrderSummary() {
+    const el = document.getElementById("orderSummary");
+    el.innerHTML = shirts.map((shirt, idx) => `
+      <div class="summary-row">
+        <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860; flex-shrink:0;">Shirt ${idx + 1}</div>
+        <div style="font-size:14px; font-weight:700; text-align:right;">${summaryText(shirt)}</div>
+      </div>
+    `).join("");
+  }
+
+  const phoneInput = document.getElementById("phoneInput");
+  const submitBtn = document.getElementById("submitBtn");
+  const form = document.getElementById("kotn-form");
+
+  function validatePhone() {
+    const digits = phoneInput.value.replace(/\D/g, "");
+    const ok = digits.length === 10;
+    submitBtn.classList.toggle("ready", ok);
+    submitBtn.textContent = ok ? "Place My Order" : "Add Your Phone";
+    return ok;
+  }
+  phoneInput.addEventListener("input", () => {
+    const digits = phoneInput.value.replace(/\D/g, "").slice(0, 10);
     let formatted = digits;
     if (digits.length > 6) formatted = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
     else if (digits.length > 3) formatted = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
     else if (digits.length > 0) formatted = `(${digits}`;
     phoneInput.value = formatted;
-    validate();
+    validatePhone();
   });
 
-  charsLeft.textContent = MAX_LEN - nameInput.value.length;
-  validate();
+  form.addEventListener("submit", (e) => {
+    if (!validatePhone() || !allValid()) {
+      e.preventDefault();
+      return;
+    }
+    document.getElementById("phoneHidden").value = phoneInput.value;
+    document.getElementById("shirtsInput").value = JSON.stringify(shirts);
+  });
+
+  renderShirts();
 </script>
 </body>
 </html>

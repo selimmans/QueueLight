@@ -1,3 +1,4 @@
+import json
 import re
 
 from django.core.cache import cache
@@ -31,8 +32,10 @@ KOTN_PATCHES = [
     {"key": "cup26", "name": "Cup 26", "crest": "crest-cup26-square.png"},
     {"key": "kotn-shield", "name": "Kotn Shield", "crest": "crest-kotn-shield.png"},
 ]
-# 300 physical numbered shirt tags on hand — order number is auto-assigned
-# sequentially (zero-padded to 3 digits, e.g. "003"), never typed by the customer.
+KOTN_PATCH_MAX_PER_SHIRT = 2
+# 300 physical numbered shirt tags on hand — tag numbers are auto-assigned
+# sequentially and globally across shirts (zero-padded to 3 digits, e.g. "003"),
+# never typed by the customer. A multi-shirt order consumes one tag per shirt.
 KOTN_ORDER_MIN = 1
 KOTN_ORDER_MAX = 300
 KOTN_SIZES = [
@@ -351,6 +354,7 @@ class PickupJoinView(View):
             ctx["kotn_patches"] = KOTN_PATCHES
             ctx["kotn_sizes"] = KOTN_SIZES
             ctx["name_max_length"] = KOTN_NAME_MAX_LENGTH
+            ctx["kotn_patch_max_per_shirt"] = KOTN_PATCH_MAX_PER_SHIRT
         ctx.update(kwargs)
         return ctx
 
@@ -373,6 +377,9 @@ class PickupJoinView(View):
             return render(request, template_name,
                           self._ctx(business, global_error="Too many requests. Please try again later."),
                           status=429)
+
+        if business.slug == KOTN_POPUP_SLUG:
+            return self._post_kotn(request, business, template_name)
 
         calling_code = phonenumbers.country_code_for_region(business.country) or 1
         pos_enabled = business.pos_type != business.POS_NONE and bool(business.pos_api_token)
@@ -483,12 +490,6 @@ class PickupJoinView(View):
 
             order_number = request.POST.get("order_number", "").strip()
             customer_name = request.POST.get("customer_name", "").strip()
-            patch = request.POST.get("patch", "").strip()
-            size = request.POST.get("size", "").strip()
-            is_kotn_popup = business.slug == KOTN_POPUP_SLUG
-
-            if is_kotn_popup:
-                customer_name = customer_name.upper()
 
             # Apply field config validations
             if business.field_order_number_enabled and business.field_order_number_required:
@@ -497,24 +498,11 @@ class PickupJoinView(View):
             if business.field_name_enabled and business.field_name_required:
                 if not customer_name:
                     errors["customer_name"] = "Please enter your name"
-                elif is_kotn_popup and len(customer_name) > KOTN_NAME_MAX_LENGTH:
-                    errors["customer_name"] = f"Name must be {KOTN_NAME_MAX_LENGTH} characters or fewer"
-                elif is_kotn_popup and not KOTN_NAME_RE.match(customer_name):
-                    errors["customer_name"] = "Name can only contain letters, numbers, and spaces"
-            kotn_patch = None
-            if is_kotn_popup:
-                kotn_patch = next((p for p in KOTN_PATCHES if p["key"] == patch), None)
-                if not kotn_patch:
-                    errors["patch"] = "Please choose a patch"
-            if is_kotn_popup and not size:
-                errors["size"] = "Please choose a size"
             if errors:
                 return render(request, template_name,
                               self._ctx(business, errors=errors,
                                         order_number=order_number,
                                         customer_name=customer_name,
-                                        patch=patch,
-                                        size=size,
                                         phone=raw_phone))
 
             # Auto-generate order number when field is disabled or optional + empty
@@ -526,52 +514,137 @@ class PickupJoinView(View):
                 q: request.POST.get(f"pickup_intake_{i}", "").strip()
                 for i, q in enumerate(pickup_intake_fields)
             }
-            if kotn_patch:
-                intake_answers["Patch"] = kotn_patch["name"]
-            elif patch:
-                intake_answers["Patch"] = patch
-            if size:
-                intake_answers["Size"] = next(
-                    (s["name"] for s in KOTN_SIZES if s["key"] == size), size
-                )
-            if is_kotn_popup:
-                # Lock the Business row to serialize concurrent joins so two
-                # customers can never be handed the same shirt-tag number.
-                with transaction.atomic():
-                    Business.objects.select_for_update().get(pk=business.pk)
-                    used = PickupEntry.objects.filter(
-                        business=business, order_number__regex=r"^\d+$"
-                    ).count()
-                    next_number = used + 1
-                    if next_number > KOTN_ORDER_MAX:
-                        return render(request, template_name,
-                                      self._ctx(business,
-                                                 global_error=(
-                                                     f"Sorry, we're at capacity "
-                                                     f"({KOTN_ORDER_MAX} shirts). "
-                                                     "Please check with staff."
-                                                 ),
-                                                 customer_name=customer_name,
-                                                 patch=patch,
-                                                 size=size,
-                                                 phone=raw_phone))
-                    entry = PickupService.register(
-                        business,
-                        order_number=f"{next_number:03d}",
-                        customer_name=customer_name,
-                        phone=phone,
-                        intake_answers=intake_answers,
-                    )
-            else:
-                entry = PickupService.register(
-                    business,
-                    order_number=order_number,
-                    customer_name=customer_name,
-                    phone=phone,
-                    intake_answers=intake_answers,
-                )
+            entry = PickupService.register(
+                business,
+                order_number=order_number,
+                customer_name=customer_name,
+                phone=phone,
+                intake_answers=intake_answers,
+            )
 
         return redirect("customer:pickup_confirmation", slug=slug, entry_id=entry.pk)
+
+    def _post_kotn(self, request, business, template_name):
+        """Kotn Cup 26: one order = 1+ shirts, one shared phone number.
+
+        The customer builds the whole order client-side (shirt builder + phone
+        step) and POSTs it as a single request: `shirts` is a JSON list of
+        {patches: [key, ...], sleeve: key, name}, plus `phone`. Tag numbers are
+        assigned sequentially and globally (one per shirt, not per order) under
+        a lock on the Business row so concurrent orders can't collide.
+        """
+        raw_phone = request.POST.get("phone", "").strip()
+        phone, phone_error = None, "Please enter your phone number"
+        if raw_phone:
+            phone, phone_error = _parse_phone(raw_phone, business.country)
+
+        try:
+            shirts_in = json.loads(request.POST.get("shirts", "[]"))
+        except (json.JSONDecodeError, TypeError):
+            shirts_in = None
+
+        global_error = None
+        if not isinstance(shirts_in, list) or not shirts_in:
+            global_error = "Please build at least one shirt."
+        else:
+            for s in shirts_in:
+                patch_keys = s.get("patches") if isinstance(s, dict) else None
+                if (
+                    not isinstance(patch_keys, list)
+                    or not (1 <= len(patch_keys) <= KOTN_PATCH_MAX_PER_SHIRT)
+                    or not all(any(p["key"] == k for p in KOTN_PATCHES) for k in patch_keys)
+                ):
+                    global_error = "Each shirt needs 1-2 valid patches."
+                    break
+                if not any(sz["key"] == s.get("sleeve") for sz in KOTN_SIZES):
+                    global_error = "Please choose a sleeve length for every shirt."
+                    break
+                name = (s.get("name") or "").strip().upper()
+                if not name:
+                    global_error = "Every shirt needs a name for the back."
+                    break
+                if len(name) > KOTN_NAME_MAX_LENGTH or not KOTN_NAME_RE.match(name):
+                    global_error = (
+                        f"Names must be letters, numbers, or spaces, "
+                        f"{KOTN_NAME_MAX_LENGTH} characters or fewer."
+                    )
+                    break
+        if not global_error and phone_error:
+            global_error = phone_error
+
+        if global_error:
+            return render(request, template_name,
+                          self._ctx(business, global_error=global_error), status=400)
+
+        shirts = []
+        for s in shirts_in:
+            patches = [
+                {"name": p["name"], "crest": p["crest"]}
+                for k in s["patches"] for p in KOTN_PATCHES if p["key"] == k
+            ]
+            sleeve_name = next(sz["name"] for sz in KOTN_SIZES if sz["key"] == s["sleeve"])
+            shirts.append({
+                "patches": patches,
+                "sleeve": sleeve_name,
+                "name": s["name"].strip().upper(),
+            })
+
+        with transaction.atomic():
+            # Lock the Business row to serialize concurrent orders so no two
+            # customers can ever be handed the same shirt-tag number.
+            Business.objects.select_for_update().get(pk=business.pk)
+            used_tags = []
+            for order_number, ia in PickupEntry.objects.filter(business=business).values_list(
+                "order_number", "intake_answers"
+            ):
+                ia = ia or {}
+                existing_shirts = ia.get("Shirts")
+                if existing_shirts:
+                    for sh in existing_shirts:
+                        t = sh.get("tag")
+                        if t and str(t).isdigit():
+                            used_tags.append(int(t))
+                elif order_number.isdigit():
+                    used_tags.append(int(order_number))
+
+            next_start = (max(used_tags) if used_tags else 0) + 1
+            n = len(shirts)
+            if next_start + n - 1 > KOTN_ORDER_MAX:
+                return render(request, template_name,
+                              self._ctx(business,
+                                        global_error=(
+                                            f"Sorry, we're at capacity "
+                                            f"({KOTN_ORDER_MAX} shirts). "
+                                            "Please check with staff."
+                                        )), status=400)
+
+            for i, shirt in enumerate(shirts):
+                shirt["tag"] = f"{next_start + i:03d}"
+
+            order_number = (
+                shirts[0]["tag"] if n == 1
+                else f"{shirts[0]['tag']}–{shirts[-1]['tag']}"
+            )
+            customer_name = (
+                shirts[0]["name"] if n == 1
+                else " / ".join(s["name"] for s in shirts)
+            )
+
+            entry = PickupService.register(
+                business,
+                order_number=order_number,
+                customer_name=customer_name,
+                phone=phone,
+                intake_answers={
+                    "Shirts": shirts,
+                    # Legacy aggregate fields — harmless fallback for any
+                    # generic (non-Kotn) rendering path that reads these.
+                    "Patch": ", ".join(s["patches"][0]["name"] for s in shirts if s["patches"]),
+                    "Size": shirts[0]["sleeve"],
+                },
+            )
+
+        return redirect("customer:pickup_confirmation", slug=business.slug, entry_id=entry.pk)
 
 
 class PickupConfirmView(View):
@@ -580,13 +653,16 @@ class PickupConfirmView(View):
     def get(self, request, slug, entry_id):
         business = get_object_or_404(Business, slug=slug)
         entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
-        template_name = (
-            "customer/pickup_confirmation_kotn.html"
-            if business.slug == KOTN_POPUP_SLUG
-            else self.template_name
-        )
-        patch = entry.intake_answers.get("Patch", "") if entry.intake_answers else ""
-        return render(request, template_name, {"business": business, "entry": entry, "patch": patch})
+        if business.slug != KOTN_POPUP_SLUG:
+            return render(request, self.template_name, {"business": business, "entry": entry})
+
+        shirts = (entry.intake_answers or {}).get("Shirts", [])
+        return render(request, "customer/pickup_confirmation_kotn.html", {
+            "business": business,
+            "entry": entry,
+            "shirts": shirts,
+            "is_multi": len(shirts) > 1,
+        })
 
 
 class PickupCustomerStatusView(View):

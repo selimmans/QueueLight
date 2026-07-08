@@ -47,10 +47,15 @@ class TestJoinViewModes:
 
     def test_pickup_only_shows_pickup_form(self, client, pickup_only_business):
         url = reverse("customer:join", kwargs={"slug": pickup_only_business.slug})
-        resp = client.get(url)
+        resp = client.get(url, follow=True)
         assert resp.status_code == 200
-        assert b"order_number" in resp.content
         assert b"Notify me when ready" in resp.content
+
+    def test_pickup_only_redirects_to_branded_pickup_kiosk(self, client, pickup_only_business):
+        url = reverse("customer:join", kwargs={"slug": pickup_only_business.slug})
+        resp = client.get(url)
+        assert resp.status_code == 302
+        assert resp.url == reverse("customer:pickup_join", kwargs={"slug": pickup_only_business.slug})
 
     def test_both_shows_tab_toggle(self, client, both_business):
         url = reverse("customer:join", kwargs={"slug": both_business.slug})

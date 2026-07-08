@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -277,6 +278,19 @@
     .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
     .action-btn:hover { opacity: 0.75; }
 
+    /* ── Kotn Cup 26: grouped multi-shirt order card ─── */
+    .kotn-card { padding: 0.9rem 1rem; border-bottom: 1px solid #f3f4f6; }
+    .kotn-card:last-child { border-bottom: none; }
+    .kotn-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.6rem; }
+    .kotn-card-title { font-weight: 600; color: var(--text); font-size: 0.95rem; }
+    .kotn-card-meta { font-size: 0.75rem; color: var(--text); margin-top: 0.1rem; }
+    .kotn-shirts { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.7rem; }
+    .kotn-shirt-row { display: flex; align-items: center; gap: 0.6rem; background: #f9fafb; border-radius: var(--r); padding: 0.5rem 0.65rem; }
+    .kotn-shirt-tag { font-weight: 700; font-size: 0.85rem; color: #374151; min-width: 2.2rem; }
+    .kotn-crest { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+    .kotn-shirt-info { flex: 1; min-width: 0; font-size: 0.82rem; color: var(--text); }
+    .kotn-shirt-info strong { font-weight: 600; }
+
     /* ── Unregistered (not-yet-scanned) orders ──────── */
     .unregistered-entry { opacity: 1; }
     .unregistered-entry .entry-name { color: var(--text); }
@@ -495,6 +509,39 @@
       <div class="queue-card" id="pickup-list">
         {% if pickup_entries %}
           {% for entry in pickup_entries %}
+          {% if business.slug == "kotn-cup-toronto" %}
+          <div class="kotn-card">
+            <div class="kotn-card-header">
+              <div>
+                <div class="kotn-card-title">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
+                <div class="kotn-card-meta">{% if entry.phone %}{{ entry.phone }} &middot; {% endif %}Registered {{ entry.registered_at|timesince }} ago</div>
+              </div>
+              <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
+                {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
+              </div>
+            </div>
+            <div class="kotn-shirts">
+              {% for shirt in entry.intake_answers.Shirts %}
+              <div class="kotn-shirt-row">
+                <div class="kotn-shirt-tag">{{ shirt.tag }}</div>
+                {% for p in shirt.patches %}<img class="kotn-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}">{% endfor %}
+                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }} &middot; {{ shirt.name }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="entry-actions">
+              {% if entry.status == 'waiting' %}
+              <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}">
+                {% csrf_token %}<button class="action-btn btn-ready" type="submit">Mark Ready</button>
+              </form>
+              {% elif entry.status == 'ready' %}
+              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
+                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% else %}
           <div class="entry">
             <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
               {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
@@ -515,6 +562,7 @@
               {% endif %}
             </div>
           </div>
+          {% endif %}
           {% endfor %}
         {% else %}
           <p class="empty">No active orders</p>
@@ -718,7 +766,49 @@
       return order.map(name => counts[name] > 1 ? `${counts[name]}x ${name}` : name);
     }
 
+    const KOTN_CREST_BASE = "{% static 'customer/kotn/' %}";
+
+    function renderKotnEntry(e) {
+      const statusBadge = e.status === "ready"
+        ? `<div class="badge badge-ready">Ready</div>`
+        : `<div class="badge badge-waiting">Waiting</div>`;
+      const nameHtml = e.customer_name ? ` &mdash; ${e.customer_name}` : "";
+      const phoneHtml = e.phone ? `${e.phone} &middot; ` : "";
+      const shirts = (e.intake_answers && e.intake_answers.Shirts) || [];
+      const shirtsHtml = shirts.map(shirt => {
+        const crestsHtml = (shirt.patches || [])
+          .map(p => `<img class="kotn-crest" src="${KOTN_CREST_BASE}${p.crest}" alt="${p.name}">`)
+          .join("");
+        const patchNames = (shirt.patches || []).map(p => p.name).join(" + ");
+        return `<div class="kotn-shirt-row">
+          <div class="kotn-shirt-tag">${shirt.tag}</div>
+          ${crestsHtml}
+          <div class="kotn-shirt-info"><strong>${patchNames}</strong> &middot; ${shirt.sleeve} &middot; ${shirt.name}</div>
+        </div>`;
+      }).join("");
+
+      let action = "";
+      if (e.status === "waiting") {
+        action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>`;
+      } else if (e.status === "ready") {
+        action = `<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>`;
+      }
+
+      return `<div class="kotn-card">
+        <div class="kotn-card-header">
+          <div>
+            <div class="kotn-card-title">#${e.order_number}${nameHtml}</div>
+            <div class="kotn-card-meta">${phoneHtml}Registered${e.minutes_waiting > 0 ? ` · ${e.minutes_waiting}m ago` : ""}</div>
+          </div>
+          ${statusBadge}
+        </div>
+        <div class="kotn-shirts">${shirtsHtml}</div>
+        <div class="entry-actions">${action}</div>
+      </div>`;
+    }
+
     function renderPickupEntry(e) {
+      if (SLUG === "kotn-cup-toronto") return renderKotnEntry(e);
       const statusBadge = e.status === "ready"
         ? `<div class="badge badge-ready">Ready</div>`
         : `<div class="badge badge-waiting">Waiting</div>`;
