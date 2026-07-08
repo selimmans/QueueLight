@@ -81,6 +81,10 @@ class JoinView(View):
         if not business.queue_enabled and not business.pickup_enabled:
             return render(request, self.template_name, {"business": business, "mode": "inactive"})
 
+        # Pickup-only businesses get the branded pickup kiosk directly.
+        if business.pickup_enabled and not business.queue_enabled:
+            return redirect("customer:pickup_join", slug=slug)
+
         calling_code = phonenumbers.country_code_for_region(business.country) or 1
         waiting_count = QueueEntry.objects.filter(
             business=business, status=QueueEntry.Status.WAITING
