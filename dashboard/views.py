@@ -138,6 +138,8 @@ class DashboardView(View):
         called_last = called_entries.order_by("-called_at").first()
 
         pickup_entries = []
+        pickup_waiting = []
+        pickup_ready = []
         if business.pickup_enabled:
             pickup_entries = list(
                 PickupEntry.objects.filter(
@@ -145,6 +147,8 @@ class DashboardView(View):
                     status__in=[PickupEntry.Status.WAITING, PickupEntry.Status.READY],
                 ).order_by("registered_at")
             )
+            pickup_waiting = [e for e in pickup_entries if e.status == PickupEntry.Status.WAITING]
+            pickup_ready = [e for e in pickup_entries if e.status == PickupEntry.Status.READY]
 
         # dashboard_mode drives tab visibility in the template
         if business.queue_enabled and business.pickup_enabled:
@@ -162,6 +166,8 @@ class DashboardView(View):
             "called_entries": called_entries,
             "called_last": called_last,
             "pickup_entries": pickup_entries,
+            "pickup_waiting": pickup_waiting,
+            "pickup_ready": pickup_ready,
             "dashboard_mode": dashboard_mode,
         })
 

@@ -248,6 +248,18 @@
     .badge-waiting { background: #f3f4f6; color: #374151; }
     .badge-ready   { background: #d1fae5; color: #065f46; }
 
+    .pickup-subheader {
+      padding: 0.5rem 1rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: #f9fafb;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .pickup-subheader.ready { color: #065f46; background: #ecfdf5; }
+
     .entry-body { flex: 1; min-width: 0; cursor: default; }
     .entry-body.expandable { cursor: pointer; }
     .entry-name { font-weight: 600; color: var(--text); font-size: 0.95rem; }
@@ -508,7 +520,10 @@
       </div>
       <div class="queue-card" id="pickup-list">
         {% if pickup_entries %}
-          {% for entry in pickup_entries %}
+          {% if pickup_waiting %}
+          <div class="pickup-subheader">To Prepare &middot; {{ pickup_waiting|length }}</div>
+          {% endif %}
+          {% for entry in pickup_waiting %}
           {% if business.slug == "kotn-cup-toronto" %}
           <div class="kotn-card">
             <div class="kotn-card-header">
@@ -516,9 +531,7 @@
                 <div class="kotn-card-title">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
                 <div class="kotn-card-meta">{% if entry.phone %}{{ entry.phone }} &middot; {% endif %}Registered {{ entry.registered_at|timesince }} ago</div>
               </div>
-              <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
-                {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
-              </div>
+              <div class="badge badge-waiting">Waiting</div>
             </div>
             <div class="kotn-shirts">
               {% for shirt in entry.intake_answers.Shirts %}
@@ -530,36 +543,66 @@
               {% endfor %}
             </div>
             <div class="entry-actions">
-              {% if entry.status == 'waiting' %}
               <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}">
                 {% csrf_token %}<button class="action-btn btn-ready" type="submit">Mark Ready</button>
               </form>
-              {% elif entry.status == 'ready' %}
-              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
-                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
-              </form>
-              {% endif %}
             </div>
           </div>
           {% else %}
           <div class="entry">
-            <div class="badge {% if entry.status == 'ready' %}badge-ready{% else %}badge-waiting{% endif %}">
-              {% if entry.status == 'ready' %}Ready{% else %}Waiting{% endif %}
-            </div>
+            <div class="badge badge-waiting">Waiting</div>
             <div class="entry-body">
               <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}{% if entry.pos_order_items %}<span class="entry-items"> · {{ entry.pos_order_items|join:", " }}</span>{% endif %}{% if entry.intake_answers.Patch %}<span class="entry-items"> · Patch: {{ entry.intake_answers.Patch }}</span>{% endif %}{% if entry.intake_answers.Size %}<span class="entry-items"> · {{ entry.intake_answers.Size }}</span>{% endif %}</div>
               <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
             </div>
             <div class="entry-actions">
-              {% if entry.status == 'waiting' %}
               <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}" style="display:inline">
                 {% csrf_token %}<button class="action-btn btn-ready" type="submit">Ready</button>
               </form>
-              {% elif entry.status == 'ready' %}
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+
+          {% if pickup_ready %}
+          <div class="pickup-subheader ready">Ready for Pickup &middot; {{ pickup_ready|length }}</div>
+          {% endif %}
+          {% for entry in pickup_ready %}
+          {% if business.slug == "kotn-cup-toronto" %}
+          <div class="kotn-card">
+            <div class="kotn-card-header">
+              <div>
+                <div class="kotn-card-title">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}</div>
+                <div class="kotn-card-meta">{% if entry.phone %}{{ entry.phone }} &middot; {% endif %}Registered {{ entry.registered_at|timesince }} ago</div>
+              </div>
+              <div class="badge badge-ready">Ready</div>
+            </div>
+            <div class="kotn-shirts">
+              {% for shirt in entry.intake_answers.Shirts %}
+              <div class="kotn-shirt-row">
+                <div class="kotn-shirt-tag">{{ shirt.tag }}</div>
+                {% for p in shirt.patches %}<img class="kotn-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}">{% endfor %}
+                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="entry-actions">
+              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
+                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+              </form>
+            </div>
+          </div>
+          {% else %}
+          <div class="entry">
+            <div class="badge badge-ready">Ready</div>
+            <div class="entry-body">
+              <div class="entry-name">#{{ entry.order_number }}{% if entry.customer_name %} &mdash; {{ entry.customer_name }}{% endif %}{% if entry.pos_order_items %}<span class="entry-items"> · {{ entry.pos_order_items|join:", " }}</span>{% endif %}{% if entry.intake_answers.Patch %}<span class="entry-items"> · Patch: {{ entry.intake_answers.Patch }}</span>{% endif %}{% if entry.intake_answers.Size %}<span class="entry-items"> · {{ entry.intake_answers.Size }}</span>{% endif %}</div>
+              <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
+            </div>
+            <div class="entry-actions">
               <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
                 {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
               </form>
-              {% endif %}
             </div>
           </div>
           {% endif %}
@@ -682,9 +725,23 @@
       const counter = document.getElementById("pickup-count");
       if (!list) return;
       if (counter) counter.textContent = _activeOrders.length;
-      list.innerHTML = _activeOrders.length
-        ? _activeOrders.map(renderPickupEntry).join("")
-        : `<p class="empty">No active orders</p>`;
+
+      if (!_activeOrders.length) {
+        list.innerHTML = `<p class="empty">No active orders</p>`;
+      } else {
+        const waitingOrders = _activeOrders.filter(o => o.status !== "ready");
+        const readyOrders   = _activeOrders.filter(o => o.status === "ready");
+        let html = "";
+        if (waitingOrders.length) {
+          html += `<div class="pickup-subheader">To Prepare &middot; ${waitingOrders.length}</div>`;
+          html += waitingOrders.map(renderPickupEntry).join("");
+        }
+        if (readyOrders.length) {
+          html += `<div class="pickup-subheader ready">Ready for Pickup &middot; ${readyOrders.length}</div>`;
+          html += readyOrders.map(renderPickupEntry).join("");
+        }
+        list.innerHTML = html;
+      }
 
       {% if business.pos_type != 'none' %}
       const unregSection = document.getElementById("unregistered-section");
