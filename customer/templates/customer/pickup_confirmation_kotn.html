@@ -112,6 +112,9 @@
         {% for shirt in shirts %}
         <div class="tag-card">
           <div class="tag-num">{{ shirt.tag }}</div>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            {% for p in shirt.patches %}<img src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}" style="width:36px; height:36px; object-fit:contain;">{% endfor %}
+          </div>
           <div style="flex:1;">
             <div style="font-size:14px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
             <div style="font-size:12px; color:#8a7860;">{{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
@@ -124,9 +127,14 @@
       <div style="font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#8a7860; margin-bottom:10px;">Order No.</div>
       <div class="hero-number" id="heroNumber">{{ entry.order_number }}</div>
       <div style="height:1px; background:#d8cba8; margin-bottom:20px;"></div>
-      <div style="display:flex; justify-content:space-between; padding:0 4px; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0 4px; margin-bottom:14px;">
         <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860;">Patch</div>
-        <div style="font-size:15px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="display:flex; gap:4px;">
+            {% for p in shirt.patches %}<img src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}" style="width:32px; height:32px; object-fit:contain;">{% endfor %}
+          </div>
+          <div style="font-size:15px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
+        </div>
       </div>
       <div style="display:flex; justify-content:space-between; padding:0 4px; margin-bottom:14px;">
         <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a7860;">Sleeve</div>
