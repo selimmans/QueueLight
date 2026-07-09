@@ -185,12 +185,13 @@
 
 <script>
   const STATUS_URL = "{% url 'customer:pickup_status' slug=business.slug entry_id=entry.pk %}";
-  const JOIN_URL = "{% url 'customer:pickup_join' slug=business.slug %}";
-  const KIOSK_RESET_MS = 25000;
   const GREEN_LOGO = "{% static 'customer/kotn/qatn-logo-green.png' %}";
   var pollInterval;
+  var reachedReady = false;
 
   function goReady() {
+    if (reachedReady) return;
+    reachedReady = true;
     document.getElementById("stepper").classList.add("ready");
     document.getElementById("qatnLogo").src = GREEN_LOGO;
     document.querySelectorAll(".tag-card").forEach(function(el) { el.classList.add("ready"); });
@@ -200,8 +201,6 @@
     var line = document.getElementById("instructionLine");
     line.textContent = "Show this screen at the counter to collect your kit.";
     line.classList.add("ready");
-
-    setTimeout(function() { window.location.href = JOIN_URL; }, KIOSK_RESET_MS);
   }
 
   function show(id) {
@@ -214,7 +213,6 @@
 
     if (status === "ready") {
       goReady();
-      clearInterval(pollInterval);
       return;
     }
     if (status === "picked_up") {
