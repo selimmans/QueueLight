@@ -154,21 +154,33 @@
   </div>
 
   <div class="screen" id="doneScreen" style="text-align:center; padding-top:4px;">
-    <div id="doneMessage" style="font-size:16px; color:#2a1e18; line-height:1.6; padding:60px 0;"></div>
-  </div>
-
-  <div style="width:100%; max-width:460px; margin:26px auto 0; padding:0 22px; text-align:center;">
-    <div style="font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#8a7860; margin-bottom:18px;">With Thanks To</div>
-    <div style="display:grid; grid-template-columns:repeat(3, 1fr); column-gap:14px; row-gap:24px;">
-      <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-barbet.png' %}" alt="Barbet" style="height:20px; width:auto; object-fit:contain;"></div>
-      <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-community-wines.png' %}" alt="Community Wines" style="height:34px; width:auto; object-fit:contain;"></div>
-      <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-daymi.png' %}" alt="Daymi" style="height:18px; width:auto; object-fit:contain;"></div>
-      <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-ruru-baked.png' %}" alt="Ruru Baked" style="height:26px; width:auto; object-fit:contain;"></div>
-      <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-shore-shakers.png' %}" alt="Shore Shakers" style="height:28px; width:auto; object-fit:contain;"></div>
-      <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-casa-del-rey.png' %}" alt="Casa Del Rey" style="height:16px; width:auto; object-fit:contain;"></div>
+    <div class="qatn-logo-wrap">
+      <img id="doneLogo" src="{% static 'customer/kotn/qatn-logo-maroon.png' %}" alt="قطن" style="height:34px;">
     </div>
+    <div id="doneMessage" style="font-family:'Anton',sans-serif; font-size:30px; letter-spacing:0.02em; color:#2a1e18; margin-bottom:14px;"></div>
+    <div id="doneSubMessage" style="font-size:15px; color:#6b5a48; line-height:1.5; margin-bottom:44px;"></div>
+    <div style="height:1px; background:#d8cba8;"></div>
   </div>
 
+</div>
+
+<div style="width:100%; max-width:460px; margin:26px auto 0; padding:0 22px; text-align:center;">
+  <div style="font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#8a7860; margin-bottom:18px;">With Thanks To Our Sponsors</div>
+  <div style="display:grid; grid-template-columns:repeat(4, 1fr); column-gap:12px; row-gap:24px;">
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-barbet.png' %}" alt="Barbet" style="height:20px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-community-wines.png' %}" alt="Community Wines" style="height:34px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-daymi.png' %}" alt="Daymi" style="height:18px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-ruru-baked.png' %}" alt="Ruru Baked" style="height:26px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-shore-shakers.png' %}" alt="Shore Shakers" style="height:28px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-casa-del-rey.png' %}" alt="Casa Del Rey" style="height:16px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-rosies-burgers.png' %}" alt="Rosie's Burgers" style="height:24px; width:auto; object-fit:contain;"></div>
+    <div style="display:flex; align-items:center; justify-content:center; height:36px;"><img src="{% static 'customer/kotn/sponsor-nss-sports.png' %}" alt="NSS Sports" style="height:18px; width:auto; object-fit:contain;"></div>
+  </div>
+</div>
+
+<div id="doneExtras" style="display:none; width:100%; max-width:460px; margin:26px auto 0; padding:0 22px 70px; text-align:center;">
+  <img src="{% static 'customer/kotn/kotn-cup-toronto-badge.png' %}" alt="Kotn Cup 26 Toronto" style="display:block; height:62px; width:auto; margin:0 auto 26px;">
+  <a href="{% url 'customer:pickup_join' slug=business.slug %}" style="display:inline-block; border:2px solid #a82a30; color:#a82a30; padding:16px 32px; font-size:13px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; text-decoration:none; font-family:'Inter',sans-serif;">Customize Another Shirt</a>
 </div>
 
 <script>
@@ -207,13 +219,18 @@
     }
     if (status === "picked_up") {
       clearInterval(pollInterval);
-      document.getElementById("doneMessage").textContent = "Your order has been picked up. Thanks for coming out!";
+      document.getElementById("doneLogo").src = GREEN_LOGO;
+      document.getElementById("doneMessage").textContent = "Thank You!";
+      document.getElementById("doneSubMessage").textContent =
+        "Enjoy your kit, and see you out on the pitch at Kotn Cup 26.";
+      document.getElementById("doneExtras").style.display = "block";
       show("doneScreen");
       return;
     }
     if (status === "cancelled") {
       clearInterval(pollInterval);
-      document.getElementById("doneMessage").textContent = "This order has been cancelled.";
+      document.getElementById("doneMessage").textContent = "Order Cancelled";
+      document.getElementById("doneSubMessage").textContent = "This order has been cancelled.";
       show("doneScreen");
       return;
     }
