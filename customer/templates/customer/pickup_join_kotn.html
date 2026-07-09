@@ -54,7 +54,6 @@
     .placement-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7860; margin-right: 4px; }
     .placement-btn { background: none; border: 1.5px solid #d8cba8; padding: 7px 12px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #8a7860; }
     .placement-btn.active { border-color: #a82a30; font-weight: 800; color: #2a1e18; background: #faf5f0; }
-    .placement-btn.disabled { opacity: 0.35; cursor: not-allowed; }
     .sleeve-btn { flex: 1; background: none; border: none; border-bottom: 2px solid #d8cba8; padding: 12px 0; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7860; }
     .sleeve-btn.active { border-bottom-color: #a82a30; font-weight: 800; color: #2a1e18; }
     .size-btn { min-width: 48px; background: none; border: 1.5px solid #d8cba8; padding: 10px 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: #8a7860; }
@@ -242,16 +241,24 @@
           const placementRow = document.createElement("div");
           placementRow.className = "placement-row";
           KOTN_PLACEMENTS.forEach(pl => {
-            const takenByOther = shirt.patches.some(sp => sp.key !== p.key && sp.placement === pl.key);
             const plBtn = document.createElement("button");
             plBtn.type = "button";
-            plBtn.className = "placement-btn"
-              + (selected.placement === pl.key ? " active" : "")
-              + (takenByOther ? " disabled" : "");
+            plBtn.className = "placement-btn" + (selected.placement === pl.key ? " active" : "");
             plBtn.textContent = pl.name;
-            plBtn.disabled = takenByOther;
             plBtn.addEventListener("click", () => {
-              selected.placement = pl.key;
+              if (selected.placement === pl.key) {
+                // Clicking the already-active placement deselects it.
+                selected.placement = null;
+              } else {
+                // If another patch on this shirt already has this placement,
+                // swap them instead of blocking the click.
+                const other = shirt.patches.find(sp => sp.key !== p.key && sp.placement === pl.key);
+                if (other) {
+                  const remaining = KOTN_PLACEMENTS.find(x => x.key !== pl.key);
+                  other.placement = remaining ? remaining.key : null;
+                }
+                selected.placement = pl.key;
+              }
               renderShirts();
             });
             placementRow.appendChild(plBtn);
