@@ -8,8 +8,6 @@
   <link rel="preload" as="font" type="font/woff2" href="{% static 'customer/kotn/fonts/Anton.woff2' %}" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="{% static 'customer/kotn/fonts/Staatliches.woff2' %}" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="{% static 'customer/kotn/fonts/Inter-variable.woff2' %}" crossorigin>
-  <link rel="preload" as="image" href="{% static 'customer/kotn/ticker-panel-maroon.png' %}">
-  <link rel="preload" as="image" href="{% static 'customer/kotn/ticker-panel-gold.png' %}">
   <style>
     @font-face {
       font-family: 'Anton';
@@ -47,9 +45,6 @@
     html, body { margin: 0; background: #f6f0e4; font-family: 'Inter', sans-serif; color: #2a1e18; }
     .wrap { max-width: 460px; margin: 0 auto; padding: 44px 22px 0; }
     @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-    @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-    .ticker-track { display: flex; align-items: center; height: 100%; width: max-content; opacity: 0; }
-    .ticker-track.ready { opacity: 1; animation: ticker-scroll 26s linear infinite; transition: opacity 0.25s ease; }
     .screen { display: none; }
     .screen.active { display: block; }
 
@@ -174,17 +169,6 @@
     </div>
   </div>
 
-  <div style="width:100%; max-width:460px; margin:26px auto 0; padding:0 22px; text-align:center;">
-    <div style="position:relative; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw; width:100vw; height:34px; overflow:hidden;">
-      <div class="ticker-track" id="tickerTrack">
-        <img src="{% static 'customer/kotn/ticker-panel-maroon.png' %}" alt="" style="height:100%; width:auto; display:block;">
-        <img src="{% static 'customer/kotn/ticker-panel-gold.png' %}" alt="" style="height:100%; width:auto; display:block;">
-        <img src="{% static 'customer/kotn/ticker-panel-maroon.png' %}" alt="" style="height:100%; width:auto; display:block;">
-        <img src="{% static 'customer/kotn/ticker-panel-gold.png' %}" alt="" style="height:100%; width:auto; display:block;">
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <script>
@@ -193,38 +177,6 @@
   const KIOSK_RESET_MS = 25000;
   const GREEN_LOGO = "{% static 'customer/kotn/qatn-logo-green.png' %}";
   var pollInterval;
-
-  // Ticker: don't start the scroll animation (or even show the strip) until
-  // both panel images are actually decoded and paintable — otherwise the
-  // animation runs against a container that's still resizing as images pop
-  // in, causing the white-flash/jump the design handoff flagged as a known
-  // issue. Preload hints in <head> make this resolve almost immediately in
-  // practice; the timeout is just a safety net if a fetch stalls.
-  (function() {
-    var track = document.getElementById("tickerTrack");
-    if (!track) return;
-    var urls = [
-      "{% static 'customer/kotn/ticker-panel-maroon.png' %}",
-      "{% static 'customer/kotn/ticker-panel-gold.png' %}"
-    ];
-    var loaders = urls.map(function(src) {
-      return new Promise(function(resolve) {
-        var img = new Image();
-        img.onload = resolve;
-        img.onerror = resolve;
-        img.src = src;
-        if (img.complete) resolve();
-      });
-    });
-    var revealed = false;
-    function reveal() {
-      if (revealed) return;
-      revealed = true;
-      track.classList.add("ready");
-    }
-    Promise.all(loaders).then(reveal);
-    setTimeout(reveal, 1500);
-  })();
 
   function goReady() {
     document.getElementById("stepper").classList.add("ready");
