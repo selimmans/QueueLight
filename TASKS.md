@@ -268,6 +268,15 @@ DJANGO_TIME_ZONE=America/Toronto
 - [x] 249 tests still passing (no test changes needed — pure template/view context addition, no behavior change to existing fields).
 - [x] Confirmed via direct production DB read (`railway connect Postgres --environment production`) that the previously-reported "sizes missing on dashboard" was not a code/data bug — the only active order at the time had `size` stored correctly and production was running the latest deployed code; likely a stale/uncached dashboard tab.
 
+## PHASE 25e — Kotn Cup 26: per-patch placement (Left Arm / Right Arm) (DEPLOYED)
+
+- [x] `KOTN_PATCH_PLACEMENTS` constant added (`left-arm`/`right-arm`) in `customer/views.py`; placement is chosen **per patch**, not per shirt — confirmed with the client since a 2-patch shirt needs one patch per arm.
+- [x] Shirt builder (`pickup_join_kotn.html`): a `.placement-row` (Left Arm / Right Arm buttons) appears under a patch the moment it's selected. If the shirt has 2 patches, whichever arm is already taken by the other patch is disabled/greyed on this one — enforces one patch per arm without a separate error state. `isValid()` now also requires every selected patch to have a placement and rejects duplicate placements on the same shirt.
+- [x] `_post_kotn` validation + storage updated: `shirts[].patches[]` now expects `{key, placement}` objects (was bare key strings); server validates each key and placement against the known lists and rejects duplicate placements per shirt. Stored patch dicts gained a `"placement"` field (display name, e.g. "Left Arm") alongside existing `name`/`crest`.
+- [x] Placement shown everywhere patch names already appear: builder summary rows, phone-step order summary (`renderOrderSummary()`), both confirmation screen layouts (single- and multi-tag, `pickup_confirmation_kotn.html`), and the dashboard card (SSR block + JS `renderKotnEntry`, `dashboard/templates/dashboard/queue.html`). Legacy shirts stored before this change simply omit the placement text — no error, same pattern as the earlier Size rollout.
+- [x] 251 tests passing (2 new: `test_invalid_placement_rejected`, `test_duplicate_placement_on_two_patches_rejected`; existing patch tests updated for the new `{key, placement}` POST shape).
+- [x] Verified end-to-end in local browser preview: 2-patch shirt build with placement-taken greying, phone-step summary, submission, confirmation screen (both patches + placements), dashboard card (SSR and after live "Mark Ready" poll re-render). Commit `c359e1e`.
+
 ## Backlog
 
 - [ ] Business logo upload — placeholder shown on join/confirmation page, upload via admin or settings
