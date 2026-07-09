@@ -50,6 +50,11 @@
     .row-btn.active .row-label { font-weight: 700; color: #2a1e18; }
     .row-check { font-size: 16px; color: #a82a30; opacity: 0; }
     .row-btn.active .row-check { opacity: 1; }
+    .placement-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px 14px 40px; flex-wrap: wrap; }
+    .placement-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7860; margin-right: 4px; }
+    .placement-btn { background: none; border: 1.5px solid #d8cba8; padding: 7px 12px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #8a7860; }
+    .placement-btn.active { border-color: #a82a30; font-weight: 800; color: #2a1e18; background: #faf5f0; }
+    .placement-btn.disabled { opacity: 0.35; cursor: not-allowed; }
     .sleeve-btn { flex: 1; background: none; border: none; border-bottom: 2px solid #d8cba8; padding: 12px 0; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7860; }
     .sleeve-btn.active { border-bottom-color: #a82a30; font-weight: 800; color: #2a1e18; }
     .size-btn { min-width: 48px; background: none; border: 1.5px solid #d8cba8; padding: 10px 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: #8a7860; }
@@ -131,6 +136,9 @@
   const KOTN_GARMENT_SIZES = [
     {% for s in kotn_garment_sizes %}{ key: "{{ s.key }}", name: "{{ s.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
   ];
+  const KOTN_PLACEMENTS = [
+    {% for p in kotn_patch_placements %}{ key: "{{ p.key }}", name: "{{ p.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
+  ];
   const MAX_LEN = {{ name_max_length }};
   const MAX_PATCHES = {{ kotn_patch_max_per_shirt }};
   const CREST_BASE = "{% static 'customer/kotn/' %}";
@@ -139,13 +147,21 @@
   let activeIndex = 0;
 
   function isValid(shirt) {
-    return shirt.patches.length > 0 && shirt.name.trim().length > 0;
+    if (shirt.patches.length === 0 || shirt.name.trim().length === 0) return false;
+    if (shirt.patches.some(p => !p.placement)) return false;
+    const placements = shirt.patches.map(p => p.placement);
+    if (new Set(placements).size !== placements.length) return false;
+    return true;
   }
   function allValid() {
     return shirts.every(isValid);
   }
   function summaryText(shirt) {
-    const patchNames = shirt.patches.map(k => KOTN_PATCHES.find(p => p.key === k).name).join(" + ");
+    const patchNames = shirt.patches.map(sp => {
+      const p = KOTN_PATCHES.find(p => p.key === sp.key);
+      const placementName = sp.placement ? KOTN_PLACEMENTS.find(pl => pl.key === sp.placement).name : null;
+      return placementName ? `${p.name} (${placementName})` : p.name;
+    }).join(" + ");
     const sleeveName = KOTN_SIZES.find(s => s.key === shirt.sleeve).name;
     const sizeName = KOTN_GARMENT_SIZES.find(s => s.key === shirt.size).name;
     return `${patchNames || "No patch"} · ${sleeveName} · ${sizeName}${shirt.name ? " · " + shirt.name : ""}`;
@@ -198,9 +214,13 @@
 
       const patchListEl = block.querySelector(".patchList");
       KOTN_PATCHES.forEach((p, i) => {
+        const selected = shirt.patches.find(sp => sp.key === p.key);
+        const wrap = document.createElement("div");
+        wrap.className = "patchWrap";
+
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "row-btn" + (shirt.patches.includes(p.key) ? " active" : "");
+        btn.className = "row-btn" + (selected ? " active" : "");
         btn.innerHTML = `
           <div class="row-num">${String(i + 1).padStart(2, "0")}</div>
           <img class="row-crest" src="${CREST_BASE}${p.crest}" alt="${p.name}">
@@ -208,14 +228,40 @@
           <div class="row-check">&#10003;</div>
         `;
         btn.addEventListener("click", () => {
-          if (shirt.patches.includes(p.key)) {
-            shirt.patches = shirt.patches.filter(k => k !== p.key);
+          const idx = shirt.patches.findIndex(sp => sp.key === p.key);
+          if (idx !== -1) {
+            shirt.patches.splice(idx, 1);
           } else if (shirt.patches.length < MAX_PATCHES) {
-            shirt.patches.push(p.key);
+            shirt.patches.push({ key: p.key, placement: null });
           }
           renderShirts();
         });
-        patchListEl.appendChild(btn);
+        wrap.appendChild(btn);
+
+        if (selected) {
+          const placementRow = document.createElement("div");
+          placementRow.className = "placement-row";
+          KOTN_PLACEMENTS.forEach(pl => {
+            const takenByOther = shirt.patches.some(sp => sp.key !== p.key && sp.placement === pl.key);
+            const plBtn = document.createElement("button");
+            plBtn.type = "button";
+            plBtn.className = "placement-btn"
+              + (selected.placement === pl.key ? " active" : "")
+              + (takenByOther ? " disabled" : "");
+            plBtn.textContent = pl.name;
+            plBtn.disabled = takenByOther;
+            plBtn.addEventListener("click", () => {
+              selected.placement = pl.key;
+              renderShirts();
+            });
+            placementRow.appendChild(plBtn);
+          });
+          placementRow.insertAdjacentHTML("afterbegin",
+            `<div class="placement-label">Placement</div>`);
+          wrap.appendChild(placementRow);
+        }
+
+        patchListEl.appendChild(wrap);
       });
       block.querySelector("#maxPatchNote").style.display = shirt.patches.length >= MAX_PATCHES ? "block" : "none";
 
@@ -292,7 +338,7 @@
   function renderOrderSummary() {
     const el = document.getElementById("orderSummary");
     el.innerHTML = shirts.map((shirt, idx) => {
-      const crests = shirt.patches.map(k => KOTN_PATCHES.find(p => p.key === k)).map(p => `
+      const crests = shirt.patches.map(sp => KOTN_PATCHES.find(p => p.key === sp.key)).map(p => `
         <img src="${CREST_BASE}${p.crest}" alt="${p.name}" style="width:46px; height:46px; object-fit:contain; flex-shrink:0;">
       `).join("");
       return `

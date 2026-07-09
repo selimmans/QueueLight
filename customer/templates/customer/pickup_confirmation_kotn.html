@@ -116,7 +116,7 @@
             {% for p in shirt.patches %}<img src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}" style="width:36px; height:36px; object-fit:contain;">{% endfor %}
           </div>
           <div style="flex:1;">
-            <div style="font-size:14px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
+            <div style="font-size:14px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if p.placement %} <span style="font-weight:500; color:#8a7860;">({{ p.placement }})</span>{% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
             <div style="font-size:12px; color:#8a7860;">{{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
           </div>
         </div>
@@ -133,7 +133,7 @@
           <div style="display:flex; gap:4px;">
             {% for p in shirt.patches %}<img src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}" style="width:32px; height:32px; object-fit:contain;">{% endfor %}
           </div>
-          <div style="font-size:15px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
+          <div style="font-size:15px; font-weight:700;">{% for p in shirt.patches %}{{ p.name }}{% if p.placement %} <span style="font-weight:500; color:#8a7860;">({{ p.placement }})</span>{% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</div>
         </div>
       </div>
       <div style="display:flex; justify-content:space-between; padding:0 4px; margin-bottom:14px;">

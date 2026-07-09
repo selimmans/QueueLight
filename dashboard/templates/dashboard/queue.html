@@ -538,7 +538,7 @@
               <div class="kotn-shirt-row">
                 <div class="kotn-shirt-tag">{{ shirt.tag }}</div>
                 {% for p in shirt.patches %}<img class="kotn-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}">{% endfor %}
-                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
+                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if p.placement %} ({{ p.placement }}){% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
               </div>
               {% endfor %}
             </div>
@@ -582,7 +582,7 @@
               <div class="kotn-shirt-row">
                 <div class="kotn-shirt-tag">{{ shirt.tag }}</div>
                 {% for p in shirt.patches %}<img class="kotn-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}">{% endfor %}
-                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
+                <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if p.placement %} ({{ p.placement }}){% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
               </div>
               {% endfor %}
             </div>
@@ -836,7 +836,7 @@
         const crestsHtml = (shirt.patches || [])
           .map(p => `<img class="kotn-crest" src="${KOTN_CREST_BASE}${p.crest}" alt="${p.name}">`)
           .join("");
-        const patchNames = (shirt.patches || []).map(p => p.name).join(" + ");
+        const patchNames = (shirt.patches || []).map(p => p.placement ? `${p.name} (${p.placement})` : p.name).join(" + ");
         return `<div class="kotn-shirt-row">
           <div class="kotn-shirt-tag">${shirt.tag}</div>
           ${crestsHtml}

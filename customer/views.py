@@ -33,6 +33,10 @@ KOTN_PATCHES = [
     {"key": "kotn-shield", "name": "Kotn Shield", "crest": "crest-kotn-shield.png"},
 ]
 KOTN_PATCH_MAX_PER_SHIRT = 2
+KOTN_PATCH_PLACEMENTS = [
+    {"key": "left-arm", "name": "Left Arm"},
+    {"key": "right-arm", "name": "Right Arm"},
+]
 # 300 physical numbered shirt tags on hand — tag numbers are auto-assigned
 # sequentially and globally across shirts (zero-padded to 3 digits, e.g. "003"),
 # never typed by the customer. A multi-shirt order consumes one tag per shirt.
@@ -364,6 +368,7 @@ class PickupJoinView(View):
             ctx["kotn_garment_sizes"] = KOTN_GARMENT_SIZES
             ctx["name_max_length"] = KOTN_NAME_MAX_LENGTH
             ctx["kotn_patch_max_per_shirt"] = KOTN_PATCH_MAX_PER_SHIRT
+            ctx["kotn_patch_placements"] = KOTN_PATCH_PLACEMENTS
         ctx.update(kwargs)
         return ctx
 
@@ -538,7 +543,8 @@ class PickupJoinView(View):
 
         The customer builds the whole order client-side (shirt builder + phone
         step) and POSTs it as a single request: `shirts` is a JSON list of
-        {patches: [key, ...], sleeve: key, name}, plus `phone`. Tag numbers are
+        {patches: [{key, placement}, ...], sleeve: key, size: key, name}, plus
+        `phone`. Tag numbers are
         assigned sequentially and globally (one per shirt, not per order) under
         a lock on the Business row so concurrent orders can't collide.
         """
@@ -557,13 +563,22 @@ class PickupJoinView(View):
             global_error = "Please build at least one shirt."
         else:
             for s in shirts_in:
-                patch_keys = s.get("patches") if isinstance(s, dict) else None
+                patches_in = s.get("patches") if isinstance(s, dict) else None
                 if (
-                    not isinstance(patch_keys, list)
-                    or not (1 <= len(patch_keys) <= KOTN_PATCH_MAX_PER_SHIRT)
-                    or not all(any(p["key"] == k for p in KOTN_PATCHES) for k in patch_keys)
+                    not isinstance(patches_in, list)
+                    or not (1 <= len(patches_in) <= KOTN_PATCH_MAX_PER_SHIRT)
+                    or not all(
+                        isinstance(p, dict)
+                        and any(kp["key"] == p.get("key") for kp in KOTN_PATCHES)
+                        and any(pl["key"] == p.get("placement") for pl in KOTN_PATCH_PLACEMENTS)
+                        for p in patches_in
+                    )
                 ):
-                    global_error = "Each shirt needs 1-2 valid patches."
+                    global_error = "Each shirt needs 1-2 valid patches, each with a placement."
+                    break
+                placements_used = [p["placement"] for p in patches_in]
+                if len(placements_used) != len(set(placements_used)):
+                    global_error = "Each patch on a shirt needs a different placement."
                     break
                 if not any(sz["key"] == s.get("sleeve") for sz in KOTN_SIZES):
                     global_error = "Please choose a sleeve length for every shirt."
@@ -591,8 +606,14 @@ class PickupJoinView(View):
         shirts = []
         for s in shirts_in:
             patches = [
-                {"name": p["name"], "crest": p["crest"]}
-                for k in s["patches"] for p in KOTN_PATCHES if p["key"] == k
+                {
+                    "name": p["name"],
+                    "crest": p["crest"],
+                    "placement": next(
+                        pl["name"] for pl in KOTN_PATCH_PLACEMENTS if pl["key"] == ip["placement"]
+                    ),
+                }
+                for ip in s["patches"] for p in KOTN_PATCHES if p["key"] == ip["key"]
             ]
             sleeve_name = next(sz["name"] for sz in KOTN_SIZES if sz["key"] == s["sleeve"])
             size_name = next(gs["name"] for gs in KOTN_GARMENT_SIZES if gs["key"] == s["size"])

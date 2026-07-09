@@ -8,6 +8,7 @@ from customer.views import (
     KOTN_GARMENT_SIZES,
     KOTN_ORDER_MAX,
     KOTN_PATCH_MAX_PER_SHIRT,
+    KOTN_PATCH_PLACEMENTS,
     KOTN_PATCHES,
     KOTN_POPUP_SLUG,
 )
@@ -22,9 +23,16 @@ def kotn_business(db):
     )
 
 
+def _patch(index=0, placement_index=0):
+    return {
+        "key": KOTN_PATCHES[index]["key"],
+        "placement": KOTN_PATCH_PLACEMENTS[placement_index]["key"],
+    }
+
+
 def _shirt(**overrides):
     data = {
-        "patches": [KOTN_PATCHES[0]["key"]],
+        "patches": [_patch()],
         "sleeve": "short-sleeve",
         "size": "m",
         "name": "Sam",
@@ -58,24 +66,42 @@ class TestKotnShirtValidation:
 
     def test_invalid_patch_key_rejected(self, client, kotn_business):
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
-        resp = client.post(url, _post([_shirt(patches=["not-a-real-patch"])]))
+        resp = client.post(url, _post([_shirt(patches=[{"key": "not-a-real-patch", "placement": "left-arm"}])]))
         assert resp.status_code == 400
         assert b"valid patches" in resp.content
 
+    def test_invalid_placement_rejected(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        resp = client.post(
+            url, _post([_shirt(patches=[{"key": KOTN_PATCHES[0]["key"], "placement": "left-foot"}])])
+        )
+        assert resp.status_code == 400
+        assert b"valid patches" in resp.content
+
+    def test_duplicate_placement_on_two_patches_rejected(self, client, kotn_business):
+        two = [_patch(0, placement_index=0), _patch(1, placement_index=0)]
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        resp = client.post(url, _post([_shirt(patches=two)]))
+        assert resp.status_code == 400
+        assert b"different placement" in resp.content
+
     def test_more_than_max_patches_rejected(self, client, kotn_business):
-        too_many = [p["key"] for p in KOTN_PATCHES][: KOTN_PATCH_MAX_PER_SHIRT + 1]
+        too_many = [_patch(i, i % 2) for i in range(KOTN_PATCH_MAX_PER_SHIRT + 1)]
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
         resp = client.post(url, _post([_shirt(patches=too_many)]))
         assert resp.status_code == 400
         assert b"valid patches" in resp.content
 
     def test_two_patches_allowed(self, client, kotn_business):
-        two = [KOTN_PATCHES[0]["key"], KOTN_PATCHES[1]["key"]]
+        two = [_patch(0, placement_index=0), _patch(1, placement_index=1)]
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
         resp = client.post(url, _post([_shirt(patches=two)]))
         assert resp.status_code == 302
         entry = PickupEntry.objects.get(business=kotn_business)
-        assert len(entry.intake_answers["Shirts"][0]["patches"]) == 2
+        stored = entry.intake_answers["Shirts"][0]["patches"]
+        assert len(stored) == 2
+        assert stored[0]["placement"] == KOTN_PATCH_PLACEMENTS[0]["name"]
+        assert stored[1]["placement"] == KOTN_PATCH_PLACEMENTS[1]["name"]
 
     def test_invalid_sleeve_rejected(self, client, kotn_business):
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
@@ -133,13 +159,14 @@ class TestKotnSingleShirtOrder:
         assert len(shirts) == 1
         assert shirts[0]["tag"] == "001"
         assert shirts[0]["patches"][0]["name"] == KOTN_PATCHES[0]["name"]
+        assert shirts[0]["patches"][0]["placement"] == KOTN_PATCH_PLACEMENTS[0]["name"]
         assert shirts[0]["sleeve"] == "Short Sleeve"
 
 
 class TestKotnMultiShirtOrder:
     def test_two_shirts_get_two_sequential_tags(self, client, kotn_business):
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
-        shirts = [_shirt(name="sam"), _shirt(name="ziad", patches=[KOTN_PATCHES[1]["key"]])]
+        shirts = [_shirt(name="sam"), _shirt(name="ziad", patches=[_patch(1)])]
         resp = client.post(url, _post(shirts))
         assert resp.status_code == 302
         entry = PickupEntry.objects.get(business=kotn_business)
