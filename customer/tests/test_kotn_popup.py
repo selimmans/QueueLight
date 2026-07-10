@@ -229,3 +229,29 @@ class TestKotnMultiShirtOrder:
         client.post(url, _post([_shirt()]))
         entry = PickupEntry.objects.get(business=kotn_business)
         assert entry.order_number == "001"
+
+    def test_cancelled_entries_dont_hold_tags(self, client, kotn_business, db):
+        # "Clear active orders" cancels waiting/ready entries but never deletes
+        # them. Cancelled entries must not count toward the tag pool, so that
+        # clearing everything before an event actually resets numbering to 001.
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        client.post(url, _post([_shirt(name="one")]))
+        client.post(url, _post([_shirt(name="two")]))
+        PickupEntry.objects.filter(business=kotn_business).update(
+            status=PickupEntry.Status.CANCELLED
+        )
+        client.post(url, _post([_shirt(name="three")]))
+        newest = PickupEntry.objects.get(customer_name="THREE")
+        assert newest.order_number == "001"
+
+    def test_picked_up_entries_still_hold_tags(self, client, kotn_business, db):
+        # Unlike cancelled entries, completed (picked_up) orders represent a
+        # real physical tag already handed out and must never be reused.
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        client.post(url, _post([_shirt(name="one")]))
+        PickupEntry.objects.filter(business=kotn_business).update(
+            status=PickupEntry.Status.PICKED_UP
+        )
+        client.post(url, _post([_shirt(name="two")]))
+        newest = PickupEntry.objects.get(customer_name="TWO")
+        assert newest.order_number == "002"

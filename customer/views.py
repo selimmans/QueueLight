@@ -629,9 +629,9 @@ class PickupJoinView(View):
             # customers can ever be handed the same shirt-tag number.
             Business.objects.select_for_update().get(pk=business.pk)
             used_tags = []
-            for order_number, ia in PickupEntry.objects.filter(business=business).values_list(
-                "order_number", "intake_answers"
-            ):
+            for order_number, ia in PickupEntry.objects.filter(business=business).exclude(
+                status=PickupEntry.Status.CANCELLED
+            ).values_list("order_number", "intake_answers"):
                 ia = ia or {}
                 existing_shirts = ia.get("Shirts")
                 if existing_shirts:
