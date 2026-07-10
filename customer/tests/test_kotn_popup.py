@@ -122,11 +122,14 @@ class TestKotnShirtValidation:
         entry = PickupEntry.objects.get(business=kotn_business)
         assert entry.intake_answers["Shirts"][0]["size"] == "XL"
 
-    def test_missing_name_rejected(self, client, kotn_business):
+    def test_missing_name_defaults_to_no_name(self, client, kotn_business):
+        """Name-sticking supplies ran out — the form no longer collects a
+        name, so a blank name must succeed and default to "NO NAME"."""
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
         resp = client.post(url, _post([_shirt(name="")]))
-        assert resp.status_code == 400
-        assert b"needs a name" in resp.content
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(business=kotn_business)
+        assert entry.intake_answers["Shirts"][0]["name"] == "NO NAME"
 
     def test_name_over_max_length_rejected(self, client, kotn_business):
         url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})

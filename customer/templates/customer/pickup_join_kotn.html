@@ -58,7 +58,6 @@
     .sleeve-btn.active { border-bottom-color: #a82a30; font-weight: 800; color: #2a1e18; }
     .size-btn { min-width: 48px; background: none; border: 1.5px solid #d8cba8; padding: 10px 4px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: #8a7860; }
     .size-btn.active { border-color: #a82a30; font-weight: 800; color: #2a1e18; background: #faf5f0; }
-    #nameInput { width: 100%; background: none; border: none; border-bottom: 2px solid #a82a30; padding: 10px 0 14px; font-size: 32px; font-family: 'Sohne Dreiviertelfett', 'Staatliches', sans-serif; letter-spacing: 0.02em; color: #2a1e18; text-transform: uppercase; text-align: center; outline: none; }
     #addBtn { width: 100%; margin-top: 18px; background: none; border: 2px solid #a82a30; color: #a82a30; padding: 14px; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; font-family: 'Inter', sans-serif; }
     #addBtn.disabled { border-color: #d8cba8; color: #a89876; cursor: not-allowed; }
     #continueBtn { width: 100%; margin-top: 14px; background: #a82a30; color: #f6f0e4; border: none; padding: 19px; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; font-family: 'Inter', sans-serif; }
@@ -146,7 +145,7 @@
   let activeIndex = 0;
 
   function isValid(shirt) {
-    if (shirt.patches.length === 0 || shirt.name.trim().length === 0) return false;
+    if (shirt.patches.length === 0) return false;
     if (shirt.patches.some(p => !p.placement)) return false;
     const placements = shirt.patches.map(p => p.placement);
     if (new Set(placements).size !== placements.length) return false;
@@ -204,10 +203,6 @@
         <div class="rule-tight"></div>
         <div style="font-family:'Anton',sans-serif; font-size:18px; letter-spacing:0.02em; margin-bottom:16px;">Size</div>
         <div class="sizeRow" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-        <div class="rule-tight"></div>
-        <div style="font-family:'Anton',sans-serif; font-size:18px; letter-spacing:0.02em; margin-bottom:6px;">Name For The Back</div>
-        <div style="font-size:12px; color:#8a7860; margin-bottom:18px;">(max ${MAX_LEN} letters)</div>
-        <input id="nameInput" type="text" placeholder="HELALI" maxlength="${MAX_LEN}" autocomplete="off">
       `;
       container.appendChild(block);
 
@@ -290,14 +285,6 @@
         btn.textContent = gs.name;
         btn.addEventListener("click", () => { shirt.size = gs.key; renderShirts(); });
         sizeRow.appendChild(btn);
-      });
-
-      const nameInput = block.querySelector("#nameInput");
-      nameInput.value = shirt.name;
-      nameInput.addEventListener("input", () => {
-        shirt.name = nameInput.value.toUpperCase().replace(/[^A-Z0-9 ]/g, "").slice(0, MAX_LEN);
-        nameInput.value = shirt.name;
-        updateButtons();
       });
 
       const removeBtn = block.querySelector(".removeBtn");

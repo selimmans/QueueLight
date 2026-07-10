@@ -88,6 +88,38 @@ class TestKotnTagNumbering:
         assert PickupEntry.objects.count() == 3
 
 
+class TestKotnNameOptional:
+    """Name-sticking supplies ran out — the form no longer collects a name,
+    so a blank/missing name must succeed and default to "NO NAME" instead
+    of being rejected."""
+
+    def test_blank_name_defaults_and_succeeds(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        resp = client.post(url, {"phone": "+16135550100", "shirts": json.dumps([_kotn_shirt(name="")])})
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(business=kotn_business)
+        assert entry.intake_answers["Shirts"][0]["name"] == "NO NAME"
+
+    def test_missing_name_key_defaults_and_succeeds(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        shirt = _kotn_shirt()
+        del shirt["name"]
+        resp = client.post(url, {"phone": "+16135550100", "shirts": json.dumps([shirt])})
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(business=kotn_business)
+        assert entry.intake_answers["Shirts"][0]["name"] == "NO NAME"
+
+    def test_existing_named_order_untouched_by_new_blank_order(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        client.post(url, {"phone": "+16135550100", "shirts": json.dumps([_kotn_shirt("ALI")])})
+        client.post(url, {"phone": "+16135550101", "shirts": json.dumps([_kotn_shirt(name="")])})
+
+        named = PickupEntry.objects.get(intake_answers__Shirts__0__name="ALI")
+        assert named.intake_answers["Shirts"][0]["name"] == "ALI"
+        default_named = PickupEntry.objects.get(intake_answers__Shirts__0__name="NO NAME")
+        assert default_named.intake_answers["Shirts"][0]["name"] == "NO NAME"
+
+
 class TestJoinViewModes:
     def test_queue_only_shows_queue_form(self, client, queue_only_business):
         url = reverse("customer:join", kwargs={"slug": queue_only_business.slug})

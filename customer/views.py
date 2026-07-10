@@ -23,6 +23,9 @@ _JOIN_WINDOW = 3600
 KOTN_POPUP_SLUG = "kotn-cup-toronto"
 KOTN_NAME_MAX_LENGTH = 8
 KOTN_NAME_RE = re.compile(r"^[A-Z0-9 ]+$")
+# Name-sticking supplies ran out — the join form no longer collects a name,
+# so every new order gets this placeholder instead.
+KOTN_DEFAULT_NAME = "NO NAME"
 # 6 fixed patch designs, matching the client's crest artwork.
 KOTN_PATCHES = [
     {"key": "sporting-club", "name": "Sporting Club", "crest": "crest-sporting-club.png"},
@@ -587,10 +590,7 @@ class PickupJoinView(View):
                     global_error = "Please choose a size for every shirt."
                     break
                 name = (s.get("name") or "").strip().upper()
-                if not name:
-                    global_error = "Every shirt needs a name for the back."
-                    break
-                if len(name) > KOTN_NAME_MAX_LENGTH or not KOTN_NAME_RE.match(name):
+                if name and (len(name) > KOTN_NAME_MAX_LENGTH or not KOTN_NAME_RE.match(name)):
                     global_error = (
                         f"Names must be letters, numbers, or spaces, "
                         f"{KOTN_NAME_MAX_LENGTH} characters or fewer."
@@ -621,7 +621,7 @@ class PickupJoinView(View):
                 "patches": patches,
                 "sleeve": sleeve_name,
                 "size": size_name,
-                "name": s["name"].strip().upper(),
+                "name": (s.get("name") or "").strip().upper() or KOTN_DEFAULT_NAME,
             })
 
         with transaction.atomic():
