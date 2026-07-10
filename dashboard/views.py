@@ -13,6 +13,7 @@ from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.text import slugify
 from django.views import View
@@ -140,6 +141,7 @@ class DashboardView(View):
         pickup_entries = []
         pickup_waiting = []
         pickup_ready = []
+        avg_wait_minutes = None
         if business.pickup_enabled:
             pickup_entries = list(
                 PickupEntry.objects.filter(
@@ -149,6 +151,10 @@ class DashboardView(View):
             )
             pickup_waiting = [e for e in pickup_entries if e.status == PickupEntry.Status.WAITING]
             pickup_ready = [e for e in pickup_entries if e.status == PickupEntry.Status.READY]
+            if pickup_entries:
+                now = timezone.now()
+                total_seconds = sum((now - e.registered_at).total_seconds() for e in pickup_entries)
+                avg_wait_minutes = int(total_seconds / 60 / len(pickup_entries))
 
         # dashboard_mode drives tab visibility in the template
         if business.queue_enabled and business.pickup_enabled:
@@ -169,6 +175,7 @@ class DashboardView(View):
             "pickup_waiting": pickup_waiting,
             "pickup_ready": pickup_ready,
             "dashboard_mode": dashboard_mode,
+            "avg_wait_minutes": avg_wait_minutes,
         })
 
 
@@ -878,6 +885,15 @@ class PickupClearView(View):
         if not _require_session(request, business):
             return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
         PickupService.clear_active_orders(business)
+        return redirect("dashboard:settings", slug=slug)
+
+
+class PickupResetTagsView(View):
+    def post(self, request, slug):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        PickupService.reset_tag_numbering(business)
         return redirect("dashboard:settings", slug=slug)
 
 

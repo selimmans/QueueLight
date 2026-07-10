@@ -45,6 +45,22 @@ class TestPickupDashboardSection:
         assert b"42" in resp.content
         assert b"pickup-list" in resp.content
 
+    def test_dashboard_shows_avg_wait(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        PickupService.register(pickup_business, order_number="42")
+        url = reverse("dashboard:dashboard", kwargs={"slug": pickup_business.slug})
+        resp = client.get(url)
+        assert resp.status_code == 200
+        assert resp.context["avg_wait_minutes"] == 0
+        assert b"avg-wait-stat" in resp.content
+
+    def test_dashboard_avg_wait_none_when_no_active_orders(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        url = reverse("dashboard:dashboard", kwargs={"slug": pickup_business.slug})
+        resp = client.get(url)
+        assert resp.status_code == 200
+        assert resp.context["avg_wait_minutes"] is None
+
     def test_dashboard_no_pickup_section_when_disabled(self, client, db):
         biz = Business.objects.create(
             name="No Pickup", slug="no-pickup", is_active=True,
@@ -78,6 +94,24 @@ class TestPickupReadyView:
         resp = client.post(url)
         assert resp.status_code == 302
         assert "login" in resp["Location"]
+
+
+class TestPickupResetTagsView:
+    def test_reset_sets_business_timestamp(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        assert pickup_business.pickup_tag_reset_at is None
+        url = reverse("dashboard:pickup_reset_tags", kwargs={"slug": pickup_business.slug})
+        resp = client.post(url)
+        assert resp.status_code == 302
+        pickup_business.refresh_from_db()
+        assert pickup_business.pickup_tag_reset_at is not None
+
+    def test_requires_session(self, client, pickup_business):
+        url = reverse("dashboard:pickup_reset_tags", kwargs={"slug": pickup_business.slug})
+        resp = client.post(url)
+        assert resp.status_code == 302
+        assert "login" in resp["Location"]
+        assert pickup_business.pickup_tag_reset_at is None
 
 
 class TestPickupPickedUpView:

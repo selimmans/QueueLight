@@ -512,6 +512,9 @@
           <span class="dot" style="background:#4f46e5;animation:none"></span>
           Active Orders — <span id="pickup-count">{{ pickup_entries|length }}</span>
         </div>
+        <div id="avg-wait-stat" style="font-size:0.8rem;font-weight:600;color:#4f46e5;{% if not pickup_entries %}display:none{% endif %}">
+          ⏱ Avg Wait — <span id="avg-wait-value">{{ avg_wait_minutes }}</span> min
+        </div>
         {% if business.pickup_show_wait_estimate %}
         <div id="wait-estimate" style="font-size:0.8rem;font-weight:600;color:#4f46e5;display:none">
           ⏱ ~<span id="wait-range">—</span> min · <span id="wait-queue">—</span> in queue
@@ -725,6 +728,19 @@
       const counter = document.getElementById("pickup-count");
       if (!list) return;
       if (counter) counter.textContent = _activeOrders.length;
+
+      const avgWaitStat = document.getElementById("avg-wait-stat");
+      if (avgWaitStat) {
+        if (_activeOrders.length) {
+          const avg = Math.round(
+            _activeOrders.reduce((sum, o) => sum + (o.minutes_waiting || 0), 0) / _activeOrders.length
+          );
+          document.getElementById("avg-wait-value").textContent = avg;
+          avgWaitStat.style.display = "";
+        } else {
+          avgWaitStat.style.display = "none";
+        }
+      }
 
       if (!_activeOrders.length) {
         list.innerHTML = `<p class="empty">No active orders</p>`;

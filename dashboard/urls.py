@@ -23,6 +23,7 @@ urlpatterns = [
     path("<slug:slug>/pickup/unregistered-ready/", views.PickupUnregisteredReadyView.as_view(), name="pickup_unregistered_ready"),
     path("<slug:slug>/pickup/closing-soon/", views.PickupClosingSoonView.as_view(), name="pickup_closing_soon"),
     path("<slug:slug>/pickup/clear/", views.PickupClearView.as_view(), name="pickup_clear"),
+    path("<slug:slug>/pickup/reset-tags/", views.PickupResetTagsView.as_view(), name="pickup_reset_tags"),
 ]
 
 api_urlpatterns = [

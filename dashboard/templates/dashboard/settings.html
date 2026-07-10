@@ -824,6 +824,11 @@
         {% csrf_token %}
         <button class="danger-btn" type="button" onclick="confirmPickupClear()">Clear active orders — cancel all waiting</button>
       </form>
+
+      <form method="post" id="pickupResetTagsForm" action="{% url 'dashboard:pickup_reset_tags' slug=business.slug %}">
+        {% csrf_token %}
+        <button class="danger-btn" type="button" onclick="confirmPickupResetTags()">Reset order numbers — next order starts at 001</button>
+      </form>
     </div>
     {% endif %}
 
@@ -899,6 +904,12 @@
     function confirmPickupClear() {
       if (confirm("Cancel all waiting and ready pickup orders? This cannot be undone.")) {
         document.getElementById("pickupClearForm").submit();
+      }
+    }
+
+    function confirmPickupResetTags() {
+      if (confirm("Reset order numbering so the next order starts at 001? Past orders are kept on record, but their tag numbers may be reused.")) {
+        document.getElementById("pickupResetTagsForm").submit();
       }
     }
 

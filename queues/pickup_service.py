@@ -1,5 +1,6 @@
 import logging
 from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 from businesses.models import Business
@@ -76,6 +77,22 @@ class PickupService:
                 meta={"cleared_count": count},
             )
         return count
+
+    @staticmethod
+    def reset_tag_numbering(business: Business) -> None:
+        """Mark 'now' as the tag-numbering baseline so the next order starts
+        at 001 again. Past PickupEntry rows are kept for records — numbering
+        just stops counting anything registered before this point."""
+        business.pickup_tag_reset_at = timezone.now()
+        business.save(update_fields=["pickup_tag_reset_at"])
+        # Customer-facing join views cache the Business object for 30s
+        # (`business_obj:{slug}`) — bust it so the reset takes effect immediately
+        # instead of silently no-op'ing until the cache expires.
+        cache.delete(f"business_obj:{business.slug}")
+        PickupEventLog.objects.create(
+            business=business,
+            event_type=PickupEventLog.EventType.TAGS_RESET,
+        )
 
     @staticmethod
     def send_closing_soon_sms(business: Business) -> tuple[int, int]:

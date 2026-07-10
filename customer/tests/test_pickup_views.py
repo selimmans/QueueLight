@@ -1,8 +1,11 @@
+import json
+
 import pytest
 from django.urls import reverse
 
 from businesses.models import Business
 from queues.models import PickupEntry
+from queues.pickup_service import PickupService
 
 
 @pytest.fixture
@@ -35,6 +38,54 @@ def inactive_business(db):
         name="Inactive", slug="inactive-biz", is_active=False,
         queue_enabled=False, pickup_enabled=False,
     )
+
+
+@pytest.fixture
+def kotn_business(db):
+    return Business.objects.create(
+        name="Kotn Cup 26 Toronto", slug="kotn-cup-toronto", is_active=True,
+        queue_enabled=False, pickup_enabled=True,
+    )
+
+
+def _kotn_shirt(name="ALI", patch="sporting-club", placement="left-arm"):
+    return {
+        "patches": [{"key": patch, "placement": placement}],
+        "sleeve": "short-sleeve",
+        "size": "m",
+        "name": name,
+    }
+
+
+class TestKotnTagNumbering:
+    def test_first_order_starts_at_001(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        resp = client.post(url, {"phone": "+16135550100", "shirts": json.dumps([_kotn_shirt()])})
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(business=kotn_business)
+        assert entry.intake_answers["Shirts"][0]["tag"] == "001"
+
+    def test_second_order_continues_numbering(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        client.post(url, {"phone": "+16135550100", "shirts": json.dumps([_kotn_shirt("ALI")])})
+        resp = client.post(url, {"phone": "+16135550101", "shirts": json.dumps([_kotn_shirt("BOB")])})
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(intake_answers__Shirts__0__name="BOB")
+        assert entry.intake_answers["Shirts"][0]["tag"] == "002"
+
+    def test_reset_restarts_numbering_at_001(self, client, kotn_business):
+        url = reverse("customer:pickup_join", kwargs={"slug": kotn_business.slug})
+        client.post(url, {"phone": "+16135550100", "shirts": json.dumps([_kotn_shirt("ALI")])})
+        client.post(url, {"phone": "+16135550101", "shirts": json.dumps([_kotn_shirt("BOB")])})
+
+        PickupService.reset_tag_numbering(kotn_business)
+
+        resp = client.post(url, {"phone": "+16135550102", "shirts": json.dumps([_kotn_shirt("CAT")])})
+        assert resp.status_code == 302
+        entry = PickupEntry.objects.get(intake_answers__Shirts__0__name="CAT")
+        assert entry.intake_answers["Shirts"][0]["tag"] == "001"
+        # Past orders are untouched — still on record with their original tags.
+        assert PickupEntry.objects.count() == 3
 
 
 class TestJoinViewModes:

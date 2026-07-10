@@ -102,6 +102,20 @@ class TestPickupServiceMarkReady:
         assert "Pickup Shop" in call_kwargs["body"]
 
 
+class TestPickupServiceResetTagNumbering:
+    def test_sets_reset_timestamp(self, pickup_business):
+        assert pickup_business.pickup_tag_reset_at is None
+        PickupService.reset_tag_numbering(pickup_business)
+        pickup_business.refresh_from_db()
+        assert pickup_business.pickup_tag_reset_at is not None
+
+    def test_logs_event(self, pickup_business):
+        PickupService.reset_tag_numbering(pickup_business)
+        assert PickupEventLog.objects.filter(
+            business=pickup_business, event_type=PickupEventLog.EventType.TAGS_RESET
+        ).exists()
+
+
 class TestPickupServiceMarkPickedUp:
     def test_mark_picked_up_changes_status(self, pickup_business):
         entry = PickupService.register(pickup_business, order_number="3")

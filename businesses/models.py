@@ -130,6 +130,9 @@ class Business(models.Model):
     is_closing = models.BooleanField(default=False)
     avg_service_minutes = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # When set, pickup tag numbering ignores every PickupEntry registered before
+    # this timestamp so the next order restarts at 001 without deleting history.
+    pickup_tag_reset_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = "businesses"

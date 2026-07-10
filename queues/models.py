@@ -102,6 +102,7 @@ class PickupEventLog(models.Model):
         SMS_SENT = "sms_sent", "SMS Sent"
         SMS_FAILED = "sms_failed", "SMS Failed"
         CLOSING_SOON_SMS = "closing_soon_sms", "Closing Soon SMS"
+        TAGS_RESET = "tags_reset", "Tags Reset"
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="pickup_event_logs")
     entry = models.ForeignKey(
