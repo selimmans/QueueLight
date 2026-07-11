@@ -116,6 +116,41 @@ class TestPickupServiceResetTagNumbering:
         ).exists()
 
 
+class TestPickupServiceResendReadySms:
+    @patch("queues.pickup_service.TwilioSMSBackend.send")
+    def test_resend_sends_sms_when_phone_present(self, mock_send, pickup_business):
+        mock_send.return_value = (True, "")
+        entry = PickupService.register(pickup_business, order_number="7", phone="+16135550001")
+        PickupService.mark_ready(entry)
+        mock_send.reset_mock()
+
+        result = PickupService.resend_ready_sms(entry)
+
+        assert result is True
+        mock_send.assert_called_once()
+        assert "+16135550001" in str(mock_send.call_args)
+
+    def test_resend_returns_false_when_no_phone(self, pickup_business):
+        entry = PickupService.register(pickup_business, order_number="7")
+        PickupService.mark_ready(entry)
+
+        result = PickupService.resend_ready_sms(entry)
+
+        assert result is False
+
+    @patch("queues.pickup_service.TwilioSMSBackend.send")
+    def test_resend_logs_new_sms_sent_event(self, mock_send, pickup_business):
+        mock_send.return_value = (True, "")
+        entry = PickupService.register(pickup_business, order_number="7", phone="+16135550001")
+        PickupService.mark_ready(entry)
+        before = PickupEventLog.objects.filter(entry=entry, event_type=PickupEventLog.EventType.SMS_SENT).count()
+
+        PickupService.resend_ready_sms(entry)
+
+        after = PickupEventLog.objects.filter(entry=entry, event_type=PickupEventLog.EventType.SMS_SENT).count()
+        assert after == before + 1
+
+
 class TestPickupServiceMarkPickedUp:
     def test_mark_picked_up_changes_status(self, pickup_business):
         entry = PickupService.register(pickup_business, order_number="3")

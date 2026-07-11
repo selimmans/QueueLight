@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.urls import reverse
 
@@ -126,6 +128,55 @@ class TestPickupPickedUpView:
         assert resp.status_code == 302
         entry.refresh_from_db()
         assert entry.status == PickupEntry.Status.PICKED_UP
+
+
+class TestPickupResendSmsView:
+    @patch("queues.pickup_service.TwilioSMSBackend.send")
+    def test_resend_sends_sms(self, mock_send, client, pickup_business, pickup_staff):
+        mock_send.return_value = (True, "")
+        _login(client, pickup_business, pickup_staff)
+        entry = PickupService.register(pickup_business, order_number="30", phone="+16135550030")
+        PickupService.mark_ready(entry)
+        mock_send.reset_mock()
+
+        url = reverse("dashboard:pickup_resend_sms", kwargs={
+            "slug": pickup_business.slug, "entry_id": entry.pk
+        })
+        resp = client.post(url)
+
+        assert resp.status_code == 302
+        mock_send.assert_called_once()
+
+    def test_requires_session(self, client, pickup_business):
+        entry = PickupService.register(pickup_business, order_number="30", phone="+16135550030")
+        url = reverse("dashboard:pickup_resend_sms", kwargs={
+            "slug": pickup_business.slug, "entry_id": entry.pk
+        })
+        resp = client.post(url)
+        assert resp.status_code == 302
+        assert "login" in resp["Location"]
+
+    def test_dashboard_shows_resend_button_for_ready_order_with_phone(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        entry = PickupService.register(pickup_business, order_number="31", phone="+16135550031")
+        PickupService.mark_ready(entry)
+        url = reverse("dashboard:dashboard", kwargs={"slug": pickup_business.slug})
+        resp = client.get(url)
+        resend_url = reverse("dashboard:pickup_resend_sms", kwargs={
+            "slug": pickup_business.slug, "entry_id": entry.pk
+        })
+        assert resend_url.encode() in resp.content
+
+    def test_dashboard_hides_resend_button_when_no_phone(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        entry = PickupService.register(pickup_business, order_number="32")
+        PickupService.mark_ready(entry)
+        url = reverse("dashboard:dashboard", kwargs={"slug": pickup_business.slug})
+        resp = client.get(url)
+        resend_url = reverse("dashboard:pickup_resend_sms", kwargs={
+            "slug": pickup_business.slug, "entry_id": entry.pk
+        })
+        assert resend_url.encode() not in resp.content
 
 
 class TestPickupStatusAPI:

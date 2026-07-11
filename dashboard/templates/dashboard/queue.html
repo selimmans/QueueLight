@@ -271,7 +271,7 @@
     .intake-item { font-size: 0.78rem; color: #6b7280; margin-bottom: 0.2rem; }
     .intake-item strong { color: #374151; font-weight: 600; }
 
-    .entry-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+    .entry-actions { display: flex; gap: 0.35rem; flex-shrink: 0; justify-content: space-between; }
 
     .action-btn {
       padding: 0.3rem 0.6rem;
@@ -288,7 +288,9 @@
     .btn-noshow   { border-color: #fca5a5; color: #dc2626; }
     .btn-ready    { border-color: #6ee7b7; color: #059669; }
     .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
+    .btn-resend   { border-color: #fcd34d; color: #b45309; }
     .action-btn:hover { opacity: 0.75; }
+    .action-btn:disabled { opacity: 0.5; cursor: default; }
 
     /* ── Kotn Cup 26: grouped multi-shirt order card ─── */
     .kotn-card { padding: 0.9rem 1rem; border-bottom: 1px solid #f3f4f6; }
@@ -590,6 +592,13 @@
               {% endfor %}
             </div>
             <div class="entry-actions">
+              {% if entry.phone %}
+              <form method="post" action="{% url 'dashboard:pickup_resend_sms' slug=business.slug entry_id=entry.pk %}" onsubmit="return disableOnSubmit(this)">
+                {% csrf_token %}<button class="action-btn btn-resend" type="submit">Resend Text</button>
+              </form>
+              {% else %}
+              <span></span>
+              {% endif %}
               <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
                 {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
               </form>
@@ -603,6 +612,11 @@
               <div class="entry-meta">Registered {{ entry.registered_at|timesince }} ago{% if entry.phone %} &middot; SMS{% endif %}</div>
             </div>
             <div class="entry-actions">
+              {% if entry.phone %}
+              <form method="post" action="{% url 'dashboard:pickup_resend_sms' slug=business.slug entry_id=entry.pk %}" style="display:inline" onsubmit="return disableOnSubmit(this)">
+                {% csrf_token %}<button class="action-btn btn-resend" type="submit">Resend Text</button>
+              </form>
+              {% endif %}
               <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
                 {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
               </form>
@@ -645,6 +659,14 @@
     function getCsrf() {
       const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
       return match ? decodeURIComponent(match[1]) : "";
+    }
+
+    // Disable a form's submit button immediately so a fast double-click
+    // can't fire the resend twice before the page navigates away.
+    function disableOnSubmit(form) {
+      const btn = form.querySelector("button");
+      if (btn) { btn.disabled = true; btn.textContent = "Sent ✓"; }
+      return true;
     }
     const DASHBOARD_MODE = "{{ dashboard_mode }}";
     const SESSION_KEY = "activeTab_" + SLUG;
@@ -800,6 +822,14 @@
       pickupPost(`/staff/${SLUG}/pickup/${id}/picked-up/`);
     }
 
+    // Disable immediately so a fast double-click can't fire two texts;
+    // the next poll re-render (pickupPost triggers one on completion)
+    // naturally restores the button to normal.
+    function resendText(id, btn) {
+      if (btn) { btn.disabled = true; btn.textContent = "Sent ✓"; }
+      pickupPost(`/staff/${SLUG}/pickup/${id}/resend/`);
+    }
+
     function markUnregisteredReady(data) {
       // Optimistically remove from Section 2 and add a placeholder to Section 1
       _unregOrders = _unregOrders.filter(o => o.pos_order_id !== data.pos_order_id);
@@ -864,7 +894,10 @@
       if (e.status === "waiting") {
         action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>`;
       } else if (e.status === "ready") {
-        action = `<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>`;
+        const resendBtn = e.phone
+          ? `<button class="action-btn btn-resend" onclick="resendText(${e.id}, this)">Resend Text</button>`
+          : `<span></span>`;
+        action = `${resendBtn}<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>`;
       }
 
       return `<div class="kotn-card">
@@ -922,7 +955,10 @@
         action = `<button class="action-btn btn-ready"
           onclick="markReady(${e.id})">Ready</button>`;
       } else if (e.status === "ready") {
-        action = `<button class="action-btn btn-pickedup"
+        const resendBtn = e.phone
+          ? `<button class="action-btn btn-resend" onclick="resendText(${e.id}, this)">Resend Text</button>`
+          : "";
+        action = `${resendBtn}<button class="action-btn btn-pickedup"
           onclick="markPickedUp(${e.id})">Picked up</button>`;
       }
       const titleHtml = e.order_number

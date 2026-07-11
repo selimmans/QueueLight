@@ -48,6 +48,15 @@ class PickupService:
         return entry
 
     @staticmethod
+    def resend_ready_sms(entry: PickupEntry) -> bool:
+        """Re-send the 'order ready' SMS for an entry. Returns False if
+        there's no phone number on file to send to."""
+        if not entry.phone:
+            return False
+        PickupService._send_ready_sms(entry)
+        return True
+
+    @staticmethod
     def mark_picked_up(entry: PickupEntry) -> PickupEntry:
         entry.status = PickupEntry.Status.PICKED_UP
         entry.completed_at = timezone.now()

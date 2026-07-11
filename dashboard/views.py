@@ -799,6 +799,16 @@ class PickupPickedUpView(View):
         return redirect("dashboard:dashboard", slug=slug)
 
 
+class PickupResendSmsView(View):
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
+        PickupService.resend_ready_sms(entry)
+        return redirect("dashboard:dashboard", slug=slug)
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class PickupUnregisteredReadyView(View):
     """POST /staff/<slug>/pickup/unregistered-ready/
