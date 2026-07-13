@@ -337,6 +337,43 @@ class TestSettingsFeatureToggles:
         assert biz.queue_enabled is False
 
 
+class TestSettingsPickupSms:
+    def test_save_pickup_sms_updates_message(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        url = reverse("dashboard:settings", kwargs={"slug": pickup_business.slug})
+        message = "Hey, thank you for being a part of Kotn Cup. Your jersey is ready!"
+        client.post(url, {"action": "save_pickup_sms", "pickup_notification_message": message})
+        pickup_business.refresh_from_db()
+        assert pickup_business.pickup_notification_message == message
+
+    def test_save_pickup_sms_does_not_touch_intake_fields(self, client, pickup_business, pickup_staff):
+        pickup_business.pickup_intake_fields = ["Any allergies?"]
+        pickup_business.save(update_fields=["pickup_intake_fields"])
+        _login(client, pickup_business, pickup_staff)
+        url = reverse("dashboard:settings", kwargs={"slug": pickup_business.slug})
+        client.post(url, {"action": "save_pickup_sms", "pickup_notification_message": "New message"})
+        pickup_business.refresh_from_db()
+        assert pickup_business.pickup_intake_fields == ["Any allergies?"]
+
+
+class TestSettingsPickupIntake:
+    def test_save_pickup_intake_updates_questions(self, client, pickup_business, pickup_staff):
+        _login(client, pickup_business, pickup_staff)
+        url = reverse("dashboard:settings", kwargs={"slug": pickup_business.slug})
+        client.post(url, {"action": "save_pickup_intake", "pickup_intake_questions": ["Any allergies?"]})
+        pickup_business.refresh_from_db()
+        assert pickup_business.pickup_intake_fields == ["Any allergies?"]
+
+    def test_save_pickup_intake_does_not_touch_sms_message(self, client, pickup_business, pickup_staff):
+        pickup_business.pickup_notification_message = "Custom ready message"
+        pickup_business.save(update_fields=["pickup_notification_message"])
+        _login(client, pickup_business, pickup_staff)
+        url = reverse("dashboard:settings", kwargs={"slug": pickup_business.slug})
+        client.post(url, {"action": "save_pickup_intake", "pickup_intake_questions": []})
+        pickup_business.refresh_from_db()
+        assert pickup_business.pickup_notification_message == "Custom ready message"
+
+
 # ---------------------------------------------------------------------------
 # Unregistered POS orders in /api/pickup/<slug>/status/
 # ---------------------------------------------------------------------------

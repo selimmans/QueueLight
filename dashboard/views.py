@@ -462,12 +462,15 @@ class SettingsView(View):
                 "business_type", "intake_fields",
             ])
 
-        elif action == "save_pickup_settings":
+        elif action == "save_pickup_sms":
             pickup_msg = request.POST.get("pickup_notification_message", "").strip()
             business.pickup_notification_message = pickup_msg
+            business.save(update_fields=["pickup_notification_message"])
+
+        elif action == "save_pickup_intake":
             pickup_questions = [q.strip() for q in request.POST.getlist("pickup_intake_questions") if q.strip()]
             business.pickup_intake_fields = pickup_questions
-            business.save(update_fields=["pickup_notification_message", "pickup_intake_fields"])
+            business.save(update_fields=["pickup_intake_fields"])
 
         elif action == "save_pickup_display":
             business.pickup_show_wait_estimate = request.POST.get("pickup_show_wait_estimate") == "1"
