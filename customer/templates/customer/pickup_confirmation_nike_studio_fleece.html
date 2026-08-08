@@ -1,0 +1,155 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="theme-{{ nike_theme }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio Fleece — Your build</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --end-bg: {{ nike_theme_tokens.end_bg }};
+      --end-heading: {{ nike_theme_tokens.end_heading }};
+      --end-muted: {{ nike_theme_tokens.end_muted }};
+      --end-box-bg: {{ nike_theme_tokens.end_box_bg }};
+      --end-box-border: {{ nike_theme_tokens.end_box_border }};
+      --card-tint: {{ nike_theme_tokens.card_tint }};
+      --accent-a: {{ nike_accent_a }};
+      --accent-b: {{ nike_accent_b }};
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--end-bg); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; color: var(--end-heading); }
+    .anton { font-family: 'Anton', Impact, sans-serif; }
+    .wrap { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 32px; text-align: center; }
+    .screen { display: none; width: 100%; flex-direction: column; align-items: center; }
+    .screen.active { display: flex; }
+
+    @keyframes saPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.25); opacity: 0.55; } }
+    .pulse-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent-a); margin-bottom: 28px; animation: saPulse 1.1s ease-in-out infinite; }
+    .check-ring { width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--accent-b); display: flex; align-items: center; justify-content: center; margin-bottom: 26px; }
+    .check-ring span { color: var(--accent-b); font-size: 32px; font-weight: 700; line-height: 1; }
+
+    .screen-heading { font-size: 28px; color: var(--end-heading); margin: 0 0 22px; }
+    .order-box { background: var(--end-box-bg); border-radius: 6px; padding: 18px 28px; margin-bottom: 22px; border: 1px solid var(--end-box-border); border-top-width: 3px; }
+    .order-box.waiting { border-top-color: var(--accent-a); }
+    .order-box.ready { border-top-color: var(--accent-b); }
+    .order-label { color: var(--end-muted); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 6px; }
+    .order-number { color: var(--end-heading); font-size: 30px; letter-spacing: 1px; }
+
+    .instruction { color: var(--end-muted); font-size: 14px; line-height: 1.5; max-width: 280px; margin-bottom: 14px; }
+
+    .build-card { width: 100%; max-width: 320px; background: var(--end-box-bg); border: 1px solid var(--end-box-border); border-radius: 8px; padding: 18px; margin-top: 14px; text-align: left; }
+    .build-card-label { font-size: 10px; color: var(--end-muted); font-weight: 700; letter-spacing: 1px; margin-bottom: 12px; }
+    .build-row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+    .build-row:last-child { margin-bottom: 0; }
+    .build-thumb { width: 48px; height: 48px; border-radius: 6px; overflow: hidden; background: var(--card-tint); flex-shrink: 0; }
+    .build-thumb.garment { width: 60px; height: 60px; border-radius: 0; overflow: visible; background: none; }
+    .build-thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .build-row-title { font-size: 13px; color: var(--end-heading); font-weight: 700; }
+    .build-row-sub { font-size: 12px; color: var(--end-muted); }
+    .build-row-text { font-size: 12px; color: var(--end-heading); }
+    .build-row-text .muted { color: var(--end-muted); }
+    .build-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .build-group:last-child { margin-bottom: 0; }
+
+    .lockup-mini { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 14px; padding: 12px 22px; margin-top: 22px; }
+    .lockup-mini img { height: 22px; width: auto; }
+    .lockup-mini img.jd { height: 15px; }
+    .bracket-mini { position: absolute; width: 10px; height: 10px; }
+    .bracket-mini.tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; }
+    .bracket-mini.tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; }
+    .bracket-mini.bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; }
+    .bracket-mini.br { bottom: 0; right: 0; border-bottom: 2px solid; border-right: 2px solid; }
+    .tick-mini { position: relative; width: 10px; height: 22px; }
+    .tick-mini span { position: absolute; left: 50%; transform: translateX(-50%); }
+    .tick-mini .h { width: 10px; height: 2px; }
+    .tick-mini .v { width: 2px; height: 10px; }
+    .tick-mini .top { top: -12px; }
+    .tick-mini .bottom { bottom: -12px; }
+    .waiting-accent .bracket-mini, .waiting-accent .tick-mini span { border-color: var(--accent-a); background: var(--accent-a); }
+    .ready-accent .bracket-mini, .ready-accent .tick-mini span { border-color: var(--accent-b); background: var(--accent-b); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="screen active" id="waitingScreen">
+    <div class="pulse-dot"></div>
+    <div class="anton screen-heading">YOU'RE IN THE QUEUE</div>
+    <div class="order-box waiting">
+      <div class="order-label">ORDER NUMBER</div>
+      <div class="anton order-number">{{ entry.order_number }}</div>
+    </div>
+    <div class="instruction">We'll text your build status. This usually takes just a few minutes.</div>
+
+    {% include "customer/_nike_build_card.html" %}
+
+    <div class="lockup-mini waiting-accent">
+      <div class="bracket-mini tl"></div><div class="bracket-mini tr"></div><div class="bracket-mini bl"></div><div class="bracket-mini br"></div>
+      <img src="{% static 'customer/nike_studio_fleece/nike-nsw-red.png' %}" alt="Nike NSW">
+      <div class="tick-mini"><span class="h top"></span><span class="v top"></span><span class="h bottom"></span><span class="v bottom"></span></div>
+      <img class="jd" src="{% static 'customer/nike_studio_fleece/jd-type-red.png' %}" alt="JD Sports">
+    </div>
+  </div>
+
+  <div class="screen" id="readyScreen">
+    <div class="check-ring"><span>&#10003;</span></div>
+    <div class="anton screen-heading">YOUR BUILD IS READY</div>
+    <div class="order-box ready">
+      <div class="order-label">ORDER NUMBER</div>
+      <div class="anton order-number">{{ entry.order_number }}</div>
+    </div>
+    <div class="instruction">Head to the airbrush station to pick up your piece.</div>
+
+    {% include "customer/_nike_build_card.html" %}
+
+    <div class="lockup-mini ready-accent">
+      <div class="bracket-mini tl"></div><div class="bracket-mini tr"></div><div class="bracket-mini bl"></div><div class="bracket-mini br"></div>
+      <img src="{% static 'customer/nike_studio_fleece/nike-nsw-blue.png' %}" alt="Nike NSW">
+      <div class="tick-mini"><span class="h top"></span><span class="v top"></span><span class="h bottom"></span><span class="v bottom"></span></div>
+      <img class="jd" src="{% static 'customer/nike_studio_fleece/jd-type-blue.png' %}" alt="JD Sports">
+    </div>
+  </div>
+
+  <div class="screen" id="cancelledScreen">
+    <div class="anton screen-heading">Order Cancelled</div>
+    <div class="instruction">This order has been cancelled. Check with staff if that doesn't look right.</div>
+  </div>
+
+</div>
+
+<script>
+  const STATUS_URL = "{% url 'customer:pickup_status' slug=business.slug entry_id=entry.pk %}";
+  var pollInterval;
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function applyState(data) {
+    if (data.status === 'ready' || data.status === 'picked_up') {
+      clearInterval(pollInterval);
+      show('readyScreen');
+    } else if (data.status === 'cancelled') {
+      clearInterval(pollInterval);
+      show('cancelledScreen');
+    }
+  }
+
+  function poll() {
+    fetch(STATUS_URL).then(function(r) { return r.json(); }).then(applyState).catch(function() {});
+  }
+
+  {% if entry.status == "ready" or entry.status == "picked_up" %}
+    show('readyScreen');
+  {% elif entry.status == "cancelled" %}
+    show('cancelledScreen');
+  {% else %}
+    pollInterval = setInterval(poll, 5000);
+    poll();
+  {% endif %}
+</script>
+</body>
+</html>

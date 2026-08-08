@@ -1,0 +1,606 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="theme-{{ nike_theme }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio Fleece — Build your hoodie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --page-bg: {{ nike_theme_tokens.page_bg }};
+      --heading: {{ nike_theme_tokens.heading_color }};
+      --divider: {{ nike_theme_tokens.divider_color }};
+      --end-bg: {{ nike_theme_tokens.end_bg }};
+      --end-heading: {{ nike_theme_tokens.end_heading }};
+      --muted: {{ nike_theme_tokens.muted }};
+      --border: {{ nike_theme_tokens.border_default }};
+      --card-bg: {{ nike_theme_tokens.card_bg }};
+      --card-tint: {{ nike_theme_tokens.card_tint }};
+      --pill-bg: {{ nike_theme_tokens.pill_bg_default }};
+      --accent-a: {{ nike_accent_a }};
+      --accent-b: {{ nike_accent_b }};
+      --review-header-bg: {{ nike_theme_tokens.review_header_bg }};
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page-bg); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; color: var(--heading); }
+    .anton { font-family: 'Anton', Impact, sans-serif; }
+    .wrap { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; position: relative; }
+    .step { display: none; flex: 1; flex-direction: column; }
+    .step.active { display: flex; }
+
+    .global-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px 14px; color: #dc2626; font-size: 13px; margin: 16px 20px 0; }
+
+    /* Hero */
+    .hero { background: var(--end-bg); padding: 56px 32px 44px; text-align: center; }
+    .wordmark { color: var(--accent-a); font-size: 13px; font-weight: 800; letter-spacing: 6px; margin-bottom: 8px; text-transform: uppercase; }
+    .tagline { color: var(--muted); font-size: 11px; letter-spacing: 1.5px; font-style: italic; margin-bottom: 20px; }
+    .lockup { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 22px; padding: 20px 34px; margin-bottom: 14px; }
+    .lockup img { height: 56px; width: auto; }
+    .lockup img.jd { height: 34px; }
+    .bracket { position: absolute; width: 16px; height: 16px; border-color: var(--accent-a); }
+    .bracket.tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; }
+    .bracket.tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; }
+    .bracket.bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; }
+    .bracket.br { bottom: 0; right: 0; border-bottom: 2px solid; border-right: 2px solid; }
+    .tick { position: relative; width: 16px; height: 56px; }
+    .tick span { position: absolute; left: 50%; background: var(--accent-a); transform: translateX(-50%); }
+    .tick .h { width: 16px; height: 2px; }
+    .tick .v { width: 2px; height: 16px; }
+    .tick .top { top: -20px; }
+    .tick .bottom { bottom: -20px; }
+    .hero-hint { color: var(--heading); font-size: 14px; line-height: 1.5; max-width: 300px; margin: 0 auto; }
+
+    /* Sections */
+    .section { padding: 36px 20px 40px; }
+    .section-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+    .section-num { font-size: 22px; color: var(--accent-a); }
+    .section-title { font-size: 22px; color: var(--heading); letter-spacing: 0.5px; }
+    .section-sub { color: var(--muted); font-size: 14px; line-height: 1.4; margin-bottom: 20px; }
+    .divider { height: 1px; background: var(--divider); margin: 0 32px; }
+    .hidden { display: none !important; }
+
+    /* Option cards (shared) */
+    .option-card { position: relative; border: 2px solid var(--border); border-radius: 5px; cursor: pointer; overflow: hidden; }
+    .option-card.selected { border-color: var(--accent-a); }
+    .select-dot { position: absolute; top: 5px; right: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-a); opacity: 0; }
+    .option-card.selected .select-dot { opacity: 1; }
+
+    /* Hoodies — transparent cutouts, no card/box; selection = color glow + dot */
+    .hoodie-row-top { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+    .hoodie-row-bottom { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 24px; }
+    .hoodie-card { width: calc((100% - 20px) / 3); border: none; border-radius: 0; }
+    .hoodie-row-bottom .hoodie-card { width: auto; }
+    .hoodie-photo { aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; filter: none; transition: filter .15s; }
+    .hoodie-card.selected .hoodie-photo { filter: drop-shadow(0 0 10px var(--accent-a)); }
+    .hoodie-photo img { width: 100%; height: 100%; object-fit: contain; }
+
+    .size-section { margin-top: 4px; }
+    .size-label { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--heading); margin-bottom: 12px; }
+    .size-row { display: flex; gap: 8px; }
+    .size-btn { flex: 1; text-align: center; border: 2px solid var(--border); border-radius: 5px; padding: 10px 0; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--heading); background: transparent; }
+    .size-btn.selected { border-color: var(--accent-a); background: var(--accent-a); color: #fff; }
+
+    /* Airbrush */
+    .mode-row { display: flex; gap: 12px; margin-bottom: 24px; }
+    .mode-card { flex: 1; border: 2px solid var(--border); border-radius: 6px; padding: 20px 14px; cursor: pointer; text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: var(--heading); }
+    .mode-card.selected { border-color: var(--accent-a); }
+    .design-section-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .count-label { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .design-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .design-grid.pool-3 { display: flex; gap: 10px; justify-content: center; }
+    .design-grid.pool-3 .design-card { width: calc((100% - 20px) / 3); }
+    .pyramid-top { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+    .pyramid-bottom { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .design-card { aspect-ratio: 1; background: var(--card-tint); display: flex; align-items: center; justify-content: center; padding: 8px; }
+    .design-card img { width: 100%; height: 100%; object-fit: contain; }
+    .pyramid-top .design-card { width: calc((100% - 20px) / 3); }
+
+    /* Patches */
+    .patch-head-row { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; }
+    .pill { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--pill-bg); padding: 4px 10px; border-radius: 20px; }
+    .pill.active { color: #fff; background: var(--accent-a); }
+    .patch-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 8px; }
+    .patch-card { padding: 8px; background: var(--card-tint); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+    .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+    .patch-card.maxed:not(.selected) { opacity: 0.35; }
+    .arm-toggle { display: flex; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+    .arm-btn { border: none; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 6px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
+    .arm-btn.active { background: var(--accent-a); color: #fff; }
+
+    /* Footer CTA */
+    .footer { padding: 8px 20px 40px; }
+    .footer-hint { text-align: center; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; min-height: 14px; }
+    .cta-btn { width: 100%; background: var(--accent-a); color: #fff; border: none; border-radius: 2px; padding: 16px 0; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; cursor: pointer; }
+    .cta-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Cap toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 6px 16px rgba(0,0,0,0.3); z-index: 50; white-space: nowrap; }
+    .toast.hidden { display: none; }
+
+    /* Review screen */
+    .review-header { position: sticky; top: 0; background: var(--review-header-bg); z-index: 5; display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--divider); }
+    .back-btn { background: none; border: none; font-size: 24px; color: var(--heading); padding: 0; width: 32px; text-align: left; cursor: pointer; }
+    .review-title { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--heading); }
+    .review-body { flex: 1; padding: 28px 20px 24px; }
+    .review-heading { font-size: 26px; color: var(--heading); margin: 0 0 18px; }
+    .review-card { background: var(--card-bg); border-radius: 8px; padding: 18px; margin-bottom: 22px; }
+    .review-section { margin-bottom: 16px; }
+    .review-section:last-child { margin-bottom: 0; }
+    .review-section-divider { height: 1px; background: var(--divider); margin-bottom: 16px; }
+    .review-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 1px; }
+    .edit-link { background: none; border: none; color: var(--accent-a); font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; }
+    .review-card-body { display: flex; gap: 12px; align-items: center; }
+    .thumb { width: 48px; height: 48px; flex-shrink: 0; }
+    .thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .review-item-title { font-size: 16px; font-weight: 700; color: var(--heading); }
+    .review-item-sub { font-size: 13px; color: var(--muted); }
+    .review-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .review-thumb { text-align: center; width: 48px; }
+    .review-thumb .thumb.small { width: 48px; height: 48px; background: var(--card-tint); margin-bottom: 3px; }
+    .review-thumb-label { font-size: 8px; color: var(--muted); }
+    .review-thumb-label .muted { color: var(--muted); }
+    .review-empty { font-size: 12px; color: var(--muted); }
+
+    .phone-block { margin-top: 8px; }
+    .phone-label { font-size: 11px; color: var(--accent-a); font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; }
+    .phone-sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+    #phoneInput { width: 100%; box-sizing: border-box; text-align: center; border: none; border-bottom: 1px solid var(--divider); padding: 8px 2px 14px; font-size: 24px; font-weight: 800; font-family: Arial, Helvetica, sans-serif; color: var(--end-heading); background: transparent; outline: none; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  {% if global_error %}
+    <div class="global-error">{{ global_error }}</div>
+  {% endif %}
+
+  <div id="toast" class="toast hidden"></div>
+
+  <form method="post" id="nike-form">
+    {% csrf_token %}
+    <input type="hidden" name="build" id="buildInput">
+    <input type="hidden" name="phone" id="phoneHidden">
+
+    <div class="step active" id="stepBuild">
+      <div style="flex:1;">
+
+        <div class="hero">
+          <div class="wordmark">STUDIO FLEECE</div>
+          <div class="tagline">It's just a sweatsuit until it's not</div>
+          <div class="lockup">
+            <div class="bracket tl"></div><div class="bracket tr"></div><div class="bracket bl"></div><div class="bracket br"></div>
+            <img src="{% static 'customer/nike_studio_fleece/nike-nsw-red.png' %}" alt="Nike NSW">
+            <div class="tick">
+              <span class="h top"></span><span class="v top"></span><span class="h bottom"></span><span class="v bottom"></span>
+            </div>
+            <img class="jd" src="{% static 'customer/nike_studio_fleece/jd-type-red.png' %}" alt="JD Sports">
+          </div>
+          <div class="hero-hint">Scroll down to customize your hoodie with airbrush art and patches.</div>
+        </div>
+
+        <div class="section" id="section-hoodie">
+          <div class="section-head"><span class="anton section-num">00</span><span class="anton section-title">HOODIE &amp; SIZE</span></div>
+          <div class="section-sub">Pick one hoodie style, then your size.</div>
+
+          <div class="hoodie-row-top">
+            {% for h in nike_hoodies|slice:":2" %}
+            <div class="option-card hoodie-card" data-id="{{ h.id }}" data-light="{{ h.light|yesno:'1,0' }}">
+              <div class="hoodie-photo"><img src="{% static 'customer/nike_studio_fleece/' %}{{ h.img }}" alt="{{ h.label }}"></div>
+              <div class="select-dot"></div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="hoodie-row-bottom">
+            {% for h in nike_hoodies|slice:"2:" %}
+            <div class="option-card hoodie-card" data-id="{{ h.id }}" data-light="{{ h.light|yesno:'1,0' }}">
+              <div class="hoodie-photo"><img src="{% static 'customer/nike_studio_fleece/' %}{{ h.img }}" alt="{{ h.label }}"></div>
+              <div class="select-dot"></div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div id="sizeSection" class="size-section hidden">
+            <div class="size-label">SELECT SIZE</div>
+            <div class="size-row">
+              {% for s in nike_sizes %}
+              <div class="size-btn" data-id="{{ s }}">{{ s }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section" id="section-airbrush">
+          <div class="section-head"><span class="anton section-num">01</span><span class="anton section-title">AIRBRUSH</span></div>
+          <div class="section-sub">Pick one large design, or two small placements.</div>
+
+          <div class="mode-row">
+            <div class="mode-card" data-mode="large">1 LARGE</div>
+            <div class="mode-card" data-mode="small">2 SMALL</div>
+          </div>
+
+          <div id="designSection" class="hidden">
+            <div class="design-section-row">
+              <div class="size-label" style="margin-bottom:0;">SELECT DESIGN(S)</div>
+              <div id="designCountLabel" class="count-label"></div>
+            </div>
+
+            <div class="design-grid pool-3 hidden" data-pool="dark-large">
+              {% for d in nike_designs_dark_large %}
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              {% endfor %}
+            </div>
+            <div class="design-grid hidden" data-pool="dark-small">
+              <div class="pyramid-top">
+                {% for d in nike_designs_dark_small|slice:":2" %}
+                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+                {% endfor %}
+              </div>
+              <div class="pyramid-bottom">
+                {% for d in nike_designs_dark_small|slice:"2:" %}
+                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="design-grid pool-3 hidden" data-pool="light-large">
+              {% for d in nike_designs_light_large %}
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              {% endfor %}
+            </div>
+            <div class="design-grid hidden" data-pool="light-small">
+              <div class="pyramid-top">
+                {% for d in nike_designs_light_small|slice:":2" %}
+                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+                {% endfor %}
+              </div>
+              <div class="pyramid-bottom">
+                {% for d in nike_designs_light_small|slice:"2:" %}
+                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section" id="section-patches">
+          <div class="section-head"><span class="anton section-num">02</span><span class="anton section-title">PATCHES</span></div>
+          <div class="section-sub">Choose up to {{ nike_max_patches }}, placed on either arm.</div>
+          <div class="patch-head-row"><div id="patchCountLabel" class="pill">0/{{ nike_max_patches }}</div></div>
+
+          <div class="patch-grid">
+            {% for p in nike_patches|slice:":4" %}
+            <div class="option-card patch-card" data-id="{{ p.id }}">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
+              <div class="select-dot"></div>
+              <div class="arm-toggle hidden">
+                <button type="button" class="arm-btn" data-arm="left">L</button>
+                <button type="button" class="arm-btn" data-arm="right">R</button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="patch-grid">
+            {% for p in nike_patches|slice:"4:" %}
+            <div class="option-card patch-card" data-id="{{ p.id }}">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
+              <div class="select-dot"></div>
+              <div class="arm-toggle hidden">
+                <button type="button" class="arm-btn" data-arm="left">L</button>
+                <button type="button" class="arm-btn" data-arm="right">R</button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer">
+        <div id="footerHint" class="footer-hint"></div>
+        <button type="button" id="reviewBtn" class="cta-btn" disabled>REVIEW ORDER</button>
+      </div>
+    </div>
+
+    <div class="step" id="stepReview">
+      <div class="review-header">
+        <button type="button" id="backBtn" class="back-btn">&#8249;</button>
+        <div class="review-title">EDIT BUILD</div>
+      </div>
+      <div class="review-body">
+        <h1 class="anton review-heading">REVIEW YOUR BUILD</h1>
+
+        <div class="review-card">
+          <div class="review-section">
+            <div class="review-card-head"><span>GARMENT</span><button type="button" class="edit-link" data-target="section-hoodie">Edit</button></div>
+            <div class="review-card-body">
+              <div class="thumb"><img id="reviewHoodieImg" src="" alt=""></div>
+              <div>
+                <div id="reviewHoodieLabel" class="review-item-title"></div>
+                <div id="reviewSizeLabel" class="review-item-sub"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section-divider"></div>
+          <div class="review-section">
+            <div class="review-card-head"><span id="reviewAirbrushHead">AIRBRUSH</span><button type="button" class="edit-link" data-target="section-airbrush">Edit</button></div>
+            <div id="reviewDesigns" class="review-thumbs"></div>
+          </div>
+
+          <div class="review-section-divider"></div>
+          <div class="review-section">
+            <div class="review-card-head"><span>PATCHES</span><button type="button" class="edit-link" data-target="section-patches">Edit</button></div>
+            <div id="reviewPatches" class="review-thumbs"></div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin:0 0 24px;"></div>
+
+        <div class="phone-block">
+          <div class="phone-label">YOUR PHONE</div>
+          <div class="phone-sub">We'll text you the moment it's ready.</div>
+          <input type="tel" id="phoneInput" placeholder="(416) 555-0134" autocomplete="tel">
+        </div>
+      </div>
+      <div class="footer">
+        <button type="submit" id="submitBtn" class="cta-btn" disabled>SUBMIT BUILD</button>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+  const MAX_PATCHES = {{ nike_max_patches }};
+  const state = { hoodieId: null, hoodieLight: false, size: null, airbrushMode: null, airbrushSelections: [], patches: [] };
+
+  function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
+
+  function updateDesignPool() {
+    const poolKey = (state.hoodieLight === false ? 'dark' : 'light') + '-' + (state.airbrushMode || '');
+    document.querySelectorAll('.design-grid').forEach(g => {
+      g.classList.toggle('hidden', g.dataset.pool !== poolKey);
+    });
+    refreshDesignSelectionUI();
+  }
+
+  function refreshDesignSelectionUI() {
+    document.querySelectorAll('.design-card').forEach(c => {
+      c.classList.toggle('selected', state.airbrushSelections.includes(c.dataset.id));
+    });
+    const label = document.getElementById('designCountLabel');
+    if (state.airbrushMode) {
+      label.textContent = `${state.airbrushSelections.length}/${requiredDesigns()} SELECTED`;
+    } else {
+      label.textContent = '';
+    }
+  }
+
+  function refreshPatchUI() {
+    const maxed = state.patches.length >= MAX_PATCHES;
+    document.querySelectorAll('.patch-card').forEach(card => {
+      const entry = state.patches.find(p => p.id === card.dataset.id);
+      card.classList.toggle('selected', !!entry);
+      card.classList.toggle('maxed', maxed);
+      const armToggle = card.querySelector('.arm-toggle');
+      armToggle.classList.toggle('hidden', !entry);
+      armToggle.querySelectorAll('.arm-btn').forEach(btn => {
+        btn.classList.toggle('active', !!entry && entry.arm === btn.dataset.arm);
+      });
+    });
+    const pill = document.getElementById('patchCountLabel');
+    pill.textContent = `${state.patches.length}/${MAX_PATCHES}`;
+    pill.classList.toggle('active', state.patches.length > 0);
+  }
+
+  function footerHintText() {
+    if (!state.hoodieId) return 'Choose your hoodie to continue';
+    if (!state.size) return 'Select a size to continue';
+    if (!state.airbrushMode) return 'Choose your airbrush design to continue';
+    if (state.airbrushSelections.length !== requiredDesigns()) {
+      return `Select ${requiredDesigns() - state.airbrushSelections.length} more design(s)`;
+    }
+    return '';
+  }
+
+  function canContinue() {
+    return !!state.hoodieId && !!state.size && !!state.airbrushMode && state.airbrushSelections.length === requiredDesigns();
+  }
+
+  function updateFooter() {
+    const hint = footerHintText();
+    document.getElementById('footerHint').textContent = hint;
+    document.getElementById('reviewBtn').disabled = !canContinue();
+  }
+
+  document.querySelectorAll('.hoodie-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const light = card.dataset.light === '1';
+      const groupChanged = state.hoodieLight !== light;
+      state.hoodieId = card.dataset.id;
+      state.hoodieLight = light;
+      if (groupChanged) state.airbrushSelections = [];
+      document.querySelectorAll('.hoodie-card').forEach(c => c.classList.toggle('selected', c === card));
+      document.getElementById('sizeSection').classList.remove('hidden');
+      updateDesignPool();
+      updateFooter();
+    });
+  });
+
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.size = btn.dataset.id;
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      updateFooter();
+    });
+  });
+
+  document.querySelectorAll('.mode-card').forEach(card => {
+    card.addEventListener('click', () => {
+      state.airbrushMode = card.dataset.mode;
+      state.airbrushSelections = [];
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('selected', c === card));
+      document.getElementById('designSection').classList.remove('hidden');
+      updateDesignPool();
+      updateFooter();
+    });
+  });
+
+  let toastTimer;
+  function showToast(msg) {
+    clearTimeout(toastTimer);
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    toastTimer = setTimeout(() => toast.classList.add('hidden'), 2000);
+  }
+
+  document.querySelectorAll('.design-card').forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.closest('.design-grid').classList.contains('hidden')) return;
+      const id = card.dataset.id;
+      const max = requiredDesigns();
+      const idx = state.airbrushSelections.indexOf(id);
+      if (idx !== -1) {
+        state.airbrushSelections.splice(idx, 1);
+      } else if (max === 1) {
+        // "1 LARGE" mode is a single either/or choice — swap silently, no toast.
+        state.airbrushSelections = [id];
+      } else if (state.airbrushSelections.length < max) {
+        state.airbrushSelections.push(id);
+      } else {
+        showToast('Deselect one to choose this');
+      }
+      refreshDesignSelectionUI();
+      updateFooter();
+    });
+  });
+
+  document.querySelectorAll('.patch-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const existing = state.patches.find(p => p.id === id);
+      if (existing) {
+        state.patches = state.patches.filter(p => p.id !== id);
+      } else if (state.patches.length < MAX_PATCHES) {
+        state.patches.push({ id, arm: 'left' });
+      } else {
+        showToast('Deselect one to choose this');
+      }
+      refreshPatchUI();
+    });
+    card.querySelectorAll('.arm-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const existing = state.patches.find(p => p.id === card.dataset.id);
+        if (existing) existing.arm = btn.dataset.arm;
+        refreshPatchUI();
+      });
+    });
+  });
+
+  function makeThumb(src, label, sub) {
+    const wrap = document.createElement('div');
+    wrap.className = 'review-thumb';
+    wrap.innerHTML = `<div class="thumb small"><img src="${src}" alt="${label}"></div><div class="review-thumb-label">${label}${sub ? '<br><span class="muted">' + sub + '</span>' : ''}</div>`;
+    return wrap;
+  }
+
+  function populateReview() {
+    const hoodieCard = document.querySelector(`.hoodie-card[data-id="${state.hoodieId}"]`);
+    const hoodieImg = hoodieCard.querySelector('img');
+    document.getElementById('reviewHoodieImg').src = hoodieImg.src;
+    document.getElementById('reviewHoodieLabel').textContent = hoodieImg.alt;
+    document.getElementById('reviewSizeLabel').textContent = 'Size ' + state.size;
+
+    document.getElementById('reviewAirbrushHead').textContent =
+      'AIRBRUSH — ' + (state.airbrushMode === 'large' ? '1 Large Design' : '2 Small Designs');
+    const designsWrap = document.getElementById('reviewDesigns');
+    designsWrap.innerHTML = '';
+    state.airbrushSelections.forEach(id => {
+      const card = document.querySelector(`.design-card[data-id="${id}"]`);
+      if (!card) return;
+      const img = card.querySelector('img');
+      designsWrap.appendChild(makeThumb(img.src, img.alt, ''));
+    });
+
+    const patchesWrap = document.getElementById('reviewPatches');
+    patchesWrap.innerHTML = '';
+    if (state.patches.length === 0) {
+      patchesWrap.innerHTML = '<div class="review-empty">No patches added</div>';
+    }
+    state.patches.forEach(p => {
+      const card = document.querySelector(`.patch-card[data-id="${p.id}"]`);
+      if (!card) return;
+      const img = card.querySelector('img');
+      patchesWrap.appendChild(makeThumb(img.src, img.alt, p.arm === 'left' ? 'L Arm' : 'R Arm'));
+    });
+  }
+
+  document.getElementById('reviewBtn').addEventListener('click', () => {
+    if (!canContinue()) return;
+    populateReview();
+    document.getElementById('stepBuild').classList.remove('active');
+    document.getElementById('stepReview').classList.add('active');
+    window.scrollTo(0, 0);
+  });
+
+  function goEdit(sectionId) {
+    document.getElementById('stepReview').classList.remove('active');
+    document.getElementById('stepBuild').classList.add('active');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.getElementById(sectionId);
+        if (el) el.scrollIntoView({ block: 'start' });
+      }, 50);
+    });
+  }
+
+  document.getElementById('backBtn').addEventListener('click', () => goEdit('section-hoodie'));
+  document.querySelectorAll('.edit-link').forEach(btn => {
+    btn.addEventListener('click', () => goEdit(btn.dataset.target));
+  });
+
+  const phoneInput = document.getElementById('phoneInput');
+  const submitBtn = document.getElementById('submitBtn');
+  function validatePhone() {
+    const digits = phoneInput.value.replace(/\D/g, '');
+    const ok = digits.length >= 7;
+    submitBtn.disabled = !ok;
+    return ok;
+  }
+  phoneInput.addEventListener('input', () => {
+    const digits = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+    let formatted = digits;
+    if (digits.length > 6) formatted = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+    else if (digits.length > 3) formatted = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+    else if (digits.length > 0) formatted = `(${digits}`;
+    phoneInput.value = formatted;
+    validatePhone();
+  });
+
+  document.getElementById('nike-form').addEventListener('submit', (e) => {
+    if (!validatePhone() || !canContinue()) {
+      e.preventDefault();
+      return;
+    }
+    document.getElementById('phoneHidden').value = phoneInput.value;
+    document.getElementById('buildInput').value = JSON.stringify({
+      hoodieId: state.hoodieId,
+      size: state.size,
+      airbrushMode: state.airbrushMode,
+      airbrushSelections: state.airbrushSelections,
+      patches: state.patches,
+    });
+  });
+
+  updateDesignPool();
+  updateFooter();
+</script>
+</body>
+</html>

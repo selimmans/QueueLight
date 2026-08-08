@@ -1,0 +1,37 @@
+{% load static %}
+<div class="build-card">
+  <div class="build-card-label">YOUR BUILD</div>
+  <div class="build-row">
+    <div class="build-thumb garment">
+      {% if entry.intake_answers.HoodieImg %}
+      <img src="{% static 'customer/nike_studio_fleece/' %}{{ entry.intake_answers.HoodieImg }}" alt="{{ entry.intake_answers.Hoodie }}">
+      {% endif %}
+    </div>
+    <div>
+      <div class="build-row-title">{{ entry.intake_answers.Hoodie }}</div>
+      <div class="build-row-sub">Size {{ entry.intake_answers.Size }}</div>
+    </div>
+  </div>
+
+  {% if entry.intake_answers.AirbrushDesigns %}
+  <div class="build-group">
+    {% for d in entry.intake_answers.AirbrushDesigns %}
+    <div class="build-row">
+      <div class="build-thumb"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"></div>
+      <div class="build-row-text">{{ d.label }} <span class="muted">— {{ entry.intake_answers.AirbrushMode }}</span></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if entry.intake_answers.Patches %}
+  <div class="build-group">
+    {% for p in entry.intake_answers.Patches %}
+    <div class="build-row">
+      <div class="build-thumb"><img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}"></div>
+      <div class="build-row-text">{{ p.label }} <span class="muted">— {{ p.arm }}</span></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

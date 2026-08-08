@@ -58,6 +58,91 @@ KOTN_GARMENT_SIZES = [
     {"key": "xxl", "name": "XXL"},
 ]
 
+# ── Nike x JD Sports "Studio Fleece" pop-up (build flow) ────────────────────
+# Two client-facing theme variants sharing one flow, keyed by slug so both can
+# be sent out as separate preview links (ported from the design handoff in
+# design_handoff_nike_studio_fleece_customizer/).
+NIKE_STUDIO_FLEECE_SLUGS = {
+    "nike-studio-fleece-white": "white",
+    "nike-studio-fleece-noir": "noir",
+}
+NIKE_ACCENT_A = "#E4002B"  # red — used for CTAs and the build/waiting screens
+NIKE_ACCENT_B = "#0057B8"  # blue — confirmation screen only, regardless of theme
+NIKE_MAX_PATCHES = 3
+
+# 5 real hoodie photos (alpha-matted cutouts — no white/black card behind
+# them anywhere they render). `light` drives which stencil set (light-ink vs
+# dark-ink) is offered for airbrush designs on that garment.
+NIKE_HOODIES = [
+    {"id": "hers-cropped-black", "label": "Black", "img": "hoodie-hers-cropped-black-cutout.png", "light": False},
+    {"id": "hers-pink", "label": "Pink", "img": "hoodie-hers-pink-cutout.png", "light": True},
+    {"id": "hers-cropped-red", "label": "Red", "img": "hoodie-hers-cropped-red-cutout.png", "light": False},
+    {"id": "his-babyblue", "label": "Baby Blue", "img": "hoodie-his-babyblue-cutout.png", "light": True},
+    {"id": "his-black", "label": "Black", "img": "hoodie-his-black-cutout.png", "light": False},
+]
+NIKE_SIZES = ["XS", "S", "M", "L", "XL"]
+
+# Airbrush stencil sets — light-garment set for light hoodies, dark-garment
+# set (same designs, dark-ink artwork) for dark hoodies.
+NIKE_DESIGNS_LIGHT_LARGE = [
+    {"id": "sl-face1", "label": "FACE 01", "img": "stencil-01-face.png"},
+    {"id": "sl-face2", "label": "FACE 02", "img": "stencil-07-face.png"},
+    {"id": "sl-faceloop", "label": "FACE LOOP", "img": "stencil-08-face-loop.png"},
+]
+NIKE_DESIGNS_LIGHT_SMALL = [
+    {"id": "sl-labyrinth", "label": "LABYRINTH", "img": "stencil-02-labyrinth.png"},
+    {"id": "sl-flowercross", "label": "FLOWER CROSS", "img": "stencil-03-flower-cross.png"},
+    {"id": "sl-cactus", "label": "CACTUS", "img": "stencil-04-cactus.png"},
+    {"id": "sl-flower", "label": "FLOWER", "img": "stencil-05-flower.png"},
+    {"id": "sl-spiral", "label": "SPIRAL", "img": "stencil-06-spiral.png"},
+]
+NIKE_DESIGNS_DARK_LARGE = [
+    {"id": "sd-face1", "label": "FACE 01", "img": "stencil-01-face-dark.png"},
+    {"id": "sd-face2", "label": "FACE 02", "img": "stencil-07-face-dark.png"},
+    {"id": "sd-faceloop", "label": "FACE LOOP", "img": "stencil-08-face-loop-dark.png"},
+]
+NIKE_DESIGNS_DARK_SMALL = [
+    {"id": "sd-labyrinth", "label": "LABYRINTH", "img": "stencil-02-labyrinth-dark.png"},
+    {"id": "sd-flowercross", "label": "FLOWER CROSS", "img": "stencil-03-flower-cross-dark.png"},
+    {"id": "sd-cactus", "label": "CACTUS", "img": "stencil-04-cactus-dark.png"},
+    {"id": "sd-flower", "label": "FLOWER", "img": "stencil-05-flower-dark.png"},
+    {"id": "sd-spiral", "label": "SPIRAL", "img": "stencil-06-spiral-dark.png"},
+]
+
+NIKE_PATCHES = [
+    {"id": "p1", "label": "DANCER", "img": "patch-dancer.png"},
+    {"id": "p2", "label": "LIGHTNING", "img": "patch-lightning.png"},
+    {"id": "p3", "label": "NSW LOCKUP", "img": "patch-nsw-lockup.png"},
+    {"id": "p4", "label": "STAR WREATH", "img": "patch-star-wreath.png"},
+    {"id": "p5", "label": "TOR", "img": "patch-tor.png"},
+    {"id": "p6", "label": "CHAIN", "img": "patch-chain.png"},
+    {"id": "p7", "label": "STAR WING", "img": "patch-star-wing.png"},
+    {"id": "p8", "label": "STAR", "img": "patch-star.png"},
+]
+NIKE_PATCH_ARMS = [
+    {"key": "left", "name": "Left Arm"},
+    {"key": "right", "name": "Right Arm"},
+]
+
+# CSS token sets per theme, ported from the `themes.white` / `themes.noir`
+# objects in the design source (Studio Access Customizer.dc.html).
+NIKE_THEMES = {
+    "white": {
+        "page_bg": "#ffffff", "heading_color": "#000000", "divider_color": "rgba(0,0,0,0.1)",
+        "end_bg": "transparent", "review_header_bg": "#ffffff", "end_heading": "#000000", "end_muted": "#777777",
+        "end_box_bg": "#f7f7f7", "end_box_border": "#e5e5e5", "muted": "#777777",
+        "border_default": "#eeeeee", "card_bg": "#f7f7f7", "card_tint": "#ececec",
+        "pill_bg_default": "#eeeeee",
+    },
+    "noir": {
+        "page_bg": "#000000", "heading_color": "#ffffff", "divider_color": "rgba(255,255,255,0.15)",
+        "end_bg": "#000000", "review_header_bg": "#000000", "end_heading": "#ffffff", "end_muted": "#999999",
+        "end_box_bg": "#111111", "end_box_border": "#333333", "muted": "#999999",
+        "border_default": "rgba(255,255,255,0.2)", "card_bg": "#111111", "card_tint": "#262626",
+        "pill_bg_default": "rgba(255,255,255,0.12)",
+    },
+}
+
 
 def _is_rate_limited(ip: str) -> bool:
     key = f"ql_join_{ip}"
@@ -336,6 +421,8 @@ class PickupJoinView(View):
     def _template_name(self, business):
         if business.slug == KOTN_POPUP_SLUG:
             return "customer/pickup_join_kotn.html"
+        if business.slug in NIKE_STUDIO_FLEECE_SLUGS:
+            return "customer/pickup_join_nike_studio_fleece.html"
         return self.template_name
 
     def _get_business(self, slug):
@@ -372,6 +459,21 @@ class PickupJoinView(View):
             ctx["name_max_length"] = KOTN_NAME_MAX_LENGTH
             ctx["kotn_patch_max_per_shirt"] = KOTN_PATCH_MAX_PER_SHIRT
             ctx["kotn_patch_placements"] = KOTN_PATCH_PLACEMENTS
+        if business.slug in NIKE_STUDIO_FLEECE_SLUGS:
+            theme = NIKE_STUDIO_FLEECE_SLUGS[business.slug]
+            ctx["nike_theme"] = theme
+            ctx["nike_theme_tokens"] = NIKE_THEMES[theme]
+            ctx["nike_accent_a"] = NIKE_ACCENT_A
+            ctx["nike_accent_b"] = NIKE_ACCENT_B
+            ctx["nike_hoodies"] = NIKE_HOODIES
+            ctx["nike_sizes"] = NIKE_SIZES
+            ctx["nike_designs_light_large"] = NIKE_DESIGNS_LIGHT_LARGE
+            ctx["nike_designs_light_small"] = NIKE_DESIGNS_LIGHT_SMALL
+            ctx["nike_designs_dark_large"] = NIKE_DESIGNS_DARK_LARGE
+            ctx["nike_designs_dark_small"] = NIKE_DESIGNS_DARK_SMALL
+            ctx["nike_patches"] = NIKE_PATCHES
+            ctx["nike_patch_arms"] = NIKE_PATCH_ARMS
+            ctx["nike_max_patches"] = NIKE_MAX_PATCHES
         ctx.update(kwargs)
         return ctx
 
@@ -397,6 +499,9 @@ class PickupJoinView(View):
 
         if business.slug == KOTN_POPUP_SLUG:
             return self._post_kotn(request, business, template_name)
+
+        if business.slug in NIKE_STUDIO_FLEECE_SLUGS:
+            return self._post_nike_studio_fleece(request, business, template_name)
 
         calling_code = phonenumbers.country_code_for_region(business.country) or 1
         pos_enabled = business.pos_type != business.POS_NONE and bool(business.pos_api_token)
@@ -684,6 +789,129 @@ class PickupJoinView(View):
 
         return redirect("customer:pickup_confirmation", slug=business.slug, entry_id=entry.pk)
 
+    def _post_nike_studio_fleece(self, request, business, template_name):
+        """Nike x JD Sports Studio Fleece: one order = one hoodie build
+        (hoodie + size, one airbrush treatment, up to NIKE_MAX_PATCHES
+        patches), one shared phone number. The customer builds the whole
+        thing client-side and POSTs it as a single JSON blob (`build`) plus
+        `phone`. No name is collected (explicit design requirement). Order
+        numbers are assigned sequentially per business under a row lock,
+        same scheme as Kotn's shirt tags.
+        """
+        raw_phone = request.POST.get("phone", "").strip()
+        phone, phone_error = None, "Please enter your phone number"
+        if raw_phone:
+            phone, phone_error = _parse_phone(raw_phone, business.country)
+
+        try:
+            build = json.loads(request.POST.get("build", "{}"))
+        except (json.JSONDecodeError, TypeError):
+            build = None
+
+        global_error = None
+        hoodie = size = airbrush_mode = None
+        design_ids = []
+        patches_in = []
+        design_pool = []
+
+        if not isinstance(build, dict):
+            global_error = "Please build your hoodie before submitting."
+        else:
+            hoodie = next((h for h in NIKE_HOODIES if h["id"] == build.get("hoodieId")), None)
+            size = build.get("size")
+            airbrush_mode = build.get("airbrushMode")
+            design_ids = build.get("airbrushSelections") or []
+            patches_in = build.get("patches") or []
+
+            if not hoodie:
+                global_error = "Please choose a hoodie."
+            elif size not in NIKE_SIZES:
+                global_error = "Please choose a size."
+            elif airbrush_mode not in ("large", "small"):
+                global_error = "Please choose an airbrush option."
+            else:
+                if hoodie["light"]:
+                    design_pool = NIKE_DESIGNS_LIGHT_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_LIGHT_SMALL
+                else:
+                    design_pool = NIKE_DESIGNS_DARK_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_DARK_SMALL
+                required = 1 if airbrush_mode == "large" else 2
+                if (
+                    not isinstance(design_ids, list)
+                    or len(design_ids) != required
+                    or len(set(design_ids)) != len(design_ids)
+                    or not all(any(d["id"] == did for d in design_pool) for did in design_ids)
+                ):
+                    global_error = f"Please select {required} design(s) that match your hoodie."
+                elif (
+                    not isinstance(patches_in, list)
+                    or len(patches_in) > NIKE_MAX_PATCHES
+                    or not all(
+                        isinstance(p, dict)
+                        and any(np["id"] == p.get("id") for np in NIKE_PATCHES)
+                        and any(a["key"] == p.get("arm") for a in NIKE_PATCH_ARMS)
+                        for p in patches_in
+                    )
+                ):
+                    global_error = "Patches must be valid and each assigned to an arm."
+                else:
+                    patch_ids = [p["id"] for p in patches_in]
+                    if len(set(patch_ids)) != len(patch_ids):
+                        global_error = "Each patch can only be added once."
+
+        if not global_error and phone_error:
+            global_error = phone_error
+
+        if global_error:
+            return render(request, template_name,
+                          self._ctx(business, global_error=global_error), status=400)
+
+        designs = [d for d in design_pool if d["id"] in design_ids]
+        patches = [
+            {
+                "label": next(p["label"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
+                "img": next(p["img"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
+                "arm": next(a["name"] for a in NIKE_PATCH_ARMS if a["key"] == pi["arm"]),
+            }
+            for pi in patches_in
+        ]
+
+        with transaction.atomic():
+            # Lock the Business row so concurrent submissions can't collide
+            # on order numbers — same approach as Kotn's shirt-tag scheme.
+            Business.objects.select_for_update().get(pk=business.pk)
+            used_numbers = []
+            scan_qs = PickupEntry.objects.filter(business=business).exclude(
+                status=PickupEntry.Status.CANCELLED
+            )
+            if business.pickup_tag_reset_at:
+                scan_qs = scan_qs.filter(registered_at__gte=business.pickup_tag_reset_at)
+            for order_number in scan_qs.values_list("order_number", flat=True):
+                if order_number and order_number.isdigit():
+                    used_numbers.append(int(order_number))
+            next_number = (max(used_numbers) if used_numbers else 0) + 1
+            order_number = f"{next_number:03d}"
+
+            airbrush_mode_label = "1 Large Design" if airbrush_mode == "large" else "2 Small Designs"
+            entry = PickupService.register(
+                business,
+                order_number=order_number,
+                customer_name="",
+                phone=phone,
+                intake_answers={
+                    "Hoodie": hoodie["label"],
+                    "HoodieImg": hoodie["img"],
+                    "Size": size,
+                    "AirbrushMode": airbrush_mode_label,
+                    "AirbrushDesigns": [{"label": d["label"], "img": d["img"]} for d in designs],
+                    "Patches": patches,
+                    # Legacy aggregate field — harmless fallback for the
+                    # generic (non-Nike) dashboard rendering path.
+                    "Patch": ", ".join(p["label"] for p in patches) or "None",
+                },
+            )
+
+        return redirect("customer:pickup_confirmation", slug=business.slug, entry_id=entry.pk)
+
 
 class PickupConfirmView(View):
     template_name = "customer/pickup_confirmation.html"
@@ -691,16 +919,25 @@ class PickupConfirmView(View):
     def get(self, request, slug, entry_id):
         business = get_object_or_404(Business, slug=slug)
         entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
-        if business.slug != KOTN_POPUP_SLUG:
-            return render(request, self.template_name, {"business": business, "entry": entry})
-
-        shirts = (entry.intake_answers or {}).get("Shirts", [])
-        return render(request, "customer/pickup_confirmation_kotn.html", {
-            "business": business,
-            "entry": entry,
-            "shirts": shirts,
-            "is_multi": len(shirts) > 1,
-        })
+        if business.slug == KOTN_POPUP_SLUG:
+            shirts = (entry.intake_answers or {}).get("Shirts", [])
+            return render(request, "customer/pickup_confirmation_kotn.html", {
+                "business": business,
+                "entry": entry,
+                "shirts": shirts,
+                "is_multi": len(shirts) > 1,
+            })
+        if business.slug in NIKE_STUDIO_FLEECE_SLUGS:
+            theme = NIKE_STUDIO_FLEECE_SLUGS[business.slug]
+            return render(request, "customer/pickup_confirmation_nike_studio_fleece.html", {
+                "business": business,
+                "entry": entry,
+                "nike_theme": theme,
+                "nike_theme_tokens": NIKE_THEMES[theme],
+                "nike_accent_a": NIKE_ACCENT_A,
+                "nike_accent_b": NIKE_ACCENT_B,
+            })
+        return render(request, self.template_name, {"business": business, "entry": entry})
 
 
 class PickupCustomerStatusView(View):
