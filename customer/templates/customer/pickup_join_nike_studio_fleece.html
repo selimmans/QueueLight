@@ -22,6 +22,7 @@
       --accent-a: {{ nike_accent_a }};
       --accent-b: {{ nike_accent_b }};
       --review-header-bg: {{ nike_theme_tokens.review_header_bg }};
+      --ink-outline: {% if nike_theme == 'white' %}rgba(0,0,0,0.55){% else %}rgba(255,255,255,0.55){% endif %};
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--page-bg); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; color: var(--heading); }
@@ -94,23 +95,24 @@
     .design-grid.grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
     .design-grid.grid-5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
     .design-grid { display: grid; gap: 6px; }
-    .design-card { aspect-ratio: 1; background: var(--card-tint); border-radius: 5px; display: flex; align-items: center; justify-content: center; padding: 5px; }
-    .design-card img { width: 100%; height: 100%; object-fit: contain; }
-    /* Float variant: ink already contrasts with the page background for
-       this theme/garment combo, so no card box is needed -- selection
-       shows as a glow instead of a border, matching the hoodie picker. */
-    .design-grid.float .design-card { background: transparent; border-color: transparent; padding: 2px; }
-    .design-grid.float .design-card.selected { border-color: transparent; }
-    .design-grid.float .design-card img { filter: none; transition: filter .15s; }
-    .design-grid.float .design-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
+    /* No card box — art is a transparent cutout, so instead of a
+       background we outline the opaque pixels themselves (drop-shadow
+       follows alpha, not a rectangle) with a color that contrasts the
+       page regardless of the glyph's own ink color. */
+    .design-card { aspect-ratio: 1; border-color: transparent; padding: 3px; display: flex; align-items: center; justify-content: center; }
+    .design-card img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); transition: filter .15s; }
+    .design-card.selected { border-color: transparent; }
+    .design-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
 
     /* Patches */
     .patch-head-row { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; }
     .pill { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--pill-bg); padding: 4px 10px; border-radius: 20px; }
     .pill.active { color: #fff; background: var(--accent-a); }
     .patch-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; margin-bottom: 6px; }
-    .patch-card { padding: 5px; background: var(--card-tint); border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
-    .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+    .patch-card { padding: 3px; border-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+    .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); transition: filter .15s; }
+    .patch-card.selected { border-color: transparent; }
+    .patch-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
     .patch-card.maxed:not(.selected) { opacity: 0.35; }
     .arm-toggle { display: flex; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
     .arm-btn { border: none; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 6px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
@@ -241,22 +243,22 @@
               <div id="designCountLabel" class="count-label"></div>
             </div>
 
-            <div class="design-grid grid-3{% if nike_theme == 'noir' %} float{% endif %} hidden" data-pool="dark-large">
+            <div class="design-grid grid-3 hidden" data-pool="dark-large">
               {% for d in nike_designs_dark_large %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
-            <div class="design-grid grid-5{% if nike_theme == 'noir' %} float{% endif %} hidden" data-pool="dark-small">
+            <div class="design-grid grid-5 hidden" data-pool="dark-small">
               {% for d in nike_designs_dark_small %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
-            <div class="design-grid grid-3{% if nike_theme == 'white' %} float{% endif %} hidden" data-pool="light-large">
+            <div class="design-grid grid-3 hidden" data-pool="light-large">
               {% for d in nike_designs_light_large %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
-            <div class="design-grid grid-5{% if nike_theme == 'white' %} float{% endif %} hidden" data-pool="light-small">
+            <div class="design-grid grid-5 hidden" data-pool="light-small">
               {% for d in nike_designs_light_small %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
