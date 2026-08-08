@@ -871,6 +871,7 @@ class PickupJoinView(View):
                 "label": next(p["label"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
                 "img": next(p["img"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
                 "arm": next(a["name"] for a in NIKE_PATCH_ARMS if a["key"] == pi["arm"]),
+                "distressed": bool(pi.get("distressed")),
             }
             for pi in patches_in
         ]
@@ -906,7 +907,10 @@ class PickupJoinView(View):
                     "Patches": patches,
                     # Legacy aggregate field — harmless fallback for the
                     # generic (non-Nike) dashboard rendering path.
-                    "Patch": ", ".join(p["label"] for p in patches) or "None",
+                    "Patch": ", ".join(
+                        f"{p['label']} (Distressed)" if p["distressed"] else p["label"]
+                        for p in patches
+                    ) or "None",
                 },
             )
 
