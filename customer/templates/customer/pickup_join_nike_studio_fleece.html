@@ -91,20 +91,25 @@
     .mode-card.selected { border-color: var(--accent-a); }
     .design-section-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
     .count-label { font-size: 12px; color: var(--muted); font-weight: 700; }
-    .design-grid.pool-3 { display: flex; gap: 10px; justify-content: center; }
-    .design-grid.pool-3 .design-card { width: calc((100% - 20px) / 3); }
-    .pyramid-top { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
-    .pyramid-bottom { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
-    .design-card { aspect-ratio: 1; background: var(--card-tint); display: flex; align-items: center; justify-content: center; padding: 8px; }
+    .design-grid.grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .design-grid.grid-5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
+    .design-grid { display: grid; gap: 6px; }
+    .design-card { aspect-ratio: 1; background: var(--card-tint); border-radius: 5px; display: flex; align-items: center; justify-content: center; padding: 5px; }
     .design-card img { width: 100%; height: 100%; object-fit: contain; }
-    .pyramid-top .design-card { width: calc((100% - 20px) / 3); }
+    /* Float variant: ink already contrasts with the page background for
+       this theme/garment combo, so no card box is needed -- selection
+       shows as a glow instead of a border, matching the hoodie picker. */
+    .design-grid.float .design-card { background: transparent; border-color: transparent; padding: 2px; }
+    .design-grid.float .design-card.selected { border-color: transparent; }
+    .design-grid.float .design-card img { filter: none; transition: filter .15s; }
+    .design-grid.float .design-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
 
     /* Patches */
     .patch-head-row { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; }
     .pill { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--pill-bg); padding: 4px 10px; border-radius: 20px; }
     .pill.active { color: #fff; background: var(--accent-a); }
-    .patch-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 8px; }
-    .patch-card { padding: 8px; background: var(--card-tint); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+    .patch-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; margin-bottom: 6px; }
+    .patch-card { padding: 5px; background: var(--card-tint); border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
     .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; }
     .patch-card.maxed:not(.selected) { opacity: 0.35; }
     .arm-toggle { display: flex; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
@@ -236,39 +241,25 @@
               <div id="designCountLabel" class="count-label"></div>
             </div>
 
-            <div class="design-grid pool-3 hidden" data-pool="dark-large">
+            <div class="design-grid grid-3{% if nike_theme == 'noir' %} float{% endif %} hidden" data-pool="dark-large">
               {% for d in nike_designs_dark_large %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
-            <div class="design-grid hidden" data-pool="dark-small">
-              <div class="pyramid-top">
-                {% for d in nike_designs_dark_small|slice:":2" %}
-                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
-                {% endfor %}
-              </div>
-              <div class="pyramid-bottom">
-                {% for d in nike_designs_dark_small|slice:"2:" %}
-                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
-                {% endfor %}
-              </div>
+            <div class="design-grid grid-5{% if nike_theme == 'noir' %} float{% endif %} hidden" data-pool="dark-small">
+              {% for d in nike_designs_dark_small %}
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              {% endfor %}
             </div>
-            <div class="design-grid pool-3 hidden" data-pool="light-large">
+            <div class="design-grid grid-3{% if nike_theme == 'white' %} float{% endif %} hidden" data-pool="light-large">
               {% for d in nike_designs_light_large %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
-            <div class="design-grid hidden" data-pool="light-small">
-              <div class="pyramid-top">
-                {% for d in nike_designs_light_small|slice:":2" %}
-                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
-                {% endfor %}
-              </div>
-              <div class="pyramid-bottom">
-                {% for d in nike_designs_light_small|slice:"2:" %}
-                <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
-                {% endfor %}
-              </div>
+            <div class="design-grid grid-5{% if nike_theme == 'white' %} float{% endif %} hidden" data-pool="light-small">
+              {% for d in nike_designs_light_small %}
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              {% endfor %}
             </div>
           </div>
         </div>
