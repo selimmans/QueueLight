@@ -95,6 +95,9 @@ NIKE_DESIGNS_LIGHT_SMALL = [
     {"id": "sl-cactus", "label": "CACTUS", "img": "stencil-04-cactus.png"},
     {"id": "sl-flower", "label": "FLOWER", "img": "stencil-05-flower.png"},
     {"id": "sl-spiral", "label": "SPIRAL", "img": "stencil-06-spiral.png"},
+] + [
+    {"id": f"sl-numeral{n}", "label": str(n), "img": f"stencil-numeral-{n}.png"}
+    for n in range(10)
 ]
 NIKE_DESIGNS_DARK_LARGE = [
     {"id": "sd-face1", "label": "FACE 01", "img": "stencil-01-face-dark.png"},
@@ -107,6 +110,9 @@ NIKE_DESIGNS_DARK_SMALL = [
     {"id": "sd-cactus", "label": "CACTUS", "img": "stencil-04-cactus-dark.png"},
     {"id": "sd-flower", "label": "FLOWER", "img": "stencil-05-flower-dark.png"},
     {"id": "sd-spiral", "label": "SPIRAL", "img": "stencil-06-spiral-dark.png"},
+] + [
+    {"id": f"sd-numeral{n}", "label": str(n), "img": f"stencil-numeral-{n}-dark.png"}
+    for n in range(10)
 ]
 
 NIKE_PATCHES = [
