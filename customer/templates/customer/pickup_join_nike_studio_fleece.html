@@ -39,11 +39,11 @@
     .lockup { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 22px; padding: 20px 34px; margin-bottom: 14px; }
     .lockup img { height: 56px; width: auto; }
     .lockup img.jd { height: 34px; }
-    .bracket { position: absolute; width: 16px; height: 16px; border-color: var(--accent-a); }
-    .bracket.tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; }
-    .bracket.tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; }
-    .bracket.bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; }
-    .bracket.br { bottom: 0; right: 0; border-bottom: 2px solid; border-right: 2px solid; }
+    .bracket { position: absolute; width: 16px; height: 16px; }
+    .bracket.tl { top: 0; left: 0; border-top: 2px solid var(--accent-a); border-left: 2px solid var(--accent-a); }
+    .bracket.tr { top: 0; right: 0; border-top: 2px solid var(--accent-a); border-right: 2px solid var(--accent-a); }
+    .bracket.bl { bottom: 0; left: 0; border-bottom: 2px solid var(--accent-a); border-left: 2px solid var(--accent-a); }
+    .bracket.br { bottom: 0; right: 0; border-bottom: 2px solid var(--accent-a); border-right: 2px solid var(--accent-a); }
     .tick { position: relative; width: 16px; height: 56px; }
     .tick span { position: absolute; left: 50%; background: var(--accent-a); transform: translateX(-50%); }
     .tick .h { width: 16px; height: 2px; }
@@ -81,6 +81,9 @@
     .size-row { display: flex; gap: 8px; }
     .size-btn { flex: 1; text-align: center; border: 2px solid var(--border); border-radius: 5px; padding: 10px 0; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--heading); background: transparent; }
     .size-btn.selected { border-color: var(--accent-a); background: var(--accent-a); color: #fff; }
+    .finish-row { display: flex; gap: 8px; }
+    .finish-btn { flex: 1; text-align: center; border: 2px solid var(--border); border-radius: 5px; padding: 10px 0; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--heading); background: transparent; }
+    .finish-btn.selected { border-color: var(--accent-a); background: var(--accent-a); color: #fff; }
 
     /* Airbrush */
     .mode-row { display: flex; gap: 12px; margin-bottom: 24px; }
@@ -107,8 +110,6 @@
     .arm-toggle { display: flex; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
     .arm-btn { border: none; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 6px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
     .arm-btn.active { background: var(--accent-a); color: #fff; }
-    .distress-btn { margin-top: 4px; border: 1px solid var(--border); border-radius: 20px; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 8px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
-    .distress-btn.active { background: var(--accent-a); border-color: var(--accent-a); color: #fff; }
 
     /* Footer CTA */
     .footer { padding: 8px 20px 40px; }
@@ -183,7 +184,7 @@
 
         <div class="section" id="section-hoodie">
           <div class="section-head"><span class="anton section-num">00</span><span class="anton section-title">HOODIE &amp; SIZE</span></div>
-          <div class="section-sub">Pick one hoodie style, then your size.</div>
+          <div class="section-sub">Pick one hoodie style, then your size and finish.</div>
 
           <div class="hoodie-row-top">
             {% for h in nike_hoodies|slice:":2" %}
@@ -208,6 +209,12 @@
               {% for s in nike_sizes %}
               <div class="size-btn" data-id="{{ s }}">{{ s }}</div>
               {% endfor %}
+            </div>
+
+            <div class="size-label" style="margin-top:20px;">FINISH</div>
+            <div class="finish-row">
+              <div class="finish-btn selected" data-distressed="0">CLEAN</div>
+              <div class="finish-btn" data-distressed="1">DISTRESSED</div>
             </div>
           </div>
         </div>
@@ -282,7 +289,6 @@
                 <button type="button" class="arm-btn" data-arm="left">L</button>
                 <button type="button" class="arm-btn" data-arm="right">R</button>
               </div>
-              <button type="button" class="distress-btn hidden">DISTRESSED</button>
             </div>
             {% endfor %}
           </div>
@@ -295,7 +301,6 @@
                 <button type="button" class="arm-btn" data-arm="left">L</button>
                 <button type="button" class="arm-btn" data-arm="right">R</button>
               </div>
-              <button type="button" class="distress-btn hidden">DISTRESSED</button>
             </div>
             {% endfor %}
           </div>
@@ -360,7 +365,7 @@
 
 <script>
   const MAX_PATCHES = {{ nike_max_patches }};
-  const state = { hoodieId: null, hoodieLight: false, size: null, airbrushMode: null, airbrushSelections: [], patches: [] };
+  const state = { hoodieId: null, hoodieLight: false, size: null, hoodieDistressed: false, airbrushMode: null, airbrushSelections: [], patches: [] };
 
   function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
 
@@ -395,9 +400,6 @@
       armToggle.querySelectorAll('.arm-btn').forEach(btn => {
         btn.classList.toggle('active', !!entry && entry.arm === btn.dataset.arm);
       });
-      const distressBtn = card.querySelector('.distress-btn');
-      distressBtn.classList.toggle('hidden', !entry);
-      distressBtn.classList.toggle('active', !!entry && !!entry.distressed);
     });
     const pill = document.getElementById('patchCountLabel');
     pill.textContent = `${state.patches.length}/${MAX_PATCHES}`;
@@ -443,6 +445,13 @@
       state.size = btn.dataset.id;
       document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('selected', b === btn));
       updateFooter();
+    });
+  });
+
+  document.querySelectorAll('.finish-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.hoodieDistressed = btn.dataset.distressed === '1';
+      document.querySelectorAll('.finish-btn').forEach(b => b.classList.toggle('selected', b === btn));
     });
   });
 
@@ -494,7 +503,7 @@
       if (existing) {
         state.patches = state.patches.filter(p => p.id !== id);
       } else if (state.patches.length < MAX_PATCHES) {
-        state.patches.push({ id, arm: 'left', distressed: false });
+        state.patches.push({ id, arm: 'left' });
       } else {
         showToast('Deselect one to choose this');
       }
@@ -507,12 +516,6 @@
         if (existing) existing.arm = btn.dataset.arm;
         refreshPatchUI();
       });
-    });
-    card.querySelector('.distress-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const existing = state.patches.find(p => p.id === card.dataset.id);
-      if (existing) existing.distressed = !existing.distressed;
-      refreshPatchUI();
     });
   });
 
@@ -528,7 +531,7 @@
     const hoodieImg = hoodieCard.querySelector('img');
     document.getElementById('reviewHoodieImg').src = hoodieImg.src;
     document.getElementById('reviewHoodieLabel').textContent = hoodieImg.alt;
-    document.getElementById('reviewSizeLabel').textContent = 'Size ' + state.size;
+    document.getElementById('reviewSizeLabel').textContent = 'Size ' + state.size + (state.hoodieDistressed ? ' · Distressed' : '');
 
     document.getElementById('reviewAirbrushHead').textContent =
       'AIRBRUSH — ' + (state.airbrushMode === 'large' ? '1 Large Design' : '2 Small Designs');
@@ -550,8 +553,7 @@
       const card = document.querySelector(`.patch-card[data-id="${p.id}"]`);
       if (!card) return;
       const img = card.querySelector('img');
-      const armLabel = p.arm === 'left' ? 'L Arm' : 'R Arm';
-      patchesWrap.appendChild(makeThumb(img.src, img.alt, p.distressed ? armLabel + ' · Distressed' : armLabel));
+      patchesWrap.appendChild(makeThumb(img.src, img.alt, p.arm === 'left' ? 'L Arm' : 'R Arm'));
     });
   }
 
@@ -606,6 +608,7 @@
     document.getElementById('buildInput').value = JSON.stringify({
       hoodieId: state.hoodieId,
       size: state.size,
+      hoodieDistressed: state.hoodieDistressed,
       airbrushMode: state.airbrushMode,
       airbrushSelections: state.airbrushSelections,
       patches: state.patches,

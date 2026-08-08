@@ -865,13 +865,14 @@ class PickupJoinView(View):
             return render(request, template_name,
                           self._ctx(business, global_error=global_error), status=400)
 
+        hoodie_distressed = bool(build.get("hoodieDistressed")) if isinstance(build, dict) else False
+
         designs = [d for d in design_pool if d["id"] in design_ids]
         patches = [
             {
                 "label": next(p["label"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
                 "img": next(p["img"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
                 "arm": next(a["name"] for a in NIKE_PATCH_ARMS if a["key"] == pi["arm"]),
-                "distressed": bool(pi.get("distressed")),
             }
             for pi in patches_in
         ]
@@ -901,16 +902,14 @@ class PickupJoinView(View):
                 intake_answers={
                     "Hoodie": hoodie["label"],
                     "HoodieImg": hoodie["img"],
+                    "HoodieDistressed": hoodie_distressed,
                     "Size": size,
                     "AirbrushMode": airbrush_mode_label,
                     "AirbrushDesigns": [{"label": d["label"], "img": d["img"]} for d in designs],
                     "Patches": patches,
                     # Legacy aggregate field — harmless fallback for the
                     # generic (non-Nike) dashboard rendering path.
-                    "Patch": ", ".join(
-                        f"{p['label']} (Distressed)" if p["distressed"] else p["label"]
-                        for p in patches
-                    ) or "None",
+                    "Patch": ", ".join(p["label"] for p in patches) or "None",
                 },
             )
 

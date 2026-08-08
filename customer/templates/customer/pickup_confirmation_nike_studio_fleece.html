@@ -57,18 +57,20 @@
     .lockup-mini img { height: 22px; width: auto; }
     .lockup-mini img.jd { height: 15px; }
     .bracket-mini { position: absolute; width: 10px; height: 10px; }
-    .bracket-mini.tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; }
-    .bracket-mini.tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; }
-    .bracket-mini.bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; }
-    .bracket-mini.br { bottom: 0; right: 0; border-bottom: 2px solid; border-right: 2px solid; }
+    .bracket-mini.tl { top: 0; left: 0; border-top-style: solid; border-top-width: 2px; border-left-style: solid; border-left-width: 2px; }
+    .bracket-mini.tr { top: 0; right: 0; border-top-style: solid; border-top-width: 2px; border-right-style: solid; border-right-width: 2px; }
+    .bracket-mini.bl { bottom: 0; left: 0; border-bottom-style: solid; border-bottom-width: 2px; border-left-style: solid; border-left-width: 2px; }
+    .bracket-mini.br { bottom: 0; right: 0; border-bottom-style: solid; border-bottom-width: 2px; border-right-style: solid; border-right-width: 2px; }
     .tick-mini { position: relative; width: 10px; height: 22px; }
     .tick-mini span { position: absolute; left: 50%; transform: translateX(-50%); }
     .tick-mini .h { width: 10px; height: 2px; }
     .tick-mini .v { width: 2px; height: 10px; }
     .tick-mini .top { top: -12px; }
     .tick-mini .bottom { bottom: -12px; }
-    .waiting-accent .bracket-mini, .waiting-accent .tick-mini span { border-color: var(--accent-a); background: var(--accent-a); }
-    .ready-accent .bracket-mini, .ready-accent .tick-mini span { border-color: var(--accent-b); background: var(--accent-b); }
+    .waiting-accent .bracket-mini { border-color: var(--accent-a); }
+    .waiting-accent .tick-mini span { background: var(--accent-a); }
+    .ready-accent .bracket-mini { border-color: var(--accent-b); }
+    .ready-accent .tick-mini span { background: var(--accent-b); }
   </style>
 </head>
 <body>
