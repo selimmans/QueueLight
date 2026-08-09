@@ -110,6 +110,11 @@
     .pill.active { color: #fff; background: var(--accent-a); }
     .patch-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; margin-bottom: 6px; }
     .patch-card { padding: 3px; border-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+    /* CHAIN's art is unusually tall/narrow (~0.4:1) -- in a square cell it
+       reads as a thin sliver next to the other patches. Giving it a
+       two-row-tall cell instead lets it fill the box at full size without
+       cropping any of the 3 links or overflowing into neighboring cards. */
+    .patch-card[data-id="p6"] { grid-row: span 2; aspect-ratio: auto; }
     .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); transition: filter .15s; }
     .patch-card.selected { border-color: transparent; }
     .patch-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
@@ -126,6 +131,7 @@
     .placement-btns { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
     .placement-btn { border: 1px solid var(--border); border-radius: 20px; font-size: 10px; font-weight: 700; padding: 5px 9px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
     .placement-btn.active { background: var(--accent-a); border-color: var(--accent-a); color: #fff; }
+    .placement-tag { display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700; padding: 5px 9px; background: var(--accent-a); color: #fff; }
 
     /* Footer CTA */
     .footer { padding: 8px 20px 40px; }
@@ -415,6 +421,26 @@
   function renderDesignPlacementRows() {
     const list = document.getElementById('designPlacementList');
     list.innerHTML = '';
+    if (state.airbrushMode === 'large') {
+      // Only one placement exists for the large design -- show it as a
+      // plain read-only tag rather than a picker with a single option.
+      if (state.airbrushSelections.length) {
+        const sel = state.airbrushSelections[0];
+        const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
+        if (card) {
+          const img = card.querySelector('img');
+          const row = document.createElement('div');
+          row.className = 'placement-row';
+          row.innerHTML = `
+            <div class="placement-thumb"><img src="${img.src}" alt="${img.alt}"></div>
+            <div class="placement-label">${img.alt}</div>
+            <div class="placement-btns"><span class="placement-tag">Back</span></div>
+          `;
+          list.appendChild(row);
+        }
+      }
+      return;
+    }
     if (state.airbrushMode !== 'small') return;
     state.airbrushSelections.forEach(sel => {
       const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
