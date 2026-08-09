@@ -17,6 +17,7 @@
       --card-tint: {{ nike_theme_tokens.card_tint }};
       --accent-a: {{ nike_accent_a }};
       --accent-b: {{ nike_accent_b }};
+      --ink-outline: {% if nike_theme == 'white' %}rgba(0,0,0,0.55){% else %}rgba(255,255,255,0.55){% endif %};
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--end-bg); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; color: var(--end-heading); }
@@ -43,9 +44,10 @@
     .build-card-label { font-size: 10px; color: var(--end-muted); font-weight: 700; letter-spacing: 1px; margin-bottom: 12px; }
     .build-row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
     .build-row:last-child { margin-bottom: 0; }
-    .build-thumb { width: 48px; height: 48px; border-radius: 6px; overflow: hidden; background: var(--card-tint); flex-shrink: 0; }
-    .build-thumb.garment { width: 60px; height: 60px; border-radius: 0; overflow: visible; background: none; }
+    .build-thumb { width: 48px; height: 48px; flex-shrink: 0; }
+    .build-thumb.garment { width: 60px; height: 60px; }
     .build-thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .build-thumb:not(.garment) img { filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); }
     .build-row-title { font-size: 13px; color: var(--end-heading); font-weight: 700; }
     .build-row-sub { font-size: 12px; color: var(--end-muted); }
     .build-row-text { font-size: 12px; color: var(--end-heading); }

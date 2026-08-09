@@ -125,9 +125,21 @@ NIKE_PATCHES = [
     {"id": "p7", "label": "STAR WING", "img": "patch-star-wing.png"},
     {"id": "p8", "label": "STAR", "img": "patch-star.png"},
 ]
-NIKE_PATCH_ARMS = [
-    {"key": "left", "name": "Left Arm"},
-    {"key": "right", "name": "Right Arm"},
+NIKE_PATCH_PLACEMENTS = [
+    {"key": "right-arm", "name": "Right Arm"},
+    {"key": "left-arm", "name": "Left Arm"},
+    {"key": "right-chest", "name": "Right Chest"},
+    {"key": "left-chest", "name": "Left Chest"},
+]
+
+# Airbrush placement: the single large design always goes on the back (no
+# picker needed); each small design gets its own placement choice.
+NIKE_DESIGN_PLACEMENT_LARGE = {"key": "back", "name": "Back"}
+NIKE_DESIGN_PLACEMENTS_SMALL = [
+    {"key": "right-arm", "name": "Right Arm"},
+    {"key": "left-arm", "name": "Left Arm"},
+    {"key": "hood", "name": "Hood"},
+    {"key": "back", "name": "Back"},
 ]
 
 # CSS token sets per theme, ported from the `themes.white` / `themes.noir`
@@ -478,8 +490,9 @@ class PickupJoinView(View):
             ctx["nike_designs_dark_large"] = NIKE_DESIGNS_DARK_LARGE
             ctx["nike_designs_dark_small"] = NIKE_DESIGNS_DARK_SMALL
             ctx["nike_patches"] = NIKE_PATCHES
-            ctx["nike_patch_arms"] = NIKE_PATCH_ARMS
+            ctx["nike_patch_placements"] = NIKE_PATCH_PLACEMENTS
             ctx["nike_max_patches"] = NIKE_MAX_PATCHES
+            ctx["nike_design_placements_small"] = NIKE_DESIGN_PLACEMENTS_SMALL
         ctx.update(kwargs)
         return ctx
 
@@ -816,7 +829,7 @@ class PickupJoinView(View):
 
         global_error = None
         hoodie = size = airbrush_mode = None
-        design_ids = []
+        designs_in = []
         patches_in = []
         design_pool = []
 
@@ -826,7 +839,7 @@ class PickupJoinView(View):
             hoodie = next((h for h in NIKE_HOODIES if h["id"] == build.get("hoodieId")), None)
             size = build.get("size")
             airbrush_mode = build.get("airbrushMode")
-            design_ids = build.get("airbrushSelections") or []
+            designs_in = build.get("airbrushSelections") or []
             patches_in = build.get("patches") or []
 
             if not hoodie:
@@ -841,28 +854,40 @@ class PickupJoinView(View):
                 else:
                     design_pool = NIKE_DESIGNS_DARK_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_DARK_SMALL
                 required = 1 if airbrush_mode == "large" else 2
+                design_placement_keys = (
+                    [NIKE_DESIGN_PLACEMENT_LARGE["key"]] if airbrush_mode == "large"
+                    else [p["key"] for p in NIKE_DESIGN_PLACEMENTS_SMALL]
+                )
+                design_ids = [d.get("id") if isinstance(d, dict) else None for d in designs_in]
+                design_placements = [d.get("placement") if isinstance(d, dict) else None for d in designs_in]
                 if (
-                    not isinstance(design_ids, list)
-                    or len(design_ids) != required
+                    not isinstance(designs_in, list)
+                    or len(designs_in) != required
+                    or not all(isinstance(d, dict) for d in designs_in)
                     or len(set(design_ids)) != len(design_ids)
                     or not all(any(d["id"] == did for d in design_pool) for did in design_ids)
+                    or not all(pk in design_placement_keys for pk in design_placements)
+                    or len(set(design_placements)) != len(design_placements)
                 ):
-                    global_error = f"Please select {required} design(s) that match your hoodie."
+                    global_error = f"Please select {required} design(s) with a valid placement."
                 elif (
                     not isinstance(patches_in, list)
                     or len(patches_in) > NIKE_MAX_PATCHES
                     or not all(
                         isinstance(p, dict)
                         and any(np["id"] == p.get("id") for np in NIKE_PATCHES)
-                        and any(a["key"] == p.get("arm") for a in NIKE_PATCH_ARMS)
+                        and any(pl["key"] == p.get("placement") for pl in NIKE_PATCH_PLACEMENTS)
                         for p in patches_in
                     )
                 ):
-                    global_error = "Patches must be valid and each assigned to an arm."
+                    global_error = "Patches must be valid and each assigned a placement."
                 else:
                     patch_ids = [p["id"] for p in patches_in]
+                    patch_placements = [p["placement"] for p in patches_in]
                     if len(set(patch_ids)) != len(patch_ids):
                         global_error = "Each patch can only be added once."
+                    elif len(set(patch_placements)) != len(patch_placements):
+                        global_error = "Each patch needs its own placement."
 
         if not global_error and phone_error:
             global_error = phone_error
@@ -873,12 +898,23 @@ class PickupJoinView(View):
 
         hoodie_distressed = bool(build.get("hoodieDistressed")) if isinstance(build, dict) else False
 
-        designs = [d for d in design_pool if d["id"] in design_ids]
+        design_placement_lookup = (
+            {NIKE_DESIGN_PLACEMENT_LARGE["key"]: NIKE_DESIGN_PLACEMENT_LARGE["name"]} if airbrush_mode == "large"
+            else {p["key"]: p["name"] for p in NIKE_DESIGN_PLACEMENTS_SMALL}
+        )
+        designs = [
+            {
+                "label": next(d["label"] for d in design_pool if d["id"] == di["id"]),
+                "img": next(d["img"] for d in design_pool if d["id"] == di["id"]),
+                "placement": design_placement_lookup[di["placement"]],
+            }
+            for di in designs_in
+        ]
         patches = [
             {
                 "label": next(p["label"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
                 "img": next(p["img"] for p in NIKE_PATCHES if p["id"] == pi["id"]),
-                "arm": next(a["name"] for a in NIKE_PATCH_ARMS if a["key"] == pi["arm"]),
+                "placement": next(pl["name"] for pl in NIKE_PATCH_PLACEMENTS if pl["key"] == pi["placement"]),
             }
             for pi in patches_in
         ]
@@ -911,7 +947,7 @@ class PickupJoinView(View):
                     "HoodieDistressed": hoodie_distressed,
                     "Size": size,
                     "AirbrushMode": airbrush_mode_label,
-                    "AirbrushDesigns": [{"label": d["label"], "img": d["img"]} for d in designs],
+                    "AirbrushDesigns": designs,
                     "Patches": patches,
                     # Legacy aggregate field — harmless fallback for the
                     # generic (non-Nike) dashboard rendering path.

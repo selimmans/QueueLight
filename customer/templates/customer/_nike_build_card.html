@@ -18,7 +18,7 @@
     {% for d in entry.intake_answers.AirbrushDesigns %}
     <div class="build-row">
       <div class="build-thumb"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"></div>
-      <div class="build-row-text">{{ d.label }} <span class="muted">— {{ entry.intake_answers.AirbrushMode }}</span></div>
+      <div class="build-row-text">{{ d.label }} <span class="muted">— {{ d.placement }}</span></div>
     </div>
     {% endfor %}
   </div>
@@ -29,7 +29,7 @@
     {% for p in entry.intake_answers.Patches %}
     <div class="build-row">
       <div class="build-thumb"><img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}"></div>
-      <div class="build-row-text">{{ p.label }} <span class="muted">— {{ p.arm }}{% if p.distressed %} · Distressed{% endif %}</span></div>
+      <div class="build-row-text">{{ p.label }} <span class="muted">— {{ p.placement }}</span></div>
     </div>
     {% endfor %}
   </div>

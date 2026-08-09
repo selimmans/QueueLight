@@ -114,9 +114,18 @@
     .patch-card.selected { border-color: transparent; }
     .patch-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
     .patch-card.maxed:not(.selected) { opacity: 0.35; }
-    .arm-toggle { display: flex; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
-    .arm-btn { border: none; font-size: 7.5px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 6px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
-    .arm-btn.active { background: var(--accent-a); color: #fff; }
+
+    /* Placement lists — one full-width row per selected patch/design, with
+       its own set of placement pills. Lives below the grid rather than
+       crammed into a small card so 4 options stay legible. */
+    .placement-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+    .placement-row { display: flex; align-items: center; gap: 10px; }
+    .placement-thumb { width: 36px; height: 36px; flex-shrink: 0; }
+    .placement-thumb img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); }
+    .placement-label { font-size: 11px; font-weight: 700; color: var(--heading); flex-shrink: 0; width: 64px; letter-spacing: 0.2px; }
+    .placement-btns { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+    .placement-btn { border: 1px solid var(--border); border-radius: 20px; font-size: 10px; font-weight: 700; padding: 5px 9px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
+    .placement-btn.active { background: var(--accent-a); border-color: var(--accent-a); color: #fff; }
 
     /* Footer CTA */
     .footer { padding: 8px 20px 40px; }
@@ -147,7 +156,8 @@
     .review-item-sub { font-size: 13px; color: var(--muted); }
     .review-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
     .review-thumb { text-align: center; width: 48px; }
-    .review-thumb .thumb.small { width: 48px; height: 48px; background: var(--card-tint); margin-bottom: 3px; }
+    .review-thumb .thumb.small { width: 48px; height: 48px; margin-bottom: 3px; }
+    .review-thumb .thumb.small img { filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); }
     .review-thumb-label { font-size: 8px; color: var(--muted); }
     .review-thumb-label .muted { color: var(--muted); }
     .review-empty { font-size: 12px; color: var(--muted); }
@@ -230,7 +240,7 @@
 
         <div class="section" id="section-airbrush">
           <div class="section-head"><span class="anton section-num">01</span><span class="anton section-title">AIRBRUSH</span></div>
-          <div class="section-sub">Pick one large design, or two small placements.</div>
+          <div class="section-sub">One large design on the back, or two small placements anywhere.</div>
 
           <div class="mode-row">
             <div class="mode-card" data-mode="large">1 LARGE</div>
@@ -263,6 +273,7 @@
               <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
+            <div id="designPlacementList" class="placement-list"></div>
           </div>
         </div>
 
@@ -270,7 +281,7 @@
 
         <div class="section" id="section-patches">
           <div class="section-head"><span class="anton section-num">02</span><span class="anton section-title">PATCHES</span></div>
-          <div class="section-sub">Choose up to {{ nike_max_patches }}, placed on either arm.</div>
+          <div class="section-sub">Choose up to {{ nike_max_patches }} and where each one goes.</div>
           <div class="patch-head-row"><div id="patchCountLabel" class="pill">0/{{ nike_max_patches }}</div></div>
 
           <div class="patch-grid">
@@ -278,10 +289,6 @@
             <div class="option-card patch-card" data-id="{{ p.id }}">
               <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
               <div class="select-dot"></div>
-              <div class="arm-toggle hidden">
-                <button type="button" class="arm-btn" data-arm="left">L</button>
-                <button type="button" class="arm-btn" data-arm="right">R</button>
-              </div>
             </div>
             {% endfor %}
           </div>
@@ -290,13 +297,10 @@
             <div class="option-card patch-card" data-id="{{ p.id }}">
               <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
               <div class="select-dot"></div>
-              <div class="arm-toggle hidden">
-                <button type="button" class="arm-btn" data-arm="left">L</button>
-                <button type="button" class="arm-btn" data-arm="right">R</button>
-              </div>
             </div>
             {% endfor %}
           </div>
+          <div id="patchPlacementList" class="placement-list"></div>
         </div>
 
       </div>
@@ -358,6 +362,13 @@
 
 <script>
   const MAX_PATCHES = {{ nike_max_patches }};
+  const PATCH_PLACEMENTS = [
+    {% for pl in nike_patch_placements %}{ key: "{{ pl.key }}", name: "{{ pl.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
+  ];
+  const DESIGN_PLACEMENTS_SMALL = [
+    {% for pl in nike_design_placements_small %}{ key: "{{ pl.key }}", name: "{{ pl.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
+  ];
+  // state.airbrushSelections / state.patches hold {id, placement} entries.
   const state = { hoodieId: null, hoodieLight: false, size: null, hoodieDistressed: false, airbrushMode: null, airbrushSelections: [], patches: [] };
 
   function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
@@ -372,7 +383,7 @@
 
   function refreshDesignSelectionUI() {
     document.querySelectorAll('.design-card').forEach(c => {
-      c.classList.toggle('selected', state.airbrushSelections.includes(c.dataset.id));
+      c.classList.toggle('selected', state.airbrushSelections.some(s => s.id === c.dataset.id));
     });
     const label = document.getElementById('designCountLabel');
     if (state.airbrushMode) {
@@ -380,6 +391,40 @@
     } else {
       label.textContent = '';
     }
+    renderDesignPlacementRows();
+  }
+
+  function makePlacementRow(imgSrc, imgAlt, label, options, activeKey, onPick) {
+    const row = document.createElement('div');
+    row.className = 'placement-row';
+    const btns = options.map(o =>
+      `<button type="button" class="placement-btn${o.key === activeKey ? ' active' : ''}" data-key="${o.key}">${o.name}</button>`
+    ).join('');
+    row.innerHTML = `
+      <div class="placement-thumb"><img src="${imgSrc}" alt="${imgAlt}"></div>
+      <div class="placement-label">${label}</div>
+      <div class="placement-btns">${btns}</div>
+    `;
+    row.querySelectorAll('.placement-btn').forEach(btn => {
+      btn.addEventListener('click', () => { onPick(btn.dataset.key); });
+    });
+    return row;
+  }
+
+  // Large mode has a single fixed placement (Back) — no picker needed.
+  function renderDesignPlacementRows() {
+    const list = document.getElementById('designPlacementList');
+    list.innerHTML = '';
+    if (state.airbrushMode !== 'small') return;
+    state.airbrushSelections.forEach(sel => {
+      const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
+      if (!card) return;
+      const img = card.querySelector('img');
+      list.appendChild(makePlacementRow(img.src, img.alt, img.alt, DESIGN_PLACEMENTS_SMALL, sel.placement, (key) => {
+        sel.placement = key;
+        renderDesignPlacementRows();
+      }));
+    });
   }
 
   function refreshPatchUI() {
@@ -388,15 +433,25 @@
       const entry = state.patches.find(p => p.id === card.dataset.id);
       card.classList.toggle('selected', !!entry);
       card.classList.toggle('maxed', maxed);
-      const armToggle = card.querySelector('.arm-toggle');
-      armToggle.classList.toggle('hidden', !entry);
-      armToggle.querySelectorAll('.arm-btn').forEach(btn => {
-        btn.classList.toggle('active', !!entry && entry.arm === btn.dataset.arm);
-      });
     });
     const pill = document.getElementById('patchCountLabel');
     pill.textContent = `${state.patches.length}/${MAX_PATCHES}`;
     pill.classList.toggle('active', state.patches.length > 0);
+    renderPatchPlacementRows();
+  }
+
+  function renderPatchPlacementRows() {
+    const list = document.getElementById('patchPlacementList');
+    list.innerHTML = '';
+    state.patches.forEach(entry => {
+      const card = document.querySelector(`.patch-card[data-id="${entry.id}"]`);
+      if (!card) return;
+      const img = card.querySelector('img');
+      list.appendChild(makePlacementRow(img.src, img.alt, img.alt, PATCH_PLACEMENTS, entry.placement, (key) => {
+        entry.placement = key;
+        renderPatchPlacementRows();
+      }));
+    });
   }
 
   function footerHintText() {
@@ -473,14 +528,19 @@
       if (card.closest('.design-grid').classList.contains('hidden')) return;
       const id = card.dataset.id;
       const max = requiredDesigns();
-      const idx = state.airbrushSelections.indexOf(id);
+      const idx = state.airbrushSelections.findIndex(s => s.id === id);
       if (idx !== -1) {
         state.airbrushSelections.splice(idx, 1);
       } else if (max === 1) {
-        // "1 LARGE" mode is a single either/or choice — swap silently, no toast.
-        state.airbrushSelections = [id];
+        // "1 LARGE" mode is a single either/or choice — swap silently, no
+        // toast. Only placement is "Back", fixed, no picker needed.
+        state.airbrushSelections = [{ id, placement: 'back' }];
       } else if (state.airbrushSelections.length < max) {
-        state.airbrushSelections.push(id);
+        // Default to the first unused placement so two designs don't
+        // silently collide on the same spot.
+        const used = state.airbrushSelections.map(s => s.placement);
+        const next = DESIGN_PLACEMENTS_SMALL.find(p => !used.includes(p.key)) || DESIGN_PLACEMENTS_SMALL[0];
+        state.airbrushSelections.push({ id, placement: next.key });
       } else {
         showToast('Deselect one to choose this');
       }
@@ -496,19 +556,13 @@
       if (existing) {
         state.patches = state.patches.filter(p => p.id !== id);
       } else if (state.patches.length < MAX_PATCHES) {
-        state.patches.push({ id, arm: 'left' });
+        const used = state.patches.map(p => p.placement);
+        const next = PATCH_PLACEMENTS.find(p => !used.includes(p.key)) || PATCH_PLACEMENTS[0];
+        state.patches.push({ id, placement: next.key });
       } else {
         showToast('Deselect one to choose this');
       }
       refreshPatchUI();
-    });
-    card.querySelectorAll('.arm-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const existing = state.patches.find(p => p.id === card.dataset.id);
-        if (existing) existing.arm = btn.dataset.arm;
-        refreshPatchUI();
-      });
     });
   });
 
@@ -530,11 +584,13 @@
       'AIRBRUSH — ' + (state.airbrushMode === 'large' ? '1 Large Design' : '2 Small Designs');
     const designsWrap = document.getElementById('reviewDesigns');
     designsWrap.innerHTML = '';
-    state.airbrushSelections.forEach(id => {
-      const card = document.querySelector(`.design-card[data-id="${id}"]`);
+    state.airbrushSelections.forEach(sel => {
+      const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
       if (!card) return;
       const img = card.querySelector('img');
-      designsWrap.appendChild(makeThumb(img.src, img.alt, ''));
+      const placementName = sel.placement === 'back' ? 'Back'
+        : (DESIGN_PLACEMENTS_SMALL.find(p => p.key === sel.placement) || {}).name || '';
+      designsWrap.appendChild(makeThumb(img.src, img.alt, placementName));
     });
 
     const patchesWrap = document.getElementById('reviewPatches');
@@ -546,7 +602,8 @@
       const card = document.querySelector(`.patch-card[data-id="${p.id}"]`);
       if (!card) return;
       const img = card.querySelector('img');
-      patchesWrap.appendChild(makeThumb(img.src, img.alt, p.arm === 'left' ? 'L Arm' : 'R Arm'));
+      const placementName = (PATCH_PLACEMENTS.find(pl => pl.key === p.placement) || {}).name || '';
+      patchesWrap.appendChild(makeThumb(img.src, img.alt, placementName));
     });
   }
 
