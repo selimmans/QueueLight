@@ -28,7 +28,7 @@
   <div class="build-group">
     {% for p in entry.intake_answers.Patches %}
     <div class="build-row">
-      <div class="build-thumb"><img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}"></div>
+      <div class="build-thumb no-shadow"><img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}"></div>
       <div class="build-row-text">{{ p.label }} <span class="muted">— {{ p.placement }}</span></div>
     </div>
     {% endfor %}
