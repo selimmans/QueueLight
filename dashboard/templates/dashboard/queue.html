@@ -1038,7 +1038,7 @@
           </div>
           ${statusBadge}
         </div>
-        <div class="nike-details" id="nike-details-${e.id}">${rowsHtml}</div>
+        <div class="nike-details${nikeExpandedIds.includes(e.id) ? " open" : ""}" id="nike-details-${e.id}">${rowsHtml}</div>
         <div class="entry-actions">${action}</div>
       </div>`;
     }
@@ -1114,9 +1114,22 @@
       if (det) det.classList.toggle("open", pickupExpandedIds.has(id));
     }
 
+    // Ordered (not a Set) so we can evict the oldest when a 3rd card opens --
+    // stays expanded indefinitely otherwise, doesn't reset on the next poll.
+    const NIKE_MAX_EXPANDED = 2;
+    let nikeExpandedIds = [];
     function toggleNikeExpand(id) {
-      const det = document.getElementById("nike-details-" + id);
-      if (det) det.classList.toggle("open");
+      const idx = nikeExpandedIds.indexOf(id);
+      if (idx !== -1) {
+        nikeExpandedIds.splice(idx, 1);
+      } else {
+        nikeExpandedIds.push(id);
+        if (nikeExpandedIds.length > NIKE_MAX_EXPANDED) nikeExpandedIds.shift();
+      }
+      document.querySelectorAll(".nike-details").forEach(det => {
+        const detId = parseInt(det.id.slice("nike-details-".length), 10);
+        det.classList.toggle("open", nikeExpandedIds.includes(detId));
+      });
     }
 
     {% if business.pos_type != 'none' %}
