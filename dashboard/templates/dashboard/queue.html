@@ -305,6 +305,23 @@
     .kotn-shirt-info { flex: 1; min-width: 0; font-size: 0.82rem; color: var(--text); }
     .kotn-shirt-info strong { font-weight: 600; }
 
+    /* ── Nike Studio Fleece: collapsed-by-default build card ─── */
+    .nike-card { padding: 0.9rem 1rem; border-bottom: 1px solid #f3f4f6; }
+    .nike-card:last-child { border-bottom: none; }
+    .nike-card-top { display: flex; align-items: center; gap: 0.75rem; }
+    .nike-card-thumb { width: 44px; height: 44px; flex-shrink: 0; background: #f9fafb; border-radius: var(--r); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .nike-card-thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .nike-card-body { flex: 1; min-width: 0; cursor: pointer; }
+    .nike-card-title { font-weight: 600; color: var(--text); font-size: 0.95rem; }
+    .nike-card-summary { font-size: 0.85rem; color: var(--text); margin-top: 0.05rem; }
+    .nike-card-meta { font-size: 0.75rem; color: var(--text); margin-top: 0.1rem; }
+    .nike-details { display: none; flex-direction: column; gap: 0.5rem; margin: 0.7rem 0; }
+    .nike-details.open { display: flex; }
+    .nike-item-row { display: flex; align-items: center; gap: 0.6rem; background: #f9fafb; border-radius: var(--r); padding: 0.5rem 0.65rem; }
+    .nike-thumb { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+    .nike-item-info { flex: 1; min-width: 0; font-size: 0.82rem; color: var(--text); }
+    .nike-item-info strong { font-weight: 600; }
+
     /* ── Unregistered (not-yet-scanned) orders ──────── */
     .unregistered-entry { opacity: 1; }
     .unregistered-entry .entry-name { color: var(--text); }
@@ -553,6 +570,37 @@
               </form>
             </div>
           </div>
+          {% elif business.slug == "nike-studio-fleece-white" or business.slug == "nike-studio-fleece-noir" %}
+          <div class="nike-card">
+            <div class="nike-card-top">
+              <div class="nike-card-thumb">{% if entry.intake_answers.HoodieImg %}<img src="{% static 'customer/nike_studio_fleece/' %}{{ entry.intake_answers.HoodieImg }}" alt="{{ entry.intake_answers.Hoodie }}">{% endif %}</div>
+              <div class="nike-card-body expandable" onclick="toggleNikeExpand({{ entry.pk }})">
+                <div class="nike-card-title">#{{ entry.order_number }}</div>
+                <div class="nike-card-summary">{{ entry.intake_answers.Hoodie }} &middot; Size {{ entry.intake_answers.Size }}{% if entry.intake_answers.HoodieDistressed %} &middot; Distressed{% endif %}</div>
+                <div class="nike-card-meta">{% if entry.phone %}{{ entry.phone }} &middot; {% endif %}Registered {{ entry.registered_at|timesince }} ago &middot; tap to expand</div>
+              </div>
+              <div class="badge badge-waiting">Waiting</div>
+            </div>
+            <div class="nike-details" id="nike-details-{{ entry.pk }}">
+              {% for d in entry.intake_answers.AirbrushDesigns %}
+              <div class="nike-item-row">
+                <img class="nike-thumb" src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}">
+                <div class="nike-item-info"><strong>{{ d.label }}</strong> &middot; {{ d.placement }}</div>
+              </div>
+              {% endfor %}
+              {% for p in entry.intake_answers.Patches %}
+              <div class="nike-item-row">
+                <img class="nike-thumb" src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
+                <div class="nike-item-info"><strong>{{ p.label }}</strong> &middot; {{ p.placement }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="entry-actions">
+              <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}">
+                {% csrf_token %}<button class="action-btn btn-ready" type="submit">Mark Ready</button>
+              </form>
+            </div>
+          </div>
           {% else %}
           <div class="entry">
             <div class="badge badge-waiting">Waiting</div>
@@ -588,6 +636,44 @@
                 <div class="kotn-shirt-tag">{{ shirt.tag }}</div>
                 {% for p in shirt.patches %}<img class="kotn-crest" src="{% static 'customer/kotn/' %}{{ p.crest }}" alt="{{ p.name }}">{% endfor %}
                 <div class="kotn-shirt-info"><strong>{% for p in shirt.patches %}{{ p.name }}{% if p.placement %} ({{ p.placement }}){% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</strong> &middot; {{ shirt.sleeve }}{% if shirt.size %} &middot; Size {{ shirt.size }}{% endif %} &middot; {{ shirt.name }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="entry-actions">
+              {% if entry.phone %}
+              <form method="post" action="{% url 'dashboard:pickup_resend_sms' slug=business.slug entry_id=entry.pk %}" onsubmit="return disableOnSubmit(this)">
+                {% csrf_token %}<button class="action-btn btn-resend" type="submit">Resend Text</button>
+              </form>
+              {% else %}
+              <span></span>
+              {% endif %}
+              <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
+                {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+              </form>
+            </div>
+          </div>
+          {% elif business.slug == "nike-studio-fleece-white" or business.slug == "nike-studio-fleece-noir" %}
+          <div class="nike-card">
+            <div class="nike-card-top">
+              <div class="nike-card-thumb">{% if entry.intake_answers.HoodieImg %}<img src="{% static 'customer/nike_studio_fleece/' %}{{ entry.intake_answers.HoodieImg }}" alt="{{ entry.intake_answers.Hoodie }}">{% endif %}</div>
+              <div class="nike-card-body expandable" onclick="toggleNikeExpand({{ entry.pk }})">
+                <div class="nike-card-title">#{{ entry.order_number }}</div>
+                <div class="nike-card-summary">{{ entry.intake_answers.Hoodie }} &middot; Size {{ entry.intake_answers.Size }}{% if entry.intake_answers.HoodieDistressed %} &middot; Distressed{% endif %}</div>
+                <div class="nike-card-meta">{% if entry.phone %}{{ entry.phone }} &middot; {% endif %}Registered {{ entry.registered_at|timesince }} ago &middot; tap to expand</div>
+              </div>
+              <div class="badge badge-ready">Ready</div>
+            </div>
+            <div class="nike-details" id="nike-details-{{ entry.pk }}">
+              {% for d in entry.intake_answers.AirbrushDesigns %}
+              <div class="nike-item-row">
+                <img class="nike-thumb" src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}">
+                <div class="nike-item-info"><strong>{{ d.label }}</strong> &middot; {{ d.placement }}</div>
+              </div>
+              {% endfor %}
+              {% for p in entry.intake_answers.Patches %}
+              <div class="nike-item-row">
+                <img class="nike-thumb" src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
+                <div class="nike-item-info"><strong>{{ p.label }}</strong> &middot; {{ p.placement }}</div>
               </div>
               {% endfor %}
             </div>
@@ -913,8 +999,53 @@
       </div>`;
     }
 
+    const NIKE_STATIC_BASE = "{% static 'customer/nike_studio_fleece/' %}";
+    const NIKE_SLUGS = ["nike-studio-fleece-white", "nike-studio-fleece-noir"];
+
+    function renderNikeEntry(e) {
+      const statusBadge = e.status === "ready"
+        ? `<div class="badge badge-ready">Ready</div>`
+        : `<div class="badge badge-waiting">Waiting</div>`;
+      const answers = e.intake_answers || {};
+      const phoneHtml = e.phone ? `${e.phone} &middot; ` : "";
+      const distressedHtml = answers.HoodieDistressed ? " &middot; Distressed" : "";
+      const thumbHtml = answers.HoodieImg
+        ? `<img src="${NIKE_STATIC_BASE}${answers.HoodieImg}" alt="${answers.Hoodie || ""}">`
+        : "";
+      const rows = [...(answers.AirbrushDesigns || []), ...(answers.Patches || [])];
+      const rowsHtml = rows.map(item => `<div class="nike-item-row">
+          <img class="nike-thumb" src="${NIKE_STATIC_BASE}${item.img}" alt="${item.label}">
+          <div class="nike-item-info"><strong>${item.label}</strong> &middot; ${item.placement}</div>
+        </div>`).join("");
+
+      let action = "";
+      if (e.status === "waiting") {
+        action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>`;
+      } else if (e.status === "ready") {
+        const resendBtn = e.phone
+          ? `<button class="action-btn btn-resend" onclick="resendText(${e.id}, this)">Resend Text</button>`
+          : `<span></span>`;
+        action = `${resendBtn}<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>`;
+      }
+
+      return `<div class="nike-card">
+        <div class="nike-card-top">
+          <div class="nike-card-thumb">${thumbHtml}</div>
+          <div class="nike-card-body" onclick="toggleNikeExpand(${e.id})">
+            <div class="nike-card-title">#${e.order_number}</div>
+            <div class="nike-card-summary">${answers.Hoodie || ""} &middot; Size ${answers.Size || ""}${distressedHtml}</div>
+            <div class="nike-card-meta">${phoneHtml}Registered${e.minutes_waiting > 0 ? ` · ${e.minutes_waiting}m ago` : ""} &middot; tap to expand</div>
+          </div>
+          ${statusBadge}
+        </div>
+        <div class="nike-details" id="nike-details-${e.id}">${rowsHtml}</div>
+        <div class="entry-actions">${action}</div>
+      </div>`;
+    }
+
     function renderPickupEntry(e) {
       if (SLUG === "kotn-cup-toronto") return renderKotnEntry(e);
+      if (NIKE_SLUGS.includes(SLUG)) return renderNikeEntry(e);
       const statusBadge = e.status === "ready"
         ? `<div class="badge badge-ready">Ready</div>`
         : `<div class="badge badge-waiting">Waiting</div>`;
@@ -981,6 +1112,11 @@
       else pickupExpandedIds.add(id);
       const det = document.getElementById("pickup-intake-" + id);
       if (det) det.classList.toggle("open", pickupExpandedIds.has(id));
+    }
+
+    function toggleNikeExpand(id) {
+      const det = document.getElementById("nike-details-" + id);
+      if (det) det.classList.toggle("open");
     }
 
     {% if business.pos_type != 'none' %}
