@@ -117,7 +117,6 @@
     .patch-card[data-id="p6"] { grid-row: span 2; aspect-ratio: auto; }
     .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); transition: filter .15s; }
     .patch-card.selected { border-color: transparent; }
-    .patch-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
     .patch-card.maxed:not(.selected) { opacity: 0.35; }
 
     /* Placement lists — one full-width row per selected patch/design, with
@@ -130,7 +129,6 @@
     .placement-btns { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
     .placement-btn { border: 1px solid var(--border); border-radius: 20px; font-size: 10px; font-weight: 700; padding: 5px 9px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
     .placement-btn.active { background: var(--accent-a); border-color: var(--accent-a); color: #fff; }
-    .placement-tag { display: inline-block; border-radius: 20px; font-size: 10px; font-weight: 700; padding: 5px 9px; background: var(--accent-a); color: #fff; }
 
     /* Footer CTA */
     .footer { padding: 8px 20px 40px; }
@@ -370,6 +368,7 @@
   const PATCH_PLACEMENTS = [
     {% for pl in nike_patch_placements %}{ key: "{{ pl.key }}", name: "{{ pl.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
   ];
+  const PATCH_CHEST_KEYS = PATCH_PLACEMENTS.filter(p => p.key.includes('chest')).map(p => p.key);
   const DESIGN_PLACEMENTS_SMALL = [
     {% for pl in nike_design_placements_small %}{ key: "{{ pl.key }}", name: "{{ pl.name|escapejs }}" }{% if not forloop.last %},{% endif %}{% endfor %}
   ];
@@ -428,9 +427,15 @@
   // If `key` is already taken by a different entry in `group`, swap it onto
   // that entry's old placement instead of leaving two entries on the same
   // spot — same convention Kotn's own patch-placement picker uses.
-  function pickPlacement(group, entry, key) {
-    const other = group.find(e => e !== entry && e.placement === key);
-    if (other) other.placement = entry.placement;
+  // exclusiveKeys: placements that can only belong to one entry at a time
+  // (swap with whoever else has it). Keys not in that list can be shared
+  // freely -- e.g. two patches can both sit on "Right Arm", just not both
+  // claim "Right Chest". Omit exclusiveKeys to make every key exclusive.
+  function pickPlacement(group, entry, key, exclusiveKeys) {
+    if (!exclusiveKeys || exclusiveKeys.includes(key)) {
+      const other = group.find(e => e !== entry && e.placement === key);
+      if (other) other.placement = entry.placement;
+    }
     entry.placement = key;
   }
 
@@ -438,25 +443,10 @@
   function renderDesignPlacementRows() {
     const list = document.getElementById('designPlacementList');
     list.innerHTML = '';
-    if (state.airbrushMode === 'large') {
-      // Only one placement exists for the large design -- show it as a
-      // plain read-only tag rather than a picker with a single option.
-      if (state.airbrushSelections.length) {
-        const sel = state.airbrushSelections[0];
-        const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
-        if (card) {
-          const img = card.querySelector('img');
-          const row = document.createElement('div');
-          row.className = 'placement-row';
-          row.innerHTML = `
-            <div class="placement-thumb"><img src="${img.src}" alt="${img.alt}"></div>
-            <div class="placement-btns"><span class="placement-tag">Back</span></div>
-          `;
-          list.appendChild(row);
-        }
-      }
-      return;
-    }
+    // Large mode's placement is always "Back" and that's already stated in
+    // the section copy above -- no picker or tag needed, would just be
+    // redundant.
+    if (state.airbrushMode === 'large') return;
     if (state.airbrushMode !== 'small') return;
     state.airbrushSelections.forEach(sel => {
       const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
@@ -490,7 +480,8 @@
       if (!card) return;
       const img = card.querySelector('img');
       list.appendChild(makePlacementRow(img.src, img.alt, PATCH_PLACEMENTS, entry.placement, (key) => {
-        pickPlacement(state.patches, entry, key);
+        // Chest spots fit one patch each; an arm can carry more than one.
+        pickPlacement(state.patches, entry, key, PATCH_CHEST_KEYS);
         renderPatchPlacementRows();
       }));
     });

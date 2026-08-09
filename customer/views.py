@@ -131,6 +131,8 @@ NIKE_PATCH_PLACEMENTS = [
     {"key": "right-chest", "name": "Right Chest"},
     {"key": "left-chest", "name": "Left Chest"},
 ]
+# An arm can carry more than one patch; each chest spot fits only one.
+NIKE_PATCH_CHEST_KEYS = {"right-chest", "left-chest"}
 
 # Airbrush placement: the single large design always goes on the back (no
 # picker needed); each small design gets its own placement choice.
@@ -883,11 +885,13 @@ class PickupJoinView(View):
                     global_error = "Patches must be valid and each assigned a placement."
                 else:
                     patch_ids = [p["id"] for p in patches_in]
-                    patch_placements = [p["placement"] for p in patches_in]
+                    chest_placements = [
+                        p["placement"] for p in patches_in if p["placement"] in NIKE_PATCH_CHEST_KEYS
+                    ]
                     if len(set(patch_ids)) != len(patch_ids):
                         global_error = "Each patch can only be added once."
-                    elif len(set(patch_placements)) != len(patch_placements):
-                        global_error = "Each patch needs its own placement."
+                    elif len(set(chest_placements)) != len(chest_placements):
+                        global_error = "Each chest spot can only fit one patch."
 
         if not global_error and phone_error:
             global_error = phone_error
