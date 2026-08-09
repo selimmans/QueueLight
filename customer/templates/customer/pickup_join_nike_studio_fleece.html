@@ -52,6 +52,9 @@
     .tick .top { top: -20px; }
     .tick .bottom { bottom: -20px; }
     .hero-hint { color: var(--heading); font-size: 14px; line-height: 1.5; max-width: 300px; margin: 0 auto; }
+    /* White-theme-only, reversible: corner brackets hidden but markup kept
+       in case we go back to them. */
+    html.theme-white .bracket, html.theme-white .tick { display: none; }
 
     /* Sections */
     .section { padding: 36px 20px 40px; }
@@ -118,6 +121,17 @@
     .patch-card img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); transition: filter .15s; }
     .patch-card.selected { border-color: transparent; }
     .patch-card.maxed:not(.selected) { opacity: 0.35; }
+    /* White-theme-only sizing/shadow tuning per patch (ink is dark enough
+       on white to not need the outline at all, except the wreath which is
+       white ink -- keeps a much lighter version of it). */
+    html.theme-white .patch-card img { filter: none; }
+    html.theme-white .patch-card[data-id="p4"] img,
+    html.theme-white .patch-card[data-id="p7"] img { filter: drop-shadow(0 0 1px rgba(0,0,0,0.25)); }
+    html.theme-white .patch-card[data-id="p3"] { padding: 0; }
+    html.theme-white .patch-card[data-id="p7"] { padding: 0; }
+    html.theme-white .patch-card[data-id="p6"] { padding: 12px; }
+    html.theme-white .patch-card[data-id="p2"] { padding: 14px; }
+    html.theme-white .patch-card[data-id="p8"] { padding: 14px; }
 
     /* Placement lists — one full-width row per selected patch/design, with
        its own set of placement pills. Lives below the grid rather than
