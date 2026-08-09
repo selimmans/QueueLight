@@ -223,7 +223,7 @@
           <div class="hoodie-row-top">
             {% for h in nike_hoodies|slice:":2" %}
             <div class="option-card hoodie-card" data-id="{{ h.id }}" data-light="{{ h.light|yesno:'1,0' }}">
-              <div class="hoodie-photo"><img src="{% static 'customer/nike_studio_fleece/' %}{{ h.img }}" alt="{{ h.label }}"></div>
+              <div class="hoodie-photo"><img src="{% static 'customer/nike_studio_fleece/' %}{{ h.img }}" alt="{{ h.label }}" fetchpriority="high"></div>
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -231,7 +231,7 @@
           <div class="hoodie-row-bottom">
             {% for h in nike_hoodies|slice:"2:" %}
             <div class="option-card hoodie-card" data-id="{{ h.id }}" data-light="{{ h.light|yesno:'1,0' }}">
-              <div class="hoodie-photo"><img src="{% static 'customer/nike_studio_fleece/' %}{{ h.img }}" alt="{{ h.label }}"></div>
+              <div class="hoodie-photo"><img src="{% static 'customer/nike_studio_fleece/' %}{{ h.img }}" alt="{{ h.label }}" fetchpriority="high"></div>
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -272,22 +272,22 @@
 
             <div class="design-grid grid-3 hidden" data-pool="dark-large">
               {% for d in nike_designs_dark_large %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}" fetchpriority="low" onload="this.classList.add('loaded')"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div class="design-grid grid-5 hidden" data-pool="dark-small">
               {% for d in nike_designs_dark_small %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}" fetchpriority="low" onload="this.classList.add('loaded')"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div class="design-grid grid-3 hidden" data-pool="light-large">
               {% for d in nike_designs_light_large %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}" fetchpriority="low" onload="this.classList.add('loaded')"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div class="design-grid grid-5 hidden" data-pool="light-small">
               {% for d in nike_designs_light_small %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}" fetchpriority="low" onload="this.classList.add('loaded')"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div id="designPlacementList" class="placement-list"></div>
@@ -304,7 +304,7 @@
           <div class="patch-grid">
             {% for p in nike_patches|slice:":4" %}
             <div class="option-card patch-card" data-id="{{ p.id }}">
-              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" loading="lazy">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" fetchpriority="low">
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -312,7 +312,7 @@
           <div class="patch-grid">
             {% for p in nike_patches|slice:"4:" %}
             <div class="option-card patch-card" data-id="{{ p.id }}">
-              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" loading="lazy">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" fetchpriority="low">
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -391,24 +391,13 @@
 
   function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
 
-  // Only fetches a pool's images once — safe to call repeatedly (a second
-  // call on an already-loaded pool is a harmless no-op, src is unchanged).
-  function preloadPool(poolKey) {
-    const grid = document.querySelector(`.design-grid[data-pool="${poolKey}"]`);
-    if (!grid) return;
-    grid.querySelectorAll('img[data-src]').forEach(img => {
-      img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
-      img.src = img.dataset.src;
-      img.removeAttribute('data-src');
-    });
-  }
-
   function updateDesignPool() {
+    // All 4 pools already load eagerly (fetchpriority="low") from page
+    // load, not gated on this selection — just toggling visibility here.
     const poolKey = (state.hoodieLight === false ? 'dark' : 'light') + '-' + (state.airbrushMode || '');
     document.querySelectorAll('.design-grid').forEach(g => {
       g.classList.toggle('hidden', g.dataset.pool !== poolKey);
     });
-    preloadPool(poolKey);
     refreshDesignSelectionUI();
   }
 
@@ -537,12 +526,6 @@
       if (groupChanged) state.airbrushSelections = [];
       document.querySelectorAll('.hoodie-card').forEach(c => c.classList.toggle('selected', c === card));
       document.getElementById('sizeSection').classList.remove('hidden');
-      // Garment darkness is now known even though mode isn't picked yet —
-      // start fetching both of this garment's pools in the background so
-      // they're already loaded by the time a mode is chosen.
-      const darkness = light ? 'light' : 'dark';
-      preloadPool(`${darkness}-large`);
-      preloadPool(`${darkness}-small`);
       updateDesignPool();
       updateFooter();
     });
