@@ -260,22 +260,22 @@
 
             <div class="design-grid grid-3 hidden" data-pool="dark-large">
               {% for d in nike_designs_dark_large %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div class="design-grid grid-5 hidden" data-pool="dark-small">
               {% for d in nike_designs_dark_small %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div class="design-grid grid-3 hidden" data-pool="light-large">
               {% for d in nike_designs_light_large %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div class="design-grid grid-5 hidden" data-pool="light-small">
               {% for d in nike_designs_light_small %}
-              <div class="option-card design-card" data-id="{{ d.id }}"><img src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
+              <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}"><div class="select-dot"></div></div>
               {% endfor %}
             </div>
             <div id="designPlacementList" class="placement-list"></div>
@@ -292,7 +292,7 @@
           <div class="patch-grid">
             {% for p in nike_patches|slice:":4" %}
             <div class="option-card patch-card" data-id="{{ p.id }}">
-              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" loading="lazy">
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -300,7 +300,7 @@
           <div class="patch-grid">
             {% for p in nike_patches|slice:"4:" %}
             <div class="option-card patch-card" data-id="{{ p.id }}">
-              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" loading="lazy">
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -381,7 +381,17 @@
   function updateDesignPool() {
     const poolKey = (state.hoodieLight === false ? 'dark' : 'light') + '-' + (state.airbrushMode || '');
     document.querySelectorAll('.design-grid').forEach(g => {
-      g.classList.toggle('hidden', g.dataset.pool !== poolKey);
+      const isActive = g.dataset.pool === poolKey;
+      g.classList.toggle('hidden', !isActive);
+      // Only fetch a pool's images once it's actually the one being shown —
+      // otherwise all 4 pools (36 stencils) load on page open even though
+      // at most one is ever visible at a time.
+      if (isActive) {
+        g.querySelectorAll('img[data-src]').forEach(img => {
+          img.src = img.dataset.src;
+          img.removeAttribute('data-src');
+        });
+      }
     });
     refreshDesignSelectionUI();
   }
