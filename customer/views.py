@@ -844,35 +844,44 @@ class PickupJoinView(View):
             designs_in = build.get("airbrushSelections") or []
             patches_in = build.get("patches") or []
 
+            # Airbrush is optional client-side: "" / missing means the
+            # customer skipped it entirely, not an invalid choice.
+            airbrush_mode = airbrush_mode or None
+
             if not hoodie:
                 global_error = "Please choose a hoodie."
             elif size not in NIKE_SIZES:
                 global_error = "Please choose a size."
-            elif airbrush_mode not in ("large", "small"):
-                global_error = "Please choose an airbrush option."
+            elif airbrush_mode not in (None, "large", "small"):
+                global_error = "Please choose a valid airbrush option."
             else:
-                if hoodie["light"]:
-                    design_pool = NIKE_DESIGNS_LIGHT_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_LIGHT_SMALL
+                if airbrush_mode:
+                    if hoodie["light"]:
+                        design_pool = NIKE_DESIGNS_LIGHT_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_LIGHT_SMALL
+                    else:
+                        design_pool = NIKE_DESIGNS_DARK_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_DARK_SMALL
+                    required = 1 if airbrush_mode == "large" else 2
+                    design_placement_keys = (
+                        [NIKE_DESIGN_PLACEMENT_LARGE["key"]] if airbrush_mode == "large"
+                        else [p["key"] for p in NIKE_DESIGN_PLACEMENTS_SMALL]
+                    )
+                    design_ids = [d.get("id") if isinstance(d, dict) else None for d in designs_in]
+                    design_placements = [d.get("placement") if isinstance(d, dict) else None for d in designs_in]
+                    if (
+                        not isinstance(designs_in, list)
+                        or len(designs_in) != required
+                        or not all(isinstance(d, dict) for d in designs_in)
+                        or len(set(design_ids)) != len(design_ids)
+                        or not all(any(d["id"] == did for d in design_pool) for did in design_ids)
+                        or not all(pk in design_placement_keys for pk in design_placements)
+                        or len(set(design_placements)) != len(design_placements)
+                    ):
+                        global_error = f"Please select {required} design(s) with a valid placement."
                 else:
-                    design_pool = NIKE_DESIGNS_DARK_LARGE if airbrush_mode == "large" else NIKE_DESIGNS_DARK_SMALL
-                required = 1 if airbrush_mode == "large" else 2
-                design_placement_keys = (
-                    [NIKE_DESIGN_PLACEMENT_LARGE["key"]] if airbrush_mode == "large"
-                    else [p["key"] for p in NIKE_DESIGN_PLACEMENTS_SMALL]
-                )
-                design_ids = [d.get("id") if isinstance(d, dict) else None for d in designs_in]
-                design_placements = [d.get("placement") if isinstance(d, dict) else None for d in designs_in]
-                if (
-                    not isinstance(designs_in, list)
-                    or len(designs_in) != required
-                    or not all(isinstance(d, dict) for d in designs_in)
-                    or len(set(design_ids)) != len(design_ids)
-                    or not all(any(d["id"] == did for d in design_pool) for did in design_ids)
-                    or not all(pk in design_placement_keys for pk in design_placements)
-                    or len(set(design_placements)) != len(design_placements)
-                ):
-                    global_error = f"Please select {required} design(s) with a valid placement."
-                elif (
+                    # No mode chosen -- ignore any stray selection data.
+                    designs_in = []
+
+                if not global_error and (
                     not isinstance(patches_in, list)
                     or len(patches_in) > NIKE_MAX_PATCHES
                     or not all(
@@ -883,7 +892,7 @@ class PickupJoinView(View):
                     )
                 ):
                     global_error = "Patches must be valid and each assigned a placement."
-                else:
+                elif not global_error:
                     patch_ids = [p["id"] for p in patches_in]
                     chest_placements = [
                         p["placement"] for p in patches_in if p["placement"] in NIKE_PATCH_CHEST_KEYS
@@ -939,7 +948,7 @@ class PickupJoinView(View):
             next_number = (max(used_numbers) if used_numbers else 0) + 1
             order_number = f"{next_number:03d}"
 
-            airbrush_mode_label = "1 Large Design" if airbrush_mode == "large" else "2 Small Designs"
+            airbrush_mode_label = {"large": "1 Large Design", "small": "2 Small Designs"}.get(airbrush_mode, "")
             entry = PickupService.register(
                 business,
                 order_number=order_number,

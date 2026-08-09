@@ -100,7 +100,8 @@
        follows alpha, not a rectangle) with a color that contrasts the
        page regardless of the glyph's own ink color. */
     .design-card { aspect-ratio: 1; border-color: transparent; padding: 3px; display: flex; align-items: center; justify-content: center; }
-    .design-card img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); transition: filter .15s; }
+    .design-card img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); opacity: 0; transition: filter .15s, opacity .2s; }
+    .design-card img.loaded { opacity: 1; }
     .design-card.selected { border-color: transparent; }
     .design-card.selected img { filter: drop-shadow(0 0 8px var(--accent-a)); }
 
@@ -254,7 +255,7 @@
 
         <div class="section" id="section-airbrush">
           <div class="section-head"><span class="anton section-num">01</span><span class="anton section-title">AIRBRUSH</span></div>
-          <div class="section-sub">One large design on the back, or two small placements anywhere.</div>
+          <div class="section-sub">Optional — one large design on the back, or two small placements anywhere.</div>
 
           <div class="mode-row">
             <div class="mode-card" data-mode="large">1 LARGE</div>
@@ -388,21 +389,24 @@
 
   function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
 
+  // Only fetches a pool's images once — safe to call repeatedly (a second
+  // call on an already-loaded pool is a harmless no-op, src is unchanged).
+  function preloadPool(poolKey) {
+    const grid = document.querySelector(`.design-grid[data-pool="${poolKey}"]`);
+    if (!grid) return;
+    grid.querySelectorAll('img[data-src]').forEach(img => {
+      img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+      img.src = img.dataset.src;
+      img.removeAttribute('data-src');
+    });
+  }
+
   function updateDesignPool() {
     const poolKey = (state.hoodieLight === false ? 'dark' : 'light') + '-' + (state.airbrushMode || '');
     document.querySelectorAll('.design-grid').forEach(g => {
-      const isActive = g.dataset.pool === poolKey;
-      g.classList.toggle('hidden', !isActive);
-      // Only fetch a pool's images once it's actually the one being shown —
-      // otherwise all 4 pools (36 stencils) load on page open even though
-      // at most one is ever visible at a time.
-      if (isActive) {
-        g.querySelectorAll('img[data-src]').forEach(img => {
-          img.src = img.dataset.src;
-          img.removeAttribute('data-src');
-        });
-      }
+      g.classList.toggle('hidden', g.dataset.pool !== poolKey);
     });
+    preloadPool(poolKey);
     refreshDesignSelectionUI();
   }
 
@@ -501,15 +505,19 @@
   function footerHintText() {
     if (!state.hoodieId) return 'Choose your hoodie to continue';
     if (!state.size) return 'Select a size to continue';
-    if (!state.airbrushMode) return 'Choose your airbrush design to continue';
-    if (state.airbrushSelections.length !== requiredDesigns()) {
+    // Airbrush and patches are both optional -- only nag about designs if
+    // a mode was actually picked and left half-finished.
+    if (state.airbrushMode && state.airbrushSelections.length !== requiredDesigns()) {
       return `Select ${requiredDesigns() - state.airbrushSelections.length} more design(s)`;
     }
     return '';
   }
 
   function canContinue() {
-    return !!state.hoodieId && !!state.size && !!state.airbrushMode && state.airbrushSelections.length === requiredDesigns();
+    if (!state.hoodieId || !state.size) return false;
+    // Airbrush is optional; if a mode was picked, its designs must be complete.
+    if (state.airbrushMode && state.airbrushSelections.length !== requiredDesigns()) return false;
+    return true;
   }
 
   function updateFooter() {
@@ -527,6 +535,12 @@
       if (groupChanged) state.airbrushSelections = [];
       document.querySelectorAll('.hoodie-card').forEach(c => c.classList.toggle('selected', c === card));
       document.getElementById('sizeSection').classList.remove('hidden');
+      // Garment darkness is now known even though mode isn't picked yet —
+      // start fetching both of this garment's pools in the background so
+      // they're already loaded by the time a mode is chosen.
+      const darkness = light ? 'light' : 'dark';
+      preloadPool(`${darkness}-large`);
+      preloadPool(`${darkness}-small`);
       updateDesignPool();
       updateFooter();
     });
@@ -624,10 +638,14 @@
     document.getElementById('reviewHoodieLabel').textContent = hoodieImg.alt;
     document.getElementById('reviewSizeLabel').textContent = 'Size ' + state.size + (state.hoodieDistressed ? ' · Distressed' : '');
 
-    document.getElementById('reviewAirbrushHead').textContent =
-      'AIRBRUSH — ' + (state.airbrushMode === 'large' ? '1 Large Design' : '2 Small Designs');
+    const modeLabel = state.airbrushMode === 'large' ? '1 Large Design'
+      : state.airbrushMode === 'small' ? '2 Small Designs' : 'None';
+    document.getElementById('reviewAirbrushHead').textContent = 'AIRBRUSH — ' + modeLabel;
     const designsWrap = document.getElementById('reviewDesigns');
     designsWrap.innerHTML = '';
+    if (state.airbrushSelections.length === 0) {
+      designsWrap.innerHTML = '<div class="review-empty">No airbrush added</div>';
+    }
     state.airbrushSelections.forEach(sel => {
       const card = document.querySelector(`.design-card[data-id="${sel.id}"]`);
       if (!card) return;
