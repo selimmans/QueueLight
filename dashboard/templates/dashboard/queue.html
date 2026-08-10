@@ -318,7 +318,13 @@
     .nike-details { display: none; flex-direction: column; gap: 0.5rem; margin: 0.7rem 0; }
     .nike-details.open { display: flex; }
     .nike-item-row { display: flex; align-items: center; gap: 0.6rem; background: #f9fafb; border-radius: var(--r); padding: 0.5rem 0.65rem; }
-    .nike-thumb { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+    /* Design art meant for dark hoodies uses light/white ink -- invisible
+       against this row's near-white background with no help. A fixed dark
+       outline (this panel isn't theme-aware like the customer build page,
+       always the same light background) makes every design visible
+       regardless of its own ink color, and gives patches the same
+       definition they were missing. */
+    .nike-thumb { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.45)) drop-shadow(0 0 1.5px rgba(0,0,0,0.45)); }
     .nike-item-info { flex: 1; min-width: 0; font-size: 0.82rem; color: var(--text); }
     .nike-item-info strong { font-weight: 600; }
 

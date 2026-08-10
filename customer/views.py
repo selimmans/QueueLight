@@ -867,16 +867,19 @@ class PickupJoinView(View):
                     )
                     design_ids = [d.get("id") if isinstance(d, dict) else None for d in designs_in]
                     design_placements = [d.get("placement") if isinstance(d, dict) else None for d in designs_in]
+                    # A mode being picked no longer requires filling every
+                    # design slot -- a customer can submit with fewer than
+                    # `required` (down to zero) if that's what they chose.
                     if (
                         not isinstance(designs_in, list)
-                        or len(designs_in) != required
+                        or len(designs_in) > required
                         or not all(isinstance(d, dict) for d in designs_in)
                         or len(set(design_ids)) != len(design_ids)
                         or not all(any(d["id"] == did for d in design_pool) for did in design_ids)
                         or not all(pk in design_placement_keys for pk in design_placements)
                         or len(set(design_placements)) != len(design_placements)
                     ):
-                        global_error = f"Please select {required} design(s) with a valid placement."
+                        global_error = f"Please select up to {required} design(s), each with a valid placement."
                 else:
                     # No mode chosen -- ignore any stray selection data.
                     designs_in = []

@@ -509,19 +509,15 @@
   function footerHintText() {
     if (!state.hoodieId) return 'Choose your hoodie to continue';
     if (!state.size) return 'Select a size to continue';
-    // Airbrush and patches are both optional -- only nag about designs if
-    // a mode was actually picked and left half-finished.
-    if (state.airbrushMode && state.airbrushSelections.length !== requiredDesigns()) {
-      return `Select ${requiredDesigns() - state.airbrushSelections.length} more design(s)`;
-    }
     return '';
   }
 
   function canContinue() {
-    if (!state.hoodieId || !state.size) return false;
-    // Airbrush is optional; if a mode was picked, its designs must be complete.
-    if (state.airbrushMode && state.airbrushSelections.length !== requiredDesigns()) return false;
-    return true;
+    // Hoodie + size is the only hard requirement -- airbrush mode and
+    // patches are both entirely optional, and a customer can move on with
+    // a mode picked but fewer than its usual design count chosen (e.g.
+    // one design in "2 small" mode) if that's what they want.
+    return !!state.hoodieId && !!state.size;
   }
 
   function updateFooter() {
