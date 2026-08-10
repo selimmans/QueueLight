@@ -70,6 +70,23 @@ class PickupService:
         )
         return entry
 
+    @staticmethod
+    def cancel_entry(entry: PickupEntry) -> PickupEntry:
+        """Staff-initiated cancel for a single order -- e.g. the customer
+        wants to redo their build. Frees them up to submit a fresh order
+        with the same phone number since this entry drops out of the
+        active list, same as a picked-up one does."""
+        entry.status = PickupEntry.Status.CANCELLED
+        entry.save(update_fields=["status"])
+
+        PickupEventLog.objects.create(
+            business=entry.business,
+            entry=entry,
+            event_type=PickupEventLog.EventType.CANCELLED,
+            meta={"order_number": entry.order_number},
+        )
+        return entry
+
     CLOSING_SOON_DEFAULT = "{business_name} is closing soon — please come pick up your order as soon as possible."
 
     @staticmethod

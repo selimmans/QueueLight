@@ -812,6 +812,21 @@ class PickupResendSmsView(View):
         return redirect("dashboard:dashboard", slug=slug)
 
 
+class PickupCancelView(View):
+    """Staff cancels a single order -- e.g. the customer wants to redo their
+    build. Drops it off the active list, same as picked-up does, freeing
+    the phone number (if any) to submit a fresh order."""
+
+    def post(self, request, slug, entry_id):
+        business = get_object_or_404(Business, slug=slug)
+        if not _require_session(request, business):
+            return redirect(f"{reverse('dashboard:unified_login')}?slug={slug}")
+        entry = get_object_or_404(PickupEntry, pk=entry_id, business=business)
+        if entry.status in (PickupEntry.Status.WAITING, PickupEntry.Status.READY):
+            PickupService.cancel_entry(entry)
+        return redirect("dashboard:dashboard", slug=slug)
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class PickupUnregisteredReadyView(View):
     """POST /staff/<slug>/pickup/unregistered-ready/

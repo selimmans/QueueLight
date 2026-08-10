@@ -289,6 +289,7 @@
     .btn-ready    { border-color: #6ee7b7; color: #059669; }
     .btn-pickedup { border-color: #a5b4fc; color: #4338ca; }
     .btn-resend   { border-color: #fcd34d; color: #b45309; }
+    .btn-cancel   { border-color: #fca5a5; color: #dc2626; }
     .action-btn:hover { opacity: 0.75; }
     .action-btn:disabled { opacity: 0.5; cursor: default; }
 
@@ -574,6 +575,9 @@
               <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}">
                 {% csrf_token %}<button class="action-btn btn-ready" type="submit">Mark Ready</button>
               </form>
+              <form method="post" action="{% url 'dashboard:pickup_cancel' slug=business.slug entry_id=entry.pk %}" onsubmit="return confirm('Cancel this order? The customer can submit a new one if needed.')">
+                {% csrf_token %}<button class="action-btn btn-cancel" type="submit">Cancel</button>
+              </form>
             </div>
           </div>
           {% elif business.slug == "nike-studio-fleece-white" or business.slug == "nike-studio-fleece-noir" %}
@@ -605,6 +609,9 @@
               <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}">
                 {% csrf_token %}<button class="action-btn btn-ready" type="submit">Mark Ready</button>
               </form>
+              <form method="post" action="{% url 'dashboard:pickup_cancel' slug=business.slug entry_id=entry.pk %}" onsubmit="return confirm('Cancel this order? The customer can submit a new one if needed.')">
+                {% csrf_token %}<button class="action-btn btn-cancel" type="submit">Cancel</button>
+              </form>
             </div>
           </div>
           {% else %}
@@ -617,6 +624,9 @@
             <div class="entry-actions">
               <form method="post" action="{% url 'dashboard:pickup_ready' slug=business.slug entry_id=entry.pk %}" style="display:inline">
                 {% csrf_token %}<button class="action-btn btn-ready" type="submit">Ready</button>
+              </form>
+              <form method="post" action="{% url 'dashboard:pickup_cancel' slug=business.slug entry_id=entry.pk %}" style="display:inline" onsubmit="return confirm('Cancel this order? The customer can submit a new one if needed.')">
+                {% csrf_token %}<button class="action-btn btn-cancel" type="submit">Cancel</button>
               </form>
             </div>
           </div>
@@ -656,6 +666,9 @@
               <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
                 {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
               </form>
+              <form method="post" action="{% url 'dashboard:pickup_cancel' slug=business.slug entry_id=entry.pk %}" onsubmit="return confirm('Cancel this order? The customer can submit a new one if needed.')">
+                {% csrf_token %}<button class="action-btn btn-cancel" type="submit">Cancel</button>
+              </form>
             </div>
           </div>
           {% elif business.slug == "nike-studio-fleece-white" or business.slug == "nike-studio-fleece-noir" %}
@@ -694,6 +707,9 @@
               <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}">
                 {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
               </form>
+              <form method="post" action="{% url 'dashboard:pickup_cancel' slug=business.slug entry_id=entry.pk %}" onsubmit="return confirm('Cancel this order? The customer can submit a new one if needed.')">
+                {% csrf_token %}<button class="action-btn btn-cancel" type="submit">Cancel</button>
+              </form>
             </div>
           </div>
           {% else %}
@@ -711,6 +727,9 @@
               {% endif %}
               <form method="post" action="{% url 'dashboard:pickup_picked_up' slug=business.slug entry_id=entry.pk %}" style="display:inline">
                 {% csrf_token %}<button class="action-btn btn-pickedup" type="submit">Picked up</button>
+              </form>
+              <form method="post" action="{% url 'dashboard:pickup_cancel' slug=business.slug entry_id=entry.pk %}" style="display:inline" onsubmit="return confirm('Cancel this order? The customer can submit a new one if needed.')">
+                {% csrf_token %}<button class="action-btn btn-cancel" type="submit">Cancel</button>
               </form>
             </div>
           </div>
@@ -914,6 +933,16 @@
       pickupPost(`/staff/${SLUG}/pickup/${id}/picked-up/`);
     }
 
+    // Destructive -- confirm before firing. Cancelling drops the order off
+    // the active list the same way picked-up does, freeing the customer to
+    // submit a fresh build with the same phone number if they want a redo.
+    function cancelOrder(id) {
+      if (!confirm("Cancel this order? The customer can submit a new one if needed.")) return;
+      _activeOrders = _activeOrders.filter(o => o.id !== id);
+      renderPickupState();
+      pickupPost(`/staff/${SLUG}/pickup/${id}/cancel/`);
+    }
+
     // Disable immediately so a fast double-click can't fire two texts;
     // the next poll re-render (pickupPost triggers one on completion)
     // naturally restores the button to normal.
@@ -983,13 +1012,14 @@
       }).join("");
 
       let action = "";
+      const cancelBtn = `<button class="action-btn btn-cancel" onclick="cancelOrder(${e.id})">Cancel</button>`;
       if (e.status === "waiting") {
-        action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>`;
+        action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>${cancelBtn}`;
       } else if (e.status === "ready") {
         const resendBtn = e.phone
           ? `<button class="action-btn btn-resend" onclick="resendText(${e.id}, this)">Resend Text</button>`
           : `<span></span>`;
-        action = `${resendBtn}<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>`;
+        action = `${resendBtn}<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>${cancelBtn}`;
       }
 
       return `<div class="kotn-card">
@@ -1025,13 +1055,14 @@
         </div>`).join("");
 
       let action = "";
+      const cancelBtn = `<button class="action-btn btn-cancel" onclick="cancelOrder(${e.id})">Cancel</button>`;
       if (e.status === "waiting") {
-        action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>`;
+        action = `<button class="action-btn btn-ready" onclick="markReady(${e.id})">Mark Ready</button>${cancelBtn}`;
       } else if (e.status === "ready") {
         const resendBtn = e.phone
           ? `<button class="action-btn btn-resend" onclick="resendText(${e.id}, this)">Resend Text</button>`
           : `<span></span>`;
-        action = `${resendBtn}<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>`;
+        action = `${resendBtn}<button class="action-btn btn-pickedup" onclick="markPickedUp(${e.id})">Picked up</button>${cancelBtn}`;
       }
 
       return `<div class="nike-card">
@@ -1088,15 +1119,16 @@
       }
 
       let action = "";
+      const cancelBtn = `<button class="action-btn btn-cancel" onclick="cancelOrder(${e.id})">Cancel</button>`;
       if (e.status === "waiting") {
         action = `<button class="action-btn btn-ready"
-          onclick="markReady(${e.id})">Ready</button>`;
+          onclick="markReady(${e.id})">Ready</button>${cancelBtn}`;
       } else if (e.status === "ready") {
         const resendBtn = e.phone
           ? `<button class="action-btn btn-resend" onclick="resendText(${e.id}, this)">Resend Text</button>`
           : "";
         action = `${resendBtn}<button class="action-btn btn-pickedup"
-          onclick="markPickedUp(${e.id})">Picked up</button>`;
+          onclick="markPickedUp(${e.id})">Picked up</button>${cancelBtn}`;
       }
       const titleHtml = e.order_number
         ? `#${e.order_number}${nameHtml}`

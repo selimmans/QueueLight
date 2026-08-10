@@ -17,7 +17,7 @@ from queues.models import QueueEntry, QueueEventLog, PickupEntry
 from queues.pickup_service import PickupService
 from queues.services import QueueService, RuleViolationError
 
-_JOIN_LIMIT = 20
+_JOIN_LIMIT = 300
 _JOIN_WINDOW = 3600
 
 # ── Kotn Cup 26 pop-up (one-off event, Trinity Bellwoods, Toronto) ──────────
