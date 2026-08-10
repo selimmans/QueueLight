@@ -110,7 +110,12 @@
     .design-section-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
     .count-label { font-size: 12px; color: var(--muted); font-weight: 700; }
     .design-grid.grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
-    .design-grid.grid-5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
+    /* grid-5 pools run 15-20+ items, which won't always divide evenly by
+       5 -- a plain grid leaves a ragged, left-aligned last row. Flexbox
+       wrap centers each line independently, so a partial last row (or
+       any row) centers itself instead of leaving a lopsided gap. */
+    .design-grid.grid-5 { display: flex; flex-wrap: wrap; justify-content: center; }
+    .design-grid.grid-5 .design-card { flex: 0 0 calc((100% - 24px) / 5); }
     .design-grid { display: grid; gap: 6px; }
     /* No card box — art is a transparent cutout, so instead of a
        background we outline the opaque pixels themselves (drop-shadow
