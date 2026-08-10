@@ -321,7 +321,7 @@
           <div class="patch-grid">
             {% for p in nike_patches|slice:":4" %}
             <div class="option-card patch-card" data-id="{{ p.id }}">
-              <img data-src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" fetchpriority="low">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" fetchpriority="low">
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -329,7 +329,7 @@
           <div class="patch-grid">
             {% for p in nike_patches|slice:"4:" %}
             <div class="option-card patch-card" data-id="{{ p.id }}">
-              <img data-src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" fetchpriority="low">
+              <img src="{% static 'customer/nike_studio_fleece/' %}{{ p.img }}" alt="{{ p.label }}" fetchpriority="low">
               <div class="select-dot"></div>
             </div>
             {% endfor %}
@@ -408,12 +408,15 @@
 
   function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
 
-  // All 36 stencils + 8 patches carry data-src (not src) so they don't
-  // fetch at all until the customer actually taps something on the page.
-  // The hero/hoodie photos are the only images requested up front, so
-  // they get the connection to themselves first. The very first tap
-  // anywhere (picking a hoodie, in practice) fires this once and starts
-  // the background fetch for everything else.
+  // The 36 airbrush stencils (4 pools, only one ever visible at a time)
+  // carry data-src (not src) so they don't fetch at all until the customer
+  // actually taps something on the page -- the hero/hoodie photos are the
+  // only images requested up front, so they get the connection to
+  // themselves first. The very first tap anywhere (picking a hoodie, in
+  // practice) fires this once and starts the background fetch for the
+  // stencils. Patches load eagerly (plain src, just fetchpriority="low")
+  // -- there are only 8 of them and they were never the slow part, so no
+  // reason to make customers wait an extra tap to see them.
   function loadAllPools() {
     document.querySelectorAll('img[data-src]').forEach(img => {
       img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
