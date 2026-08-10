@@ -6,6 +6,9 @@ Start empty. Add known bugs, edge cases, deferred decisions, and open questions 
 
 ## Open Issues
 
+**Nike Studio Fleece image loading regression after fetchpriority change** — commit `3956458` ("Preload stencils and patches without needing a click, via fetchpriority") replaced click-gated deferred loading of the design/patch grid with always-eager `fetchpriority="low"` loading of all 36 stencils + 8 patches simultaneously from page load, on `pickup_join_nike_studio_fleece.html`. User report after deploy: "hoodies and patches now load in slow" — a regression, since patches were loading fine before this specific change. Note the *original* complaint this change was meant to fix was scoped to the small placement-row thumbnail (the little image shown in the picker row after a selection is made), not the main grid — so the fix's scope may have been broader than the actual problem. Leading hypotheses, unverified: (1) too many concurrent eager low-priority fetches created real network/decode contention that click-gating previously avoided; (2) local dev's single-threaded `runserver` may be a confounding bottleneck not present under production `gunicorn` workers — worth checking prod behavior separately from local. Explicitly NOT fixed yet per user instruction ("dont fix this now") to protect event-prep time. See [TASKS.md](TASKS.md) PHASE 26.
+STATUS: OPEN — top priority for next session.
+
 **Late arrival notification not shown on staff dashboard** — when a customer taps "I'm still coming" on the confirmation page after being abandoned/skipped, a `LATE_ARRIVAL` event is logged to QueueEventLog but no banner appears on the staff dashboard. Staff won't know unless they check the admin panel.
 STATUS: OPEN — deferred.
 
