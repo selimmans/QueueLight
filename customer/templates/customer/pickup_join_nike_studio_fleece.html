@@ -110,12 +110,16 @@
     .design-section-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
     .count-label { font-size: 12px; color: var(--muted); font-weight: 700; }
     .design-grid.grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
-    /* grid-5 pools run 15-20+ items, which won't always divide evenly by
-       5 -- a plain grid leaves a ragged, left-aligned last row. Flexbox
-       wrap centers each line independently, so a partial last row (or
-       any row) centers itself instead of leaving a lopsided gap. */
+    /* grid-5 pools run 17 items in 4/4/4/5 rows -- cards stay sized as if
+       every row were 5-wide (consistent size throughout, matching the
+       numerals/icons elsewhere), and a .row-break after the 4th/8th/12th
+       card forces an early wrap so rows of 4 end up centered with extra
+       side margin instead of stretched to fill the width. justify-content
+       centers each line independently, so every row (4s and the final 5)
+       lands centered with no lopsided gap. */
     .design-grid.grid-5 { display: flex; flex-wrap: wrap; justify-content: center; }
     .design-grid.grid-5 .design-card { flex: 0 0 calc((100% - 24px) / 5); }
+    .design-grid.grid-5 .row-break { flex-basis: 100%; width: 100%; height: 0; margin: 0; }
     .design-grid { display: grid; gap: 6px; }
     /* No card box — art is a transparent cutout, so instead of a
        background we outline the opaque pixels themselves (drop-shadow
@@ -301,6 +305,7 @@
             <div class="design-grid grid-5 hidden" data-pool="dark-small">
               {% for d in nike_designs_dark_small %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}" fetchpriority="low"><div class="select-dot"></div></div>
+              {% if forloop.counter == 4 or forloop.counter == 8 or forloop.counter == 12 %}<div class="row-break"></div>{% endif %}
               {% endfor %}
             </div>
             <div class="design-grid grid-3 hidden" data-pool="light-large">
@@ -311,6 +316,7 @@
             <div class="design-grid grid-5 hidden" data-pool="light-small">
               {% for d in nike_designs_light_small %}
               <div class="option-card design-card" data-id="{{ d.id }}"><img data-src="{% static 'customer/nike_studio_fleece/' %}{{ d.img }}" alt="{{ d.label }}" fetchpriority="low"><div class="select-dot"></div></div>
+              {% if forloop.counter == 4 or forloop.counter == 8 or forloop.counter == 12 %}<div class="row-break"></div>{% endif %}
               {% endfor %}
             </div>
             <div id="designPlacementList" class="placement-list"></div>
