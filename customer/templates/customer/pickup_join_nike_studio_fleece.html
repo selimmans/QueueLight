@@ -8,6 +8,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
   <style>
+    /* Brand fonts from the design handoff (04_GRAPHICS + FONTS-selected) --
+       custom family names to avoid colliding with any system font that
+       happens to share the generic "Univers"/"Neureal" name. */
+    @font-face {
+      font-family: 'NikeTagline';
+      src: url("{% static 'customer/nike_studio_fleece/fonts/OONeureal-Regular.otf' %}") format('opentype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'NikeWordmark';
+      src: url("{% static 'customer/nike_studio_fleece/fonts/UniversLTPro-XBlackExt.otf' %}") format('opentype');
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
     :root {
       --page-bg: {{ nike_theme_tokens.page_bg }};
       --heading: {{ nike_theme_tokens.heading_color }};
@@ -35,8 +52,8 @@
 
     /* Hero */
     .hero { background: var(--end-bg); padding: 56px 32px 44px; text-align: center; }
-    .wordmark { color: var(--accent-a); font-size: 13px; font-weight: 800; letter-spacing: 6px; margin-bottom: 8px; text-transform: uppercase; }
-    .tagline { color: var(--muted); font-size: 11px; letter-spacing: 1.5px; font-style: italic; margin-bottom: 20px; }
+    .wordmark { font-family: 'NikeWordmark', Arial, Helvetica, sans-serif; color: var(--accent-a); font-size: 13px; font-weight: 800; letter-spacing: 6px; margin-bottom: 8px; text-transform: uppercase; }
+    .tagline { font-family: 'NikeTagline', Arial, Helvetica, sans-serif; color: var(--muted); font-size: 11px; letter-spacing: 1.5px; margin-bottom: 20px; }
     .lockup { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 22px; padding: 20px 34px; margin-bottom: 14px; }
     .lockup img { height: 56px; width: auto; }
     .lockup img.jd { height: 34px; }
