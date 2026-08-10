@@ -96,8 +96,8 @@ NIKE_DESIGNS_LIGHT_SMALL = [
     {"id": "sl-cactus", "label": "CACTUS", "img": "stencil-04-cactus.png"},
     {"id": "sl-flower", "label": "FLOWER", "img": "stencil-05-flower.png"},
     {"id": "sl-spiral", "label": "SPIRAL", "img": "stencil-06-spiral.png"},
-    {"id": "sl-jd", "label": "JD", "img": "stencil-jd.png"},
-    {"id": "sl-nsw", "label": "NSW", "img": "stencil-nsw.png"},
+    {"id": "sl-jd", "label": "JD", "img": "stencil-jd-dark.png"},
+    {"id": "sl-nsw", "label": "NSW", "img": "stencil-nsw-dark.png"},
 ] + [
     {"id": f"sl-numeral{n}", "label": str(n), "img": f"stencil-numeral-{n}.png"}
     for n in range(10)
@@ -113,8 +113,8 @@ NIKE_DESIGNS_DARK_SMALL = [
     {"id": "sd-cactus", "label": "CACTUS", "img": "stencil-04-cactus-dark.png"},
     {"id": "sd-flower", "label": "FLOWER", "img": "stencil-05-flower-dark.png"},
     {"id": "sd-spiral", "label": "SPIRAL", "img": "stencil-06-spiral-dark.png"},
-    {"id": "sd-jd", "label": "JD", "img": "stencil-jd-dark.png"},
-    {"id": "sd-nsw", "label": "NSW", "img": "stencil-nsw-dark.png"},
+    {"id": "sd-jd", "label": "JD", "img": "stencil-jd.png"},
+    {"id": "sd-nsw", "label": "NSW", "img": "stencil-nsw.png"},
 ] + [
     {"id": f"sd-numeral{n}", "label": str(n), "img": f"stencil-numeral-{n}-dark.png"}
     for n in range(10)
