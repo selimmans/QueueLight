@@ -85,9 +85,9 @@ NIKE_SIZES = ["XS", "S", "M", "L", "XL"]
 # Airbrush stencil sets — light-garment set for light hoodies, dark-garment
 # set (same designs, dark-ink artwork) for dark hoodies.
 NIKE_DESIGNS_LIGHT_LARGE = [
-    {"id": "sl-face1", "label": "FACE 01", "img": "stencil-01-face.png"},
-    {"id": "sl-face2", "label": "FACE 02", "img": "stencil-07-face.png"},
-    {"id": "sl-faceloop", "label": "FACE LOOP", "img": "stencil-08-face-loop.png"},
+    {"id": "sl-face1", "label": "CHARACTER", "img": "stencil-01-face.png"},
+    {"id": "sl-face2", "label": "DOG", "img": "stencil-07-face.png"},
+    {"id": "sl-faceloop", "label": "SNAKE", "img": "stencil-08-face-loop.png"},
 ]
 NIKE_DESIGNS_LIGHT_SMALL = [
     {"id": "sl-labyrinth", "label": "LABYRINTH", "img": "stencil-02-labyrinth.png"},
@@ -100,9 +100,9 @@ NIKE_DESIGNS_LIGHT_SMALL = [
     for n in range(10)
 ]
 NIKE_DESIGNS_DARK_LARGE = [
-    {"id": "sd-face1", "label": "FACE 01", "img": "stencil-01-face-dark.png"},
-    {"id": "sd-face2", "label": "FACE 02", "img": "stencil-07-face-dark.png"},
-    {"id": "sd-faceloop", "label": "FACE LOOP", "img": "stencil-08-face-loop-dark.png"},
+    {"id": "sd-face1", "label": "CHARACTER", "img": "stencil-01-face-dark.png"},
+    {"id": "sd-face2", "label": "DOG", "img": "stencil-07-face-dark.png"},
+    {"id": "sd-faceloop", "label": "SNAKE", "img": "stencil-08-face-loop-dark.png"},
 ]
 NIKE_DESIGNS_DARK_SMALL = [
     {"id": "sd-labyrinth", "label": "LABYRINTH", "img": "stencil-02-labyrinth-dark.png"},
