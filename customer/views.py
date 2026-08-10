@@ -923,6 +923,22 @@ class PickupJoinView(View):
         if not global_error and phone_error:
             global_error = phone_error
 
+        # Block a phone number from submitting a new build once its last
+        # order was actually picked up -- stops someone from resubmitting
+        # to grab a second hoodie. Cancelled orders don't count (that's the
+        # whole point of the staff cancel button, letting a customer redo).
+        # Waiting/ready orders don't count either -- only a completed
+        # pickup blocks. Scoped to entries since the last tag reset so a
+        # fresh session doesn't inherit blocks from a prior one.
+        if not global_error and phone:
+            dup_qs = PickupEntry.objects.filter(
+                business=business, phone=phone, status=PickupEntry.Status.PICKED_UP,
+            )
+            if business.pickup_tag_reset_at:
+                dup_qs = dup_qs.filter(registered_at__gte=business.pickup_tag_reset_at)
+            if dup_qs.exists():
+                global_error = "This phone number has already picked up an order. See staff if you need another."
+
         if global_error:
             if is_ajax:
                 return JsonResponse({"error": global_error}, status=400)
