@@ -140,12 +140,8 @@
        on white to not need the outline at all, except the wreath which is
        white ink -- keeps a much lighter version of it). */
     html.theme-white .patch-card img { filter: none; }
+    html.theme-white .patch-card[data-id="p4"] img,
     html.theme-white .patch-card[data-id="p7"] img { filter: drop-shadow(0 0 1px rgba(0,0,0,0.25)); }
-    /* STAR WREATH's ink is pure white -- the shared light shadow above was
-       too faint to read against the white theme's page background at all
-       (effectively invisible), so it gets its own stronger, double-layered
-       outline instead of the shared one-liner. */
-    html.theme-white .patch-card[data-id="p4"] img { filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.55)) drop-shadow(0 0 1.5px rgba(0,0,0,0.55)); }
     html.theme-white .patch-card[data-id="p3"] { padding: 0; }
     html.theme-white .patch-card[data-id="p7"] { padding: 0; }
     html.theme-white .patch-card[data-id="p6"] { padding: 12px; }
@@ -197,7 +193,6 @@
     .review-thumb .thumb.small { width: 48px; height: 48px; margin-bottom: 3px; }
     .review-thumb .thumb.small img { filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); }
     html.theme-white .review-thumb .thumb.small.no-shadow img { filter: none; }
-    html.theme-white .review-thumb .thumb.small.no-shadow img[alt="STAR WREATH"] { filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.55)) drop-shadow(0 0 1.5px rgba(0,0,0,0.55)); }
     .review-thumb-label { font-size: 8px; color: var(--muted); }
     .review-thumb-label .muted { color: var(--muted); }
     .review-empty { font-size: 12px; color: var(--muted); }
@@ -717,7 +712,11 @@
   const submitBtn = document.getElementById('submitBtn');
   function validatePhone() {
     const digits = phoneInput.value.replace(/\D/g, '');
-    const ok = digits.length >= 7;
+    // A real Toronto-area number is 10 digits (area code + 7-digit local
+    // number, e.g. 4374402233) -- anything shorter isn't submittable yet,
+    // so the button stays in its disabled/grey state until then instead
+    // of flipping to the active red before there's actually enough there.
+    const ok = digits.length >= 10;
     submitBtn.disabled = !ok;
     return ok;
   }
@@ -731,11 +730,16 @@
     validatePhone();
   });
 
-  document.getElementById('nike-form').addEventListener('submit', (e) => {
-    if (!validatePhone() || !canContinue()) {
-      e.preventDefault();
-      return;
-    }
+  // Submitted via fetch(), not a native form POST -- so a rejected phone
+  // number (or any other last-second validation failure) can surface as a
+  // toast right here instead of bouncing the customer to a full-page
+  // re-render that would throw away their whole build. The customer's
+  // state never left this page, so there's nothing to restore -- they
+  // just fix the phone field and hit submit again.
+  const nikeForm = document.getElementById('nike-form');
+  nikeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!validatePhone() || !canContinue()) return;
     document.getElementById('phoneHidden').value = phoneInput.value;
     document.getElementById('buildInput').value = JSON.stringify({
       hoodieId: state.hoodieId,
@@ -745,6 +749,26 @@
       airbrushSelections: state.airbrushSelections,
       patches: state.patches,
     });
+
+    submitBtn.disabled = true;
+    fetch(window.location.href, {
+      method: 'POST',
+      body: new FormData(nikeForm),
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+        showToast(data.error || 'Something went wrong — try again.');
+        submitBtn.disabled = false;
+      })
+      .catch(() => {
+        showToast('Network error — try again.');
+        submitBtn.disabled = false;
+      });
   });
 
   updateDesignPool();

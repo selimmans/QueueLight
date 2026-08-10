@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -818,7 +819,17 @@ class PickupJoinView(View):
         `phone`. No name is collected (explicit design requirement). Order
         numbers are assigned sequentially per business under a row lock,
         same scheme as Kotn's shirt tags.
+
+        Submitted via fetch() from the template's JS, not a native form
+        POST, specifically so a validation failure (most commonly an
+        invalid phone number slipping past the client's crude digit-count
+        check) can surface as a toast on the same screen instead of
+        bouncing the customer back to a full-page re-render that discards
+        their whole build. `is_ajax` is the signal for which response shape
+        to use; the plain-render/redirect fallback stays in place in case
+        anything ever POSTs here without JS.
         """
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         raw_phone = request.POST.get("phone", "").strip()
         phone, phone_error = None, "Please enter your phone number"
         if raw_phone:
@@ -909,6 +920,8 @@ class PickupJoinView(View):
             global_error = phone_error
 
         if global_error:
+            if is_ajax:
+                return JsonResponse({"error": global_error}, status=400)
             return render(request, template_name,
                           self._ctx(business, global_error=global_error), status=400)
 
@@ -971,6 +984,10 @@ class PickupJoinView(View):
                 },
             )
 
+        if is_ajax:
+            return JsonResponse({
+                "redirect": reverse("customer:pickup_confirmation", args=[business.slug, entry.pk])
+            })
         return redirect("customer:pickup_confirmation", slug=business.slug, entry_id=entry.pk)
 
 
