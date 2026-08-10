@@ -391,15 +391,12 @@
 
   function requiredDesigns() { return state.airbrushMode === 'large' ? 1 : 2; }
 
-  // All 36 stencils + 8 patches carry data-src (not src) and
-  // fetchpriority="low" so they never compete with the hero/hoodie photos
-  // for bandwidth on first paint. Nothing needs a click to start them —
-  // this fires once, automatically, on the window "load" event (i.e. once
-  // the hero and hoodie photos are already done), so they truly load last
-  // instead of merely being deprioritized while the browser races them
-  // against everything else. Sequencing this way, rather than leaning on
-  // fetchpriority alone, is what actually avoided the contention the
-  // eager-from-page-load version ran into.
+  // All 36 stencils + 8 patches carry data-src (not src) so they don't
+  // fetch at all until the customer actually taps something on the page.
+  // The hero/hoodie photos are the only images requested up front, so
+  // they get the connection to themselves first. The very first tap
+  // anywhere (picking a hoodie, in practice) fires this once and starts
+  // the background fetch for everything else.
   function loadAllPools() {
     document.querySelectorAll('img[data-src]').forEach(img => {
       img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
@@ -407,11 +404,7 @@
       img.removeAttribute('data-src');
     });
   }
-  if (document.readyState === 'complete') {
-    loadAllPools();
-  } else {
-    window.addEventListener('load', loadAllPools);
-  }
+  document.addEventListener('click', loadAllPools, { once: true });
 
   function updateDesignPool() {
     const poolKey = (state.hoodieLight === false ? 'dark' : 'light') + '-' + (state.airbrushMode || '');
