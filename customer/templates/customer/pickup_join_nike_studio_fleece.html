@@ -140,8 +140,12 @@
        on white to not need the outline at all, except the wreath which is
        white ink -- keeps a much lighter version of it). */
     html.theme-white .patch-card img { filter: none; }
-    html.theme-white .patch-card[data-id="p4"] img,
     html.theme-white .patch-card[data-id="p7"] img { filter: drop-shadow(0 0 1px rgba(0,0,0,0.25)); }
+    /* STAR WREATH's ink is pure white -- the shared light shadow above was
+       too faint to read against the white theme's page background at all
+       (effectively invisible), so it gets its own stronger, double-layered
+       outline instead of the shared one-liner. */
+    html.theme-white .patch-card[data-id="p4"] img { filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.55)) drop-shadow(0 0 1.5px rgba(0,0,0,0.55)); }
     html.theme-white .patch-card[data-id="p3"] { padding: 0; }
     html.theme-white .patch-card[data-id="p7"] { padding: 0; }
     html.theme-white .patch-card[data-id="p6"] { padding: 12px; }
@@ -156,6 +160,7 @@
     .placement-thumb { width: 44px; height: 44px; flex-shrink: 0; }
     .placement-thumb img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); }
     html.theme-white .placement-thumb.no-shadow img { filter: none; }
+    html.theme-white .placement-thumb.no-shadow img[alt="STAR WREATH"] { filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.55)) drop-shadow(0 0 1.5px rgba(0,0,0,0.55)); }
     .placement-btns { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
     .placement-btn { border: 1px solid var(--border); border-radius: 20px; font-size: 10px; font-weight: 700; padding: 5px 9px; background: transparent; color: var(--muted); cursor: pointer; font-family: Arial, Helvetica, sans-serif; }
     .placement-btn.active { background: var(--accent-a); border-color: var(--accent-a); color: #fff; }
@@ -192,6 +197,7 @@
     .review-thumb .thumb.small { width: 48px; height: 48px; margin-bottom: 3px; }
     .review-thumb .thumb.small img { filter: drop-shadow(0 0 2px var(--ink-outline)) drop-shadow(0 0 2px var(--ink-outline)); }
     html.theme-white .review-thumb .thumb.small.no-shadow img { filter: none; }
+    html.theme-white .review-thumb .thumb.small.no-shadow img[alt="STAR WREATH"] { filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.55)) drop-shadow(0 0 1.5px rgba(0,0,0,0.55)); }
     .review-thumb-label { font-size: 8px; color: var(--muted); }
     .review-thumb-label .muted { color: var(--muted); }
     .review-empty { font-size: 12px; color: var(--muted); }
